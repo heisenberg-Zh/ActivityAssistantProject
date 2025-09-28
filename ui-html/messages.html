@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>消息中心</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .card-shadow {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 顶部导航 -->
+    <div class="bg-white px-4 py-3 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-arrow-left text-gray-600 text-lg"></i>
+                <h1 class="text-lg font-semibold text-gray-800">消息中心</h1>
+            </div>
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-check-double text-gray-600 text-lg"></i>
+                <i class="fas fa-ellipsis-h text-gray-600 text-lg"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- 消息分类 -->
+    <div class="px-4 py-3 bg-white border-b border-gray-200">
+        <div class="flex space-x-3 overflow-x-auto pb-2">
+            <div class="bg-blue-500 text-white px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap">
+                全部
+            </div>
+            <div class="bg-gray-100 text-gray-600 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap">
+                系统通知
+            </div>
+            <div class="bg-gray-100 text-gray-600 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap">
+                活动通知
+            </div>
+            <div class="bg-gray-100 text-gray-600 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap">
+                报名通知
+            </div>
+        </div>
+    </div>
+
+    <!-- 消息列表 -->
+    <div class="px-4 py-4 pb-20">
+        <div class="space-y-3">
+            <!-- 系统通知 -->
+            <div class="bg-white rounded-2xl p-4 card-shadow">
+                <div class="flex items-start space-x-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-bell text-blue-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <h3 class="font-semibold text-gray-800">系统通知</h3>
+                            <span class="text-xs text-gray-400">2分钟前</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-2">欢迎使用活动助手！您已成功注册，现在可以开始创建和参与精彩活动了。</p>
+                        <div class="flex items-center space-x-2">
+                            <span class="bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full">系统</span>
+                            <span class="bg-red-500 text-white text-xs px-2 py-1 rounded-full">未读</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 活动通知 -->
+            <div class="bg-white rounded-2xl p-4 card-shadow">
+                <div class="flex items-start space-x-3">
+                    <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-calendar text-green-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <h3 class="font-semibold text-gray-800">活动提醒</h3>
+                            <span class="text-xs text-gray-400">1小时前</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-2">您参与的活动"产品设计分享会"将在2小时后开始，请提前做好准备。</p>
+                        <div class="flex items-center space-x-2">
+                            <span class="bg-green-100 text-green-600 text-xs px-2 py-1 rounded-full">活动</span>
+                            <span class="bg-red-500 text-white text-xs px-2 py-1 rounded-full">未读</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 报名通知 -->
+            <div class="bg-white rounded-2xl p-4 card-shadow">
+                <div class="flex items-start space-x-3">
+                    <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user-plus text-orange-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <h3 class="font-semibold text-gray-800">报名成功</h3>
+                            <span class="text-xs text-gray-400">3小时前</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-2">恭喜！您已成功报名"周末聚餐活动"，活动将于12月15日18:00开始。</p>
+                        <div class="flex items-center space-x-2">
+                            <span class="bg-orange-100 text-orange-600 text-xs px-2 py-1 rounded-full">报名</span>
+                            <span class="bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded-full">已读</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 签到通知 -->
+            <div class="bg-white rounded-2xl p-4 card-shadow">
+                <div class="flex items-start space-x-3">
+                    <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-check-circle text-purple-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <h3 class="font-semibold text-gray-800">签到成功</h3>
+                            <span class="text-xs text-gray-400">昨天</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-2">您已成功签到"技术分享会"活动，感谢您的参与！</p>
+                        <div class="flex items-center space-x-2">
+                            <span class="bg-purple-100 text-purple-600 text-xs px-2 py-1 rounded-full">签到</span>
+                            <span class="bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded-full">已读</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 活动变更通知 -->
+            <div class="bg-white rounded-2xl p-4 card-shadow">
+                <div class="flex items-start space-x-3">
+                    <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-exclamation-triangle text-red-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <h3 class="font-semibold text-gray-800">活动变更</h3>
+                            <span class="text-xs text-gray-400">昨天</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-2">您创建的活动"周末登山活动"时间已调整为12月21日08:00，请及时通知参与者。</p>
+                        <div class="flex items-center space-x-2">
+                            <span class="bg-red-100 text-red-600 text-xs px-2 py-1 rounded-full">变更</span>
+                            <span class="bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded-full">已读</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 评价邀请 -->
+            <div class="bg-white rounded-2xl p-4 card-shadow">
+                <div class="flex items-start space-x-3">
+                    <div class="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-star text-yellow-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <h3 class="font-semibold text-gray-800">活动评价</h3>
+                            <span class="text-xs text-gray-400">2天前</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-2">活动"技术分享会"已结束，请为本次活动进行评价，帮助我们改进服务质量。</p>
+                        <div class="flex items-center space-x-2">
+                            <span class="bg-yellow-100 text-yellow-600 text-xs px-2 py-1 rounded-full">评价</span>
+                            <span class="bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded-full">已读</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 新功能通知 -->
+            <div class="bg-white rounded-2xl p-4 card-shadow">
+                <div class="flex items-start space-x-3">
+                    <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-rocket text-indigo-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <h3 class="font-semibold text-gray-800">新功能上线</h3>
+                            <span class="text-xs text-gray-400">3天前</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-2">活动助手新增了数据统计功能，现在您可以查看详细的活动数据分析报告。</p>
+                        <div class="flex items-center space-x-2">
+                            <span class="bg-indigo-100 text-indigo-600 text-xs px-2 py-1 rounded-full">功能</span>
+                            <span class="bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded-full">已读</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部导航 -->
+    <div class="bottom-nav">
+        <div class="flex items-center justify-around py-2">
+            <div class="flex flex-col items-center py-2">
+                <i class="fas fa-home text-gray-400 text-lg mb-1"></i>
+                <span class="text-xs text-gray-400">首页</span>
+            </div>
+            <div class="flex flex-col items-center py-2">
+                <i class="fas fa-calendar text-gray-400 text-lg mb-1"></i>
+                <span class="text-xs text-gray-400">活动</span>
+            </div>
+            <div class="flex flex-col items-center py-2">
+                <i class="fas fa-chart-bar text-gray-400 text-lg mb-1"></i>
+                <span class="text-xs text-gray-400">统计</span>
+            </div>
+            <div class="flex flex-col items-center py-2">
+                <i class="fas fa-user text-blue-500 text-lg mb-1"></i>
+                <span class="text-xs text-blue-500 font-medium">我的</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!-- pages/my-activities/index.wxml -->
+<view class="top-bar">
+  <view class="row gap-16">
+    <view class="icon-btn" bindtap="goBack"><text class="icon-text">&lt;</text></view>
+    <text class="text-lg text-gray-800">我的活动</text>
+  </view>
+  <view class="row gap-16">
+    <view class="icon-btn" bindtap="createActivity"><text class="icon-text">＋</text></view>
+    <view class="icon-btn"><text class="icon-text">筛</text></view>
+  </view>
+</view>
+
+<view class="filter-strip">
+  <scroll-view scroll-x enable-flex class="filter-scroll" show-scrollbar="false">
+    <block wx:for="{{filters}}" wx:key="key" wx:for-item="item">
+      <view class="chip">
+        <view class="pill {{item.active ? 'pill--primary' : ''}}" bindtap="onFilterTap" data-key="{{item.key}}">{{item.name}}</view>
+      </view>
+    </block>
+  </scroll-view>
+</view>
+
+<view class="section">
+  <block wx:for="{{display}}" wx:key="id" wx:for-item="item">
+    <view class="card shadow-card my-card">
+      <view class="row-between my-card__header">
+        <view class="row gap-12">
+          <view class="badge badge--dark">{{item.role}}</view>
+          <view class="badge {{ item.status === '进行中' ? 'badge--ok' : (item.status === '即将开始' ? 'badge--info' : 'badge--muted') }}">{{item.status}}</view>
+        </view>
+        <view class="badge badge--light">{{item.type}}</view>
+      </view>
+      <view class="my-card__body">
+        <text class="text-lg text-gray-800 mb-8">{{item.title}}</text>
+        <text class="text-sm text-gray-500 mb-12">{{item.desc}}</text>
+        <view class="row text-sm text-gray-500 mb-8">
+          <text>时间：{{item.timeRange}}</text>
+        </view>
+        <view class="row text-sm text-gray-500 mb-12">
+          <text>地点：{{item.place}}</text>
+        </view>
+        <view class="row-between">
+          <text class="text-sm text-gray-600">报名：{{item.joined}} / {{item.total}}</text>
+          <view class="row gap-12">
+            <block wx:for="{{item.actions}}" wx:key="label" wx:for-item="action">
+              <view class="btn {{action.type === 'primary' ? 'btn--primary' : 'btn--secondary'}} btn--small" catchtap="handleAction" data-action="{{action.action}}" data-id="{{item.id}}">{{action.label}}</view>
+            </block>
+          </view>
+        </view>
+      </view>
+    </view>
+  </block>
+</view>
+
+<view class="bottom-space"></view>

@@ -1,0 +1,74 @@
+<!-- pages/profile/index.wxml -->
+<view class="top-bar">
+  <view class="row gap-16">
+    <text class="text-lg text-gray-800">个人中心</text>
+  </view>
+  <view class="row gap-16">
+    <view class="icon-btn" bindtap="goSettings"><text class="icon-text">设</text></view>
+    <view class="icon-btn"><text class="icon-text">改</text></view>
+  </view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card profile-card">
+    <view class="row gap-16 profile-head">
+      <view class="profile-avatar">{{user.initial}}</view>
+      <view class="flex-col">
+        <text class="text-xl text-gray-800">{{user.name}}</text>
+        <text class="text-sm text-gray-500">{{user.role}}</text>
+        <text class="text-xs text-gray-400">ID: {{user.id}}</text>
+      </view>
+    </view>
+    <text class="profile-desc text-sm text-gray-600">{{user.tagline}}</text>
+  </view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card stats-card">
+    <text class="section-title">我的数据</text>
+    <view class="stats-grid">
+      <block wx:for="{{stats}}" wx:key="label" wx:for-item="item">
+        <view class="stats-item">
+          <view class="stats-icon" style="background: {{item.bg}}; color: {{item.color}};">{{item.icon}}</view>
+          <text class="stats-value">{{item.value}}</text>
+          <text class="stats-label">{{item.label}}</text>
+        </view>
+      </block>
+    </view>
+  </view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card menu-card">
+    <text class="section-title">快捷入口</text>
+    <view class="menu-list">
+      <block wx:for="{{quickLinks}}" wx:key="key" wx:for-item="item">
+        <view class="menu-item" bindtap="handleMenu" data-key="{{item.key}}">
+          <view class="menu-icon" style="background: {{item.bg}}; color: {{item.color}};">{{item.icon}}</view>
+          <text class="text-md text-gray-800">{{item.label}}</text>
+          <text wx:if="{{item.badge}}" class="menu-badge">{{item.badge}}</text>
+        </view>
+      </block>
+    </view>
+  </view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card menu-card">
+    <text class="section-title">设置与帮助</text>
+    <view class="menu-list">
+      <block wx:for="{{settingsLinks}}" wx:key="key" wx:for-item="item">
+        <view class="menu-item" bindtap="handleMenu" data-key="{{item.key}}">
+          <view class="menu-icon" style="background: {{item.bg}}; color: {{item.color}};">{{item.icon}}</view>
+          <text class="text-md text-gray-800">{{item.label}}</text>
+        </view>
+      </block>
+    </view>
+  </view>
+</view>
+
+<view class="section">
+  <view class="logout-btn" bindtap="logout">退出登录</view>
+</view>
+
+<view class="bottom-space"></view>

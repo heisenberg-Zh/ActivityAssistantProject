@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人中心</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .card-shadow {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 顶部导航 -->
+    <div class="bg-white px-4 py-3 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <h1 class="text-lg font-semibold text-gray-800">个人中心</h1>
+            </div>
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-cog text-gray-600 text-lg"></i>
+                <i class="fas fa-edit text-gray-600 text-lg"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- 用户信息区域 -->
+    <div class="px-4 py-6">
+        <div class="bg-white rounded-2xl p-6 card-shadow">
+            <div class="flex items-center space-x-4 mb-4">
+                <div class="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <i class="fas fa-user text-white text-2xl"></i>
+                </div>
+                <div class="flex-1">
+                    <h2 class="text-xl font-semibold text-gray-800">张小明</h2>
+                    <p class="text-sm text-gray-500">活动组织者</p>
+                    <p class="text-xs text-gray-400 mt-1">ID: 123456789</p>
+                </div>
+            </div>
+            
+            <div class="bg-gray-50 rounded-lg p-3">
+                <p class="text-sm text-gray-600">"热爱生活，喜欢组织各种有趣的活动，希望能和大家一起创造美好的回忆！"</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 数据统计卡片 -->
+    <div class="px-4 pb-4">
+        <div class="bg-white rounded-2xl p-4 card-shadow">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">我的数据</h3>
+            
+            <div class="grid grid-cols-3 gap-4">
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <i class="fas fa-plus text-blue-600"></i>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-800">12</p>
+                    <p class="text-xs text-gray-500">创建活动</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <i class="fas fa-users text-green-600"></i>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-800">25</p>
+                    <p class="text-xs text-gray-500">参与活动</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <i class="fas fa-check-circle text-orange-600"></i>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-800">95%</p>
+                    <p class="text-xs text-gray-500">签到率</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 功能菜单 -->
+    <div class="px-4 pb-4">
+        <div class="bg-white rounded-2xl p-4 card-shadow">
+            <div class="space-y-1">
+                <div class="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-calendar text-blue-600 text-sm"></i>
+                        </div>
+                        <span class="text-gray-800 font-medium">我的活动</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+                
+                <div class="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-list text-green-600 text-sm"></i>
+                        </div>
+                        <span class="text-gray-800 font-medium">我的报名</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+                
+                <div class="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-check-circle text-orange-600 text-sm"></i>
+                        </div>
+                        <span class="text-gray-800 font-medium">签到记录</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+                
+                <div class="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-chart-bar text-purple-600 text-sm"></i>
+                        </div>
+                        <span class="text-gray-800 font-medium">数据统计</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 其他功能 -->
+    <div class="px-4 pb-4">
+        <div class="bg-white rounded-2xl p-4 card-shadow">
+            <div class="space-y-1">
+                <div class="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-bell text-red-600 text-sm"></i>
+                        </div>
+                        <span class="text-gray-800 font-medium">消息中心</span>
+                        <span class="bg-red-500 text-white text-xs px-2 py-1 rounded-full">3</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+                
+                <div class="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-heart text-teal-600 text-sm"></i>
+                        </div>
+                        <span class="text-gray-800 font-medium">我的收藏</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+                
+                <div class="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-share text-indigo-600 text-sm"></i>
+                        </div>
+                        <span class="text-gray-800 font-medium">邀请好友</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+                
+                <div class="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-question-circle text-gray-600 text-sm"></i>
+                        </div>
+                        <span class="text-gray-800 font-medium">帮助与反馈</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置选项 -->
+    <div class="px-4 pb-20">
+        <div class="bg-white rounded-2xl p-4 card-shadow">
+            <div class="space-y-1">
+                <div class="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-cog text-yellow-600 text-sm"></i>
+                        </div>
+                        <span class="text-gray-800 font-medium">设置</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+                
+                <div class="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-info-circle text-pink-600 text-sm"></i>
+                        </div>
+                        <span class="text-gray-800 font-medium">关于我们</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部导航 -->
+    <div class="bottom-nav">
+        <div class="flex items-center justify-around py-2">
+            <div class="flex flex-col items-center py-2">
+                <i class="fas fa-home text-gray-400 text-lg mb-1"></i>
+                <span class="text-xs text-gray-400">首页</span>
+            </div>
+            <div class="flex flex-col items-center py-2">
+                <i class="fas fa-calendar text-gray-400 text-lg mb-1"></i>
+                <span class="text-xs text-gray-400">活动</span>
+            </div>
+            <div class="flex flex-col items-center py-2">
+                <i class="fas fa-chart-bar text-gray-400 text-lg mb-1"></i>
+                <span class="text-xs text-gray-400">统计</span>
+            </div>
+            <div class="flex flex-col items-center py-2">
+                <i class="fas fa-user text-blue-500 text-lg mb-1"></i>
+                <span class="text-xs text-blue-500 font-medium">我的</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

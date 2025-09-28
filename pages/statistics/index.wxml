@@ -1,0 +1,91 @@
+<!-- pages/statistics/index.wxml -->
+<view class="top-bar">
+  <view class="row gap-16">
+    <view class="icon-btn" bindtap="goBack"><text class="icon-text">&lt;</text></view>
+    <text class="text-lg text-gray-800">数据统计</text>
+  </view>
+  <view class="row gap-16">
+    <view class="icon-btn"><text class="icon-text">享</text></view>
+    <view class="icon-btn"><text class="icon-text">下</text></view>
+    <view class="icon-btn"><text class="icon-text">筛</text></view>
+  </view>
+</view>
+
+<view class="filter-strip">
+  <block wx:for="{{ranges}}" wx:key="key" wx:for-item="item">
+    <view class="pill {{item.active ? 'pill--primary' : ''}}" bindtap="onRangeTap" data-key="{{item.key}}">{{item.label}}</view>
+  </block>
+</view>
+
+<view class="section">
+  <view class="stats-grid overview-grid">
+    <block wx:for="{{overview}}" wx:key="label" wx:for-item="item">
+      <view class="card shadow-card overview-card">
+        <view class="row-between mb-12">
+          <view class="overview-icon" style="background: {{item.bg}}; color: {{item.color}};">{{item.icon}}</view>
+          <text class="text-xs text-green-600">{{item.trend}}</text>
+        </view>
+        <text class="overview-value">{{item.value}}</text>
+        <text class="text-xs text-gray-500">{{item.label}}</text>
+      </view>
+    </block>
+  </view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card chart-card">
+    <text class="section-title">活动趋势</text>
+    <view class="chart-bars">
+      <block wx:for="{{chart}}" wx:key="index" wx:for-item="bar">
+        <view class="chart-bar" style="height: {{bar}}%;"></view>
+      </block>
+    </view>
+  </view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card source-card">
+    <text class="section-title">报名来源</text>
+    <block wx:for="{{sources}}" wx:key="name" wx:for-item="item">
+      <view class="row-between mb-8">
+        <text class="text-sm text-gray-600">{{item.name}}</text>
+        <text class="text-md text-gray-800">{{item.percent}}%</text>
+      </view>
+      <view class="progress mb-12"><view class="bar" style="width: {{item.percent}}%;"></view></view>
+    </block>
+  </view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card hot-card">
+    <text class="section-title">热门活动</text>
+    <block wx:for="{{hot}}" wx:key="id" wx:for-item="item">
+      <view class="hot-item">
+        <view class="row gap-16">
+          <view class="hot-thumb" style="background: {{item.bg}};"></view>
+          <view class="flex-col">
+            <text class="text-md text-gray-800">{{item.title}}</text>
+            <text class="text-xs text-gray-500">{{item.date}}</text>
+          </view>
+        </view>
+        <view class="text-right">
+          <text class="text-md text-gray-800">{{item.joined}}人</text>
+          <text class="text-xs text-gray-500">参与</text>
+        </view>
+      </view>
+    </block>
+  </view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card share-card">
+    <text class="section-title">分享统计</text>
+    <view class="btn btn--primary share-btn" bindtap="shareNow">分享给微信好友</view>
+    <view class="share-grid">
+      <view class="btn btn--secondary share-btn" bindtap="copyLink">复制链接</view>
+      <view class="btn btn--secondary share-btn" bindtap="makeImage">生成图片</view>
+    </view>
+  </view>
+</view>
+
+<view class="bottom-space"></view>

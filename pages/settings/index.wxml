@@ -1,0 +1,67 @@
+<!-- pages/settings/index.wxml -->
+<view class="top-bar">
+  <view class="row gap-16">
+    <view class="icon-btn" bindtap="goBack"><text class="icon-text">&lt;</text></view>
+    <text class="text-lg text-gray-800">设置</text>
+  </view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card settings-card">
+    <text class="section-title">账户设置</text>
+    <block wx:for="{{accountItems}}" wx:key="key" wx:for-item="item">
+      <view class="settings-item" bindtap="handleItem" data-key="{{item.key}}">
+        <view class="settings-icon" style="background: {{item.bg}}; color: {{item.color}};">{{item.icon}}</view>
+        <text class="text-md text-gray-800">{{item.label}}</text>
+        <text class="item-extra text-xs text-gray-400" wx:if="{{item.extra}}">{{item.extra}}</text>
+      </view>
+    </block>
+  </view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card settings-card">
+    <text class="section-title">通知设置</text>
+    <view class="switch-item" wx:for="{{notifyOptions}}" wx:key="field" wx:for-item="item">
+      <view class="switch-text">
+        <text class="text-md text-gray-800">{{item.label}}</text>
+        <text class="text-xs text-gray-500">{{item.desc}}</text>
+      </view>
+      <switch checked="{{form[item.field]}}" bindchange="toggle" data-field="{{item.field}}" />
+    </view>
+  </view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card settings-card">
+    <text class="section-title">偏好设置</text>
+    <block wx:for="{{preferenceItems}}" wx:key="key" wx:for-item="item">
+      <view class="settings-item" bindtap="handleItem" data-key="{{item.key}}">
+        <view class="settings-icon" style="background: {{item.bg}}; color: {{item.color}};">{{item.icon}}</view>
+        <text class="text-md text-gray-800">{{item.label}}</text>
+        <view class="row gap-12" style="margin-left:auto;">
+          <text class="text-xs text-gray-500" wx:if="{{item.extra}}">{{item.extra}}</text>
+        </view>
+      </view>
+    </block>
+  </view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card settings-card">
+    <text class="section-title">关于应用</text>
+    <block wx:for="{{aboutItems}}" wx:key="key" wx:for-item="item">
+      <view class="settings-item" bindtap="handleItem" data-key="{{item.key}}">
+        <view class="settings-icon" style="background: {{item.bg}}; color: {{item.color}};">{{item.icon}}</view>
+        <text class="text-md text-gray-800">{{item.label}}</text>
+        <text class="item-extra text-xs text-gray-400" wx:if="{{item.extra}}">{{item.extra}}</text>
+      </view>
+    </block>
+  </view>
+</view>
+
+<view class="section">
+  <view class="logout-btn" bindtap="logout">退出登录</view>
+</view>
+
+<view class="bottom-space"></view>

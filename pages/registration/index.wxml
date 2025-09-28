@@ -1,0 +1,128 @@
+<!-- pages/registration/index.wxml -->
+<view class="top-bar">
+  <view class="row gap-16">
+    <view class="icon-btn" bindtap="cancel"><text class="icon-text">&lt;</text></view>
+    <text class="text-lg text-gray-800">活动报名</text>
+  </view>
+  <view class="row gap-16">
+    <view class="ghost-btn" bindtap="share">
+      <text class="ghost-btn__icon">链</text>
+      <text class="ghost-btn__text">分享模式</text>
+    </view>
+  </view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card registration-card">
+    <view class="registration-banner banner banner--{{detail.banner}}">
+      <view class="row-between">
+        <view class="badge badge--info">{{detail.status}}</view>
+        <view class="badge badge--light">{{detail.type}}</view>
+      </view>
+    </view>
+    <view class="card--pad">
+      <text class="text-lg text-gray-800 mb-8">{{detail.title}}</text>
+      <text class="text-sm text-gray-500 mb-16">{{detail.desc}}</text>
+
+      <view class="info-line">
+        <view class="info-icon" style="background:#DBEAFE; color:#1d4ed8;">时</view>
+        <view class="flex-col info-body">
+          <text class="text-md text-gray-800">活动时间</text>
+          <text class="text-sm text-gray-500">{{detail.timeRange}}</text>
+          <text class="text-xs text-gray-400">报名截止：{{deadline}}</text>
+        </view>
+      </view>
+
+      <view class="info-line">
+        <view class="info-icon" style="background:#DCFCE7; color:#047857;">地</view>
+        <view class="flex-col info-body">
+          <text class="text-md text-gray-800">活动地点</text>
+          <text class="text-sm text-gray-500">{{detail.place}}</text>
+          <text class="text-xs text-gray-400">建议提前30分钟到达签到</text>
+        </view>
+      </view>
+
+      <view class="info-line">
+        <view class="info-icon" style="background:#FDE68A; color:#B45309;">员</view>
+        <view class="flex-col info-body">
+          <text class="text-md text-gray-800">参与人数</text>
+          <text class="text-sm text-gray-500">{{detail.joined}} / {{detail.total}} 人</text>
+          <view class="progress mt-12"><view class="bar" style="width: {{progress}}%"></view></view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card form-card">
+    <text class="text-lg text-gray-800 mb-16">报名信息</text>
+
+    <view class="form-field">
+      <text class="field-label">姓名</text>
+      <input class="field-input" placeholder="请输入您的姓名" bindinput="onInput" data-field="name" value="{{form.name}}" />
+    </view>
+
+    <view class="form-field">
+      <text class="field-label">手机号</text>
+      <input class="field-input" type="number" placeholder="请输入手机号" bindinput="onInput" data-field="mobile" value="{{form.mobile}}" />
+    </view>
+
+    <view class="form-field">
+      <text class="field-label">微信号</text>
+      <input class="field-input" placeholder="请输入微信号" bindinput="onInput" data-field="wechat" value="{{form.wechat}}" />
+    </view>
+
+    <view class="form-field">
+      <text class="field-label">备注信息</text>
+      <textarea class="field-textarea" placeholder="如有特殊需求可在此填写" bindinput="onInput" data-field="note"></textarea>
+    </view>
+
+    <view class="notice-card notice-card--info">
+      <text class="notice-title">费用说明</text>
+      <text class="notice-text">{{feeInfo}}</text>
+    </view>
+
+    <view class="notice-card notice-card--muted">
+      <text class="notice-title">温馨提示</text>
+      <view class="flex-col notice-list">
+        <block wx:for="{{guidelines}}" wx:key="text" wx:for-item="tip">
+          <text class="notice-item">- {{tip}}</text>
+        </block>
+      </view>
+    </view>
+
+    <view class="agreement row gap-12">
+      <checkbox checked="{{agree}}" bindchange="toggleAgree" />
+      <text class="text-sm text-gray-600">已阅读并同意《活动报名协议》和《隐私政策》</text>
+    </view>
+  </view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card participant-card">
+    <view class="row-between mb-16">
+      <text class="text-lg text-gray-800">报名列表</text>
+      <text class="text-sm text-gray-500">{{participants.length}} 人已报名</text>
+    </view>
+    <view class="flex-col">
+      <block wx:for="{{participants}}" wx:key="id" wx:for-item="item" wx:for-index="idx">
+        <view class="participant-item">
+          <view class="participant-avatar" style="background: {{item.bg}};">{{item.index}}</view>
+          <view class="flex-col participant-info">
+            <text class="text-md text-gray-800">{{item.name}}</text>
+            <text class="text-xs text-gray-500">{{item.mobile}}</text>
+          </view>
+          <text class="text-xs text-gray-400">{{item.time}}</text>
+        </view>
+        <view wx:if="{{idx < participants.length - 1}}" class="list-divider"></view>
+      </block>
+    </view>
+  </view>
+</view>
+
+<view class="bottom-space"></view>
+<view class="fixed-footer">
+  <button class="btn btn--secondary footer-btn" bindtap="cancel">取消</button>
+  <button class="btn btn--primary footer-btn" bindtap="submit">确认报名</button>
+</view>

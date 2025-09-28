@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设置</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .card-shadow {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: #e5e7eb;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .toggle-switch.active {
+            background: #3b82f6;
+        }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+        .toggle-switch.active::after {
+            transform: translateX(20px);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 顶部导航 -->
+    <div class="bg-white px-4 py-3 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-arrow-left text-gray-600 text-lg"></i>
+                <h1 class="text-lg font-semibold text-gray-800">设置</h1>
+            </div>
+        </div>
+    </div>
+
+    <!-- 账户设置 -->
+    <div class="px-4 py-4">
+        <div class="bg-white rounded-2xl p-4 card-shadow">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">账户设置</h3>
+            
+            <div class="space-y-1">
+                <div class="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-blue-600 text-sm"></i>
+                        </div>
+                        <span class="text-gray-800 font-medium">个人资料</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+                
+                <div class="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-lock text-green-600 text-sm"></i>
+                        </div>
+                        <span class="text-gray-800 font-medium">账户安全</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+                
+                <div class="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-credit-card text-purple-600 text-sm"></i>
+                        </div>
+                        <span class="text-gray-800 font-medium">支付设置</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知设置 -->
+    <div class="px-4 pb-4">
+        <div class="bg-white rounded-2xl p-4 card-shadow">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">通知设置</h3>
+            
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="font-medium text-gray-800">推送通知</p>
+                        <p class="text-sm text-gray-500">接收活动相关通知</p>
+                    </div>
+                    <div class="toggle-switch active"></div>
+                </div>
+                
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="font-medium text-gray-800">活动提醒</p>
+                        <p class="text-sm text-gray-500">活动开始前提醒</p>
+                    </div>
+                    <div class="toggle-switch active"></div>
+                </div>
+                
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="font-medium text-gray-800">报名通知</p>
+                        <p class="text-sm text-gray-500">报名成功/失败通知</p>
+                    </div>
+                    <div class="toggle-switch active"></div>
+                </div>
+                
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="font-medium text-gray-800">签到提醒</p>
+                        <p class="text-sm text-gray-500">签到时间提醒</p>
+                    </div>
+                    <div class="toggle-switch"></div>
+                </div>
+                
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="font-medium text-gray-800">系统消息</p>
+                        <p class="text-sm text-gray-500">系统更新和公告</p>
+                    </div>
+                    <div class="toggle-switch active"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 隐私设置 -->
+    <div class="px-4 pb-4">
+        <div class="bg-white rounded-2xl p-4 card-shadow">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">隐私设置</h3>
+            
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="font-medium text-gray-800">位置信息</p>
+                        <p class="text-sm text-gray-500">允许获取位置用于签到</p>
+                    </div>
+                    <div class="toggle-switch active"></div>
+                </div>
+                
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="font-medium text-gray-800">通讯录权限</p>
+                        <p class="text-sm text-gray-500">用于邀请好友参与活动</p>
+                    </div>
+                    <div class="toggle-switch"></div>
+                </div>
+                
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="font-medium text-gray-800">相机权限</p>
+                        <p class="text-sm text-gray-500">用于上传活动照片</p>
+                    </div>
+                    <div class="toggle-switch active"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 应用设置 -->
+    <div class="px-4 pb-4">
+        <div class="bg-white rounded-2xl p-4 card-shadow">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">应用设置</h3>
+            
+            <div class="space-y-1">
+                <div class="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-palette text-orange-600 text-sm"></i>
+                        </div>
+                        <span class="text-gray-800 font-medium">主题设置</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm text-gray-500">浅色</span>
+                        <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                    </div>
+                </div>
+                
+                <div class="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-language text-teal-600 text-sm"></i>
+                        </div>
+                        <span class="text-gray-800 font-medium">语言设置</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm text-gray-500">简体中文</span>
+                        <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                    </div>
+                </div>
+                
+                <div class="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-trash text-red-600 text-sm"></i>
+                        </div>
+                        <span class="text-gray-800 font-medium">清除缓存</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm text-gray-500">12.5MB</span>
+                        <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 关于应用 -->
+    <div class="px-4 pb-6">
+        <div class="bg-white rounded-2xl p-4 card-shadow">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">关于应用</h3>
+            
+            <div class="space-y-1">
+                <div class="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-info-circle text-indigo-600 text-sm"></i>
+                        </div>
+                        <span class="text-gray-800 font-medium">版本信息</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm text-gray-500">v1.0.0</span>
+                        <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                    </div>
+                </div>
+                
+                <div class="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-file-contract text-yellow-600 text-sm"></i>
+                        </div>
+                        <span class="text-gray-800 font-medium">用户协议</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+                
+                <div class="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-shield-alt text-pink-600 text-sm"></i>
+                        </div>
+                        <span class="text-gray-800 font-medium">隐私政策</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+                
+                <div class="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-star text-gray-600 text-sm"></i>
+                        </div>
+                        <span class="text-gray-800 font-medium">评价应用</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 退出登录 -->
+    <div class="px-4 pb-20">
+        <button class="w-full bg-red-500 text-white py-3 rounded-2xl font-medium">
+            退出登录
+        </button>
+    </div>
+</body>
+</html>

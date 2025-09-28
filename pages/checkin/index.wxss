@@ -1,0 +1,24 @@
+/* pages/checkin/index.wxss */
+.activity-card { padding: 24rpx; }
+.status-card { padding: 32rpx; text-align: center; }
+.status-icon { width: 120rpx; height: 120rpx; border-radius: 9999rpx; display: flex; align-items: center; justify-content: center; font-size: 40rpx; font-weight: 600; margin: 0 auto 16rpx auto; }
+.status-icon--success { background: #dcfce7; color: #059669; }
+.status-icon--pending { background: #fee2e2; color: #ef4444; }
+.status-time { background: #ecfdf5; padding: 12rpx 16rpx; border-radius: 16rpx; display: inline-flex; align-items: center; justify-content: center; }
+
+.info-card { padding: 24rpx; }
+.info-line { display: flex; align-items: flex-start; margin-bottom: 20rpx; }
+.info-line:last-child { margin-bottom: 0; }
+.info-icon { width: 72rpx; height: 72rpx; border-radius: 24rpx; display: flex; align-items: center; justify-content: center; font-size: 28rpx; font-weight: 600; margin-right: 16rpx; }
+.info-body { gap: 6rpx; }
+
+.record-card { padding: 24rpx; }
+.record-item { display: flex; align-items: center; justify-content: space-between; padding: 12rpx 0; }
+.record-avatar { width: 72rpx; height: 72rpx; border-radius: 50%; }
+.record-info { gap: 4rpx; }
+.record-meta { gap: 4rpx; align-items: flex-end; }
+
+.fixed-footer { position: fixed; left: 0; right: 0; bottom: 0; background: #ffffff; border-top: 1px solid #e5e7eb; padding: 16rpx 24rpx; display: flex; gap: 16rpx; }
+.footer-btn { flex: 1; }
+
+.icon-text { font-size: 28rpx; color: #4b5563; }
