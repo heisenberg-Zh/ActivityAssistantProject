@@ -1,0 +1,278 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的活动</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .card-shadow {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+        }
+        .card-banner {
+            height: 52px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .badge-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .badge-light {
+            background: rgba(255,255,255,0.92);
+            color: #1f2937;
+        }
+        .badge-dark {
+            background: rgba(17,24,39,0.65);
+            color: #f9fafb;
+        }
+        .badge-status-active {
+            background: rgba(16,185,129,0.18);
+            color: #047857;
+        }
+        .badge-status-upcoming {
+            background: rgba(59,130,246,0.18);
+            color: #1d4ed8;
+        }
+        .badge-status-ended {
+            background: rgba(107,114,128,0.18);
+            color: #374151;
+        }
+        .btn-primary,
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 18px;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            white-space: nowrap;
+        }
+        .btn-primary {
+            background: #4f46e5;
+            color: #ffffff;
+        }
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #4b5563;
+        }
+        .btn-primary:hover,
+        .btn-secondary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 顶部导航 -->
+    <div class="bg-white px-4 py-3 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-arrow-left text-gray-600 text-lg"></i>
+                <h1 class="text-lg font-semibold text-gray-800">我的活动</h1>
+            </div>
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-plus text-gray-600 text-lg"></i>
+                <i class="fas fa-filter text-gray-600 text-lg"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- 标签筛选 -->
+    <div class="px-4 py-3 bg-white border-b border-gray-200">
+        <div class="flex space-x-3 overflow-x-auto pb-2">
+            <div class="bg-blue-500 text-white px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap">
+                全部
+            </div>
+            <div class="bg-gray-100 text-gray-600 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap">
+                我创建的
+            </div>
+            <div class="bg-gray-100 text-gray-600 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap">
+                我参与的
+            </div>
+            <div class="bg-gray-100 text-gray-600 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap">
+                已结束
+            </div>
+        </div>
+    </div>
+
+    <!-- 活动列表 -->
+    <div class="px-4 py-4 pb-20">
+        <div class="space-y-4">
+            <!-- 我创建的活动 -->
+            <div class="bg-white rounded-2xl overflow-hidden card-shadow">
+                <div class="card-banner bg-gradient-to-r from-pink-400 to-red-400">
+                    <div class="badge-group">
+                        <span class="badge badge-dark">我创建</span>
+                        <span class="badge badge-status-active">进行中</span>
+                    </div>
+                    <span class="badge badge-light">聚会</span>
+                </div>
+                <div class="p-4">
+                    <h3 class="font-semibold text-gray-800 mb-1">周末聚餐活动</h3>
+                    <p class="text-sm text-gray-600 mb-2">与朋友们一起享受美食时光，交流心得</p>
+                    <div class="flex items-center text-sm text-gray-500 mb-3">
+                        <i class="fas fa-clock mr-1"></i>
+                        <span class="mr-4">12月15日 18:00-21:00</span>
+                        <i class="fas fa-map-marker-alt mr-1"></i>
+                        <span>海底捞火锅</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center text-sm text-gray-600">
+                            <i class="fas fa-users mr-1"></i>
+                            <span>8/12人</span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="btn-primary">管理</button>
+                            <button class="btn-secondary">统计</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 我参与的活动 -->
+            <div class="bg-white rounded-2xl overflow-hidden card-shadow">
+                <div class="card-banner bg-gradient-to-r from-blue-400 to-indigo-400">
+                    <div class="badge-group">
+                        <span class="badge badge-dark">我参与</span>
+                        <span class="badge badge-status-upcoming">即将开始</span>
+                    </div>
+                    <span class="badge badge-light">培训</span>
+                </div>
+                <div class="p-4">
+                    <h3 class="font-semibold text-gray-800 mb-1">产品设计分享会</h3>
+                    <p class="text-sm text-gray-600 mb-2">学习最新的设计趋势和工具实战经验</p>
+                    <div class="flex items-center text-sm text-gray-500 mb-3">
+                        <i class="fas fa-clock mr-1"></i>
+                        <span class="mr-4">12月18日 14:00-17:00</span>
+                        <i class="fas fa-map-marker-alt mr-1"></i>
+                        <span>创新大厦</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center text-sm text-gray-600">
+                            <i class="fas fa-users mr-1"></i>
+                            <span>15/20人</span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="btn-secondary">查看统计</button>
+                            <button class="btn-secondary">评价</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 我创建的活动2 -->
+            <div class="bg-white rounded-2xl overflow-hidden card-shadow">
+                <div class="card-banner bg-gradient-to-r from-green-400 to-teal-400">
+                    <div class="badge-group">
+                        <span class="badge badge-dark">我创建</span>
+                        <span class="badge badge-status-upcoming">即将开始</span>
+                    </div>
+                    <span class="badge badge-light">户外</span>
+                </div>
+                <div class="p-4">
+                    <h3 class="font-semibold text-gray-800 mb-1">周末登山活动</h3>
+                    <p class="text-sm text-gray-600 mb-2">呼吸新鲜空气，锻炼身体，结交新朋友</p>
+                    <div class="flex items-center text-sm text-gray-500 mb-3">
+                        <i class="fas fa-clock mr-1"></i>
+                        <span class="mr-4">12月20日 08:00-16:00</span>
+                        <i class="fas fa-map-marker-alt mr-1"></i>
+                        <span>香山公园</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center text-sm text-gray-600">
+                            <i class="fas fa-users mr-1"></i>
+                            <span>6/10人</span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="btn-primary">管理</button>
+                            <button class="btn-secondary">分享</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 我参与的历史活动 -->
+            <div class="bg-white rounded-2xl overflow-hidden card-shadow">
+                <div class="card-banner bg-gradient-to-r from-purple-400 to-pink-400">
+                    <div class="badge-group">
+                        <span class="badge badge-dark">我参与</span>
+                        <span class="badge badge-status-ended">已结束</span>
+                    </div>
+                    <span class="badge badge-light">会议</span>
+                </div>
+                <div class="p-4">
+                    <h3 class="font-semibold text-gray-800 mb-1">技术分享会</h3>
+                    <p class="text-sm text-gray-600 mb-2">分享最新的技术趋势和开发经验</p>
+                    <div class="flex items-center text-sm text-gray-500 mb-3">
+                        <i class="fas fa-clock mr-1"></i>
+                        <span class="mr-4">12月10日 19:00-21:00</span>
+                        <i class="fas fa-map-marker-alt mr-1"></i>
+                        <span>科技园会议室</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center text-sm text-gray-600">
+                            <i class="fas fa-users mr-1"></i>
+                            <span>25/30人</span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="btn-secondary">查看记录</button>
+                            <button class="btn-secondary">评价</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部导航 -->
+    <div class="bottom-nav">
+        <div class="flex items-center justify-around py-2">
+            <div class="flex flex-col items-center py-2">
+                <i class="fas fa-home text-gray-400 text-lg mb-1"></i>
+                <span class="text-xs text-gray-400">首页</span>
+            </div>
+            <div class="flex flex-col items-center py-2">
+                <i class="fas fa-calendar text-gray-400 text-lg mb-1"></i>
+                <span class="text-xs text-gray-400">活动</span>
+            </div>
+            <div class="flex flex-col items-center py-2">
+                <i class="fas fa-chart-bar text-gray-400 text-lg mb-1"></i>
+                <span class="text-xs text-gray-400">统计</span>
+            </div>
+            <div class="flex flex-col items-center py-2">
+                <i class="fas fa-user text-blue-500 text-lg mb-1"></i>
+                <span class="text-xs text-blue-500 font-medium">我的</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

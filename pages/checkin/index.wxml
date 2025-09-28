@@ -1,0 +1,104 @@
+<!-- pages/checkin/index.wxml -->
+<view class="top-bar">
+  <view class="row gap-16">
+    <view class="icon-btn" bindtap="goBack"><text class="icon-text">&lt;</text></view>
+    <text class="text-lg text-gray-800">活动签到</text>
+  </view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card activity-card">
+    <text class="text-lg text-gray-800 mb-12">{{activity.title}}</text>
+    <view class="row gap-12 text-sm text-gray-500 mb-12">
+      <text>时间：{{activity.timeRange}}</text>
+    </view>
+    <view class="row gap-12 text-sm text-gray-500 mb-16">
+      <text>地点：{{activity.place}}</text>
+    </view>
+    <view class="row-between">
+      <text class="text-sm text-gray-600">人数：{{activity.joined}} / {{activity.total}}</text>
+      <text class="text-sm text-green-600">{{activity.status}}</text>
+    </view>
+  </view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card status-card">
+    <view class="status-icon {{checked ? 'status-icon--success' : 'status-icon--pending'}}">{{checked ? '已' : '待'}}</view>
+    <text class="text-lg text-gray-800 mb-8">{{checked ? '签到成功' : '尚未签到'}}</text>
+    <text class="text-sm text-gray-500 mb-16">{{checked ? '您已成功签到本次活动' : '请在活动开始前完成签到'}}</text>
+    <block wx:if="{{checked}}">
+      <view class="status-time">
+        <text class="text-sm text-green-600">签到时间：{{checkTime}}</text>
+      </view>
+    </block>
+    <block wx:else>
+      <button class="btn btn--primary footer-btn" bindtap="doCheckin">立即签到</button>
+    </block>
+  </view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card info-card">
+    <text class="text-lg text-gray-800 mb-16">位置信息</text>
+    <view class="info-line">
+      <view class="info-icon" style="background:#DBEAFE; color:#1d4ed8;">点</view>
+      <view class="flex-col info-body">
+        <text class="text-md text-gray-800">签到地点</text>
+        <text class="text-sm text-gray-500">{{activity.place}}</text>
+      </view>
+    </view>
+    <view class="info-line">
+      <view class="info-icon" style="background:#DCFCE7; color:#047857;">现</view>
+      <view class="flex-col info-body">
+        <text class="text-md text-gray-800">当前位置</text>
+        <text class="text-sm text-gray-500">{{currentAddr}}</text>
+      </view>
+    </view>
+    <view class="info-line">
+      <view class="info-icon" style="background:#FDE68A; color:#B45309;">距</view>
+      <view class="flex-col info-body">
+        <text class="text-md text-gray-800">距离范围</text>
+        <text class="text-sm text-gray-500">{{withinRange ? '50米内（符合签到要求）' : '超出签到范围'}}</text>
+      </view>
+    </view>
+  </view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card record-card">
+    <view class="row-between mb-16">
+      <text class="text-lg text-gray-800">签到记录</text>
+      <text class="text-sm text-gray-500">共 {{records.length}} 人</text>
+    </view>
+    <view class="flex-col">
+      <block wx:for="{{records}}" wx:key="id" wx:for-item="item" wx:for-index="idx">
+        <view class="record-item">
+          <view class="row gap-16">
+            <image src="{{item.avatar}}" class="record-avatar" mode="cover" />
+            <view class="flex-col record-info">
+              <text class="text-md text-gray-800">{{item.name}}</text>
+              <text wx:if="{{item.role}}" class="text-xs text-gray-500">{{item.role}}</text>
+            </view>
+          </view>
+          <view class="flex-col record-meta">
+            <text class="text-sm" style="color: {{item.checked ? '#059669' : '#6b7280'}};">{{item.checked ? '已签到' : '未签到'}}</text>
+            <text wx:if="{{item.time}}" class="text-xs text-gray-400">{{item.time}}</text>
+          </view>
+        </view>
+        <view wx:if="{{idx < records.length - 1}}" class="list-divider"></view>
+      </block>
+    </view>
+    <view class="row-between mt-16">
+      <text class="text-sm text-gray-600">签到进度</text>
+      <text class="text-md text-gray-800">{{checkedCount}} / {{records.length}}</text>
+    </view>
+    <view class="progress mt-12"><view class="bar" style="width: {{progress}}%"></view></view>
+  </view>
+</view>
+
+<view class="bottom-space"></view>
+<view class="fixed-footer">
+  <button class="btn btn--secondary footer-btn" bindtap="share">分享活动</button>
+  <navigator class="btn btn--primary footer-btn" hover-class="none" url="/pages/statistics/index">查看统计</navigator>
+</view>

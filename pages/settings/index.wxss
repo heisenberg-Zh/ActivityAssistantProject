@@ -1,0 +1,12 @@
+/* pages/settings/index.wxss */
+.settings-card { padding: 24rpx; }
+.settings-item { display: flex; align-items: center; gap: 16rpx; padding: 20rpx 0; border-top: 1px solid #f3f4f6; }
+.settings-item:first-child { border-top: none; }
+.settings-icon { width: 64rpx; height: 64rpx; border-radius: 9999rpx; display: flex; align-items: center; justify-content: center; font-size: 26rpx; font-weight: 600; }
+.item-extra { margin-left: auto; }
+.switch-item { display: flex; align-items: center; justify-content: space-between; padding: 20rpx 0; border-top: 1px solid #f3f4f6; }
+.switch-item:first-child { border-top: none; }
+.switch-text { display: flex; flex-direction: column; gap: 6rpx; }
+.section-title { display: block; font-size: 32rpx; font-weight: 600; color: #111827; margin-bottom: 16rpx; }
+.logout-btn { width: 100%; text-align: center; background: #ef4444; color: #ffffff; padding: 20rpx 0; border-radius: 24rpx; font-size: 28rpx; font-weight: 600; }
+.icon-text { font-size: 28rpx; color: #4b5563; }

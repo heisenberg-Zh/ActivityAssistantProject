@@ -1,0 +1,35 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/activities/list",
+    "pages/activities/detail",
+    "pages/registration/index",
+    "pages/checkin/index",
+    "pages/statistics/index",
+    "pages/profile/index",
+    "pages/my-activities/index",
+    "pages/messages/index",
+    "pages/settings/index",
+    "pages/activities/create"
+  ],
+  "window": {
+    "navigationBarTitleText": "ActivityAssistant",
+    "navigationBarTextStyle": "black",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f7f8fa",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#8a8a8a",
+    "selectedColor": "#3b82f6",
+    "borderStyle": "black",
+    "backgroundColor": "#ffffff",
+    "list": [
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/activities/list", "text": "活动" },
+      { "pagePath": "pages/statistics/index", "text": "统计" },
+      { "pagePath": "pages/profile/index", "text": "我的" }
+    ]
+  },
+  "sitemapLocation": "sitemap.json"
+}

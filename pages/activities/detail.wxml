@@ -1,0 +1,88 @@
+<!-- pages/activities/detail.wxml -->
+<view class="top-bar">
+  <view class="row gap-16">
+    <view class="icon-btn" bindtap="goBack"><text class="icon-text">&lt;</text></view>
+    <text class="text-lg text-gray-800">活动详情</text>
+  </view>
+  <view class="row gap-16">
+    <view class="icon-btn" bindtap="onShare"><text class="icon-text">分享</text></view>
+    <view class="icon-btn"><text class="icon-text">...</text></view>
+  </view>
+</view>
+
+<view class="detail-cover banner banner--{{detail.banner}}">
+  <view class="cover-status">{{detail.status}}</view>
+  <view class="cover-type">{{detail.type}}</view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card detail-card">
+    <text class="text-xl text-gray-800 mb-12">{{detail.title}}</text>
+    <text class="text-sm text-gray-500 mb-16">{{detail.desc}}</text>
+
+    <view class="organizer">
+      <view class="organizer-avatar">{{extra.organizerInitial}}</view>
+      <view class="flex-col">
+        <text class="text-md text-gray-800">{{extra.organizer}}</text>
+        <text class="text-xs text-gray-500">活动组织者</text>
+      </view>
+    </view>
+
+    <view class="info-list">
+      <view class="info-item">
+        <view class="info-item__icon" style="background:#DBEAFE; color:#1d4ed8;">时</view>
+        <view class="flex-col info-item__body">
+          <text class="text-md text-gray-800">活动时间</text>
+          <text class="text-sm text-gray-500">{{detail.timeRange}}</text>
+          <text class="text-xs text-gray-400">报名截止：{{extra.deadline}}</text>
+        </view>
+      </view>
+      <view class="info-item">
+        <view class="info-item__icon" style="background:#DCFCE7; color:#047857;">地</view>
+        <view class="flex-col info-item__body">
+          <text class="text-md text-gray-800">活动地点</text>
+          <text class="text-sm text-gray-500">{{detail.place}}</text>
+          <text class="text-xs text-gray-400">{{extra.addressDetail}}</text>
+        </view>
+      </view>
+      <view class="info-item">
+        <view class="info-item__icon" style="background:#FDE68A; color:#B45309;">员</view>
+        <view class="flex-col info-item__body">
+          <text class="text-md text-gray-800">参与人数</text>
+          <text class="text-sm text-gray-500">{{detail.joined}} / {{detail.total}}</text>
+          <view class="progress mt-12"><view class="bar" style="width: {{progress}}%"></view></view>
+        </view>
+      </view>
+      <view class="info-item">
+        <view class="info-item__icon" style="background:#E0E7FF; color:#4338CA;">费</view>
+        <view class="flex-col info-item__body">
+          <text class="text-md text-gray-800">活动费用</text>
+          <text class="text-sm text-gray-500">{{extra.feeInfo}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
+
+<view class="section">
+  <view class="card shadow-card participants-card">
+    <view class="row-between mb-16">
+      <text class="text-lg text-gray-800">参与成员 ({{members.length}})</text>
+      <navigator class="text-sm text-blue-500" url="/pages/my-activities/index" hover-class="none">查看全部</navigator>
+    </view>
+    <view class="participants-grid">
+      <block wx:for="{{members}}" wx:key="id" wx:for-item="item">
+        <view class="participants-item">
+          <image src="{{item.avatar}}" mode="cover" class="participants-avatar" />
+          <text class="text-xs text-gray-600">{{item.name}}</text>
+        </view>
+      </block>
+    </view>
+  </view>
+</view>
+
+<view class="bottom-space"></view>
+<view class="fixed-footer">
+  <button class="btn btn--secondary footer-btn" bindtap="onShare">分享</button>
+  <button class="btn btn--primary footer-btn" bindtap="goRegister">报名</button>
+</view>

@@ -1,0 +1,95 @@
+<!-- pages/home/index.wxml -->
+<view class="home-hero">
+  <view class="row-between">
+    <view class="row gap-12">
+      <view class="icon-circle" style="background:rgba(255,255,255,0.2); color:#ffffff;">AA</view>
+      <text class="title" style="color:#ffffff;">活动助手</text>
+    </view>
+    <view class="row gap-16">
+      <view class="icon-btn icon-btn--hero"><text class="icon-text">搜</text></view>
+      <view style="position:relative;">
+        <view class="icon-btn icon-btn--hero"><text class="icon-text">铃</text></view>
+        <view class="icon-dot"></view>
+      </view>
+    </view>
+  </view>
+</view>
+
+<view class="px-24 py-24">
+  <scroll-view scroll-x class="scroll-x" style="padding-bottom: 12rpx;" show-scrollbar="false">
+    <block wx:for="{{slides}}" wx:key="id" wx:for-item="item">
+      <view class="chip">
+        <view class="card banner banner--{{item.banner}} home-banner">
+          <view class="row-between p-16">
+            <view class="badge badge--dark">{{item.status}}</view>
+            <view class="badge badge--light">{{item.type}}</view>
+          </view>
+          <view class="p-24">
+            <text class="title" style="color:#ffffff;">{{item.title}}</text>
+            <view class="row mt-12">
+              <text class="text-sm" style="color:#eef2ff;">{{item.date}}</text>
+              <text class="text-sm" style="color:#eef2ff; margin-left:16rpx;">{{item.place}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </block>
+  </scroll-view>
+
+  <scroll-view scroll-x class="scroll-x mt-24" style="padding-bottom: 8rpx;" show-scrollbar="false">
+    <block wx:for="{{categories}}" wx:key="name" wx:for-item="item">
+      <view class="chip">
+        <view class="tag {{item.active ? 'tag--active' : ''}}" bindtap="onCategoryTap" data-key="{{item.key}}">{{item.name}}</view>
+      </view>
+    </block>
+  </scroll-view>
+</view>
+
+<view class="px-24 quick-actions">
+  <view class="quick-grid">
+    <view class="quick-card" bindtap="goCreateActivity">
+      <view class="quick-icon quick-icon--blue">
+        <view class="quick-icon-plus quick-icon-plus--vertical"></view>
+        <view class="quick-icon-plus quick-icon-plus--horizontal"></view>
+      </view>
+      <text class="quick-title">创建活动</text>
+      <text class="quick-desc">快速发起活动</text>
+    </view>
+    <view class="quick-card" bindtap="goMyActivities">
+      <view class="quick-icon quick-icon--green">
+        <view class="quick-icon-list">
+          <view class="quick-icon-list-bar quick-icon-list-bar--long"></view>
+          <view class="quick-icon-list-bar quick-icon-list-bar--medium"></view>
+          <view class="quick-icon-list-bar quick-icon-list-bar--long"></view>
+        </view>
+      </view>
+      <text class="quick-title">我的活动</text>
+      <text class="quick-desc">管理日程计划</text>
+    </view>
+  </view>
+</view>
+
+<view class="px-24 pb-24">
+  <block wx:for="{{list}}" wx:key="id" wx:for-item="item">
+    <view class="card mb-24" bindtap="goDetail" data-id="{{item.id}}">
+      <view class="banner banner--{{item.banner}} row-between">
+        <view class="badge badge--dark">{{item.status}}</view>
+        <view class="badge badge--light">{{item.type}}</view>
+      </view>
+      <view class="card--pad">
+        <text class="text-lg mb-8">{{item.title}}</text>
+        <text class="text-sm mb-12">{{item.desc}}</text>
+        <view class="row text-sm mb-12">
+          <text>{{item.date}}</text>
+          <text style="margin-left: 24rpx;">{{item.place}}</text>
+        </view>
+        <view class="row-between">
+          <text class="text-sm">已报 {{item.joined}}/{{item.total}} 人</text>
+          <view class="btn btn--primary btn--small" catchtap="goRegister" data-id="{{item.id}}">立即报名</view>
+        </view>
+      </view>
+    </view>
+  </block>
+</view>
+
+<view class="bottom-space"></view>
