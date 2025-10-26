@@ -1,0 +1,65 @@
+/* components/datetime-picker/datetime-picker.wxss */
+.datetime-picker {
+  margin-bottom: 32rpx;
+}
+
+.picker-label {
+  font-size: 28rpx;
+  color: #374151;
+  margin-bottom: 16rpx;
+  font-weight: 500;
+}
+
+.picker-label .required {
+  color: #ef4444;
+  margin-left: 4rpx;
+}
+
+.picker-container {
+  display: flex;
+  gap: 16rpx;
+}
+
+.picker-input {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 24rpx;
+  background: #f9fafb;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 12rpx;
+  min-height: 88rpx;
+  box-sizing: border-box;
+  transition: all 0.3s;
+}
+
+.picker-input.placeholder {
+  color: #9ca3af;
+}
+
+.picker-input .icon {
+  font-size: 36rpx;
+  margin-right: 12rpx;
+}
+
+.picker-input .value {
+  font-size: 30rpx;
+  flex: 1;
+}
+
+.picker-input:not(.placeholder) .value {
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.error-msg {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #ef4444;
+}
+
+/* 禁用状态 */
+picker[disabled] .picker-input {
+  background: #f3f4f6;
+  opacity: 0.6;
+}
