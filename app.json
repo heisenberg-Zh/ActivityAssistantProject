@@ -31,5 +31,15 @@
       { "pagePath": "pages/profile/index", "text": "我的" }
     ]
   },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "你的位置信息将用于活动签到和地点选择"
+    }
+  },
+  "requiredPrivateInfos": [
+    "chooseLocation",
+    "getLocation"
+  ],
+  "__usePrivacyCheck__": true,
   "sitemapLocation": "sitemap.json"
 }

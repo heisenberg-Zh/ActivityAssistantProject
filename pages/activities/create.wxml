@@ -6,20 +6,21 @@
   <view class="row gap-16">
     <view class="ghost-btn" bindtap="saveDraft">保存草稿</view>
     <view class="ghost-btn ghost-btn--accent" bindtap="copyActivity">复制活动</view>
-    <view class="btn btn--primary btn--small" bindtap="publish">发布</view>
+    <view class="btn btn--small {{canPublish ? 'btn--primary' : 'btn--disabled'}}" bindtap="publish">发布</view>
   </view>
 </view>
 
 <view class="step-strip">
   <block wx:for="{{steps}}" wx:key="index">
-    <view class="step {{item.active ? 'step--active' : ''}}">
-      <view class="step__index">{{item.index}}</view>
+    <view class="step {{item.active ? 'step--active' : ''}} {{item.completed ? 'step--completed' : ''}}" bindtap="goToStep" data-step="{{item.index}}">
+      <view class="step__index">{{item.completed ? '✓' : item.index}}</view>
       <text class="step__label">{{item.label}}</text>
     </view>
   </block>
 </view>
 
-<view class="section">
+<!-- 步骤1: 基本信息 -->
+<view class="section" wx:if="{{currentStep === 1}}">
   <view class="card shadow-card form-section">
     <text class="section-title">基本信息</text>
     <view class="form-field">
@@ -39,36 +40,86 @@
   </view>
 </view>
 
-<view class="section">
+<!-- 步骤2: 时间设置 -->
+<view class="section" wx:if="{{currentStep === 2}}">
   <view class="card shadow-card form-section">
-    <text class="section-title">时间与地点</text>
-    <view class="form-grid">
-      <view class="form-field">
-        <text class="field-label">开始时间</text>
-        <input class="field-input" placeholder="例如 2024-12-20 18:00" bindinput="onInput" data-field="start" value="{{form.start}}" />
+    <text class="section-title">时间设置</text>
+
+    <!-- 开始时间选择器 -->
+    <datetime-picker
+      label="活动开始时间"
+      required="{{true}}"
+      dateValue="{{form.startDate}}"
+      timeValue="{{form.startTime}}"
+      startDate="{{todayDate}}"
+      bindchange="onStartTimeChange"
+    />
+
+    <!-- 结束时间选择器 -->
+    <datetime-picker
+      label="活动结束时间"
+      required="{{true}}"
+      dateValue="{{form.endDate}}"
+      timeValue="{{form.endTime}}"
+      startDate="{{form.startDate || todayDate}}"
+      bindchange="onEndTimeChange"
+    />
+
+    <!-- 报名截止时间选择器 -->
+    <datetime-picker
+      label="报名截止时间"
+      dateValue="{{form.registerDeadlineDate}}"
+      timeValue="{{form.registerDeadlineTime}}"
+      startDate="{{todayDate}}"
+      endDate="{{form.startDate}}"
+      bindchange="onRegisterDeadlineChange"
+    />
+  </view>
+</view>
+
+<!-- 步骤3: 地点设置 -->
+<view class="section" wx:if="{{currentStep === 3}}">
+  <view class="card shadow-card form-section">
+    <text class="section-title">地点设置</text>
+    <view class="form-field">
+      <text class="field-label">活动地点 *</text>
+      <view class="location-picker" bindtap="chooseLocation">
+        <text class="location-icon">📍</text>
+        <text class="{{form.place ? 'location-value' : 'location-placeholder'}}">
+          {{form.place || '点击选择活动地点'}}
+        </text>
       </view>
-      <view class="form-field">
-        <text class="field-label">结束时间</text>
-        <input class="field-input" placeholder="例如 2024-12-20 21:00" bindinput="onInput" data-field="end" value="{{form.end}}" />
-      </view>
+      <text wx:if="{{form.address}}" class="location-detail">{{form.address}}</text>
     </view>
     <view class="form-field">
-      <text class="field-label">活动地点</text>
-      <input class="field-input" placeholder="请输入场地名称" bindinput="onInput" data-field="place" value="{{form.place}}" />
-    </view>
-    <view class="form-field">
-      <text class="field-label">详细地址</text>
-      <input class="field-input" placeholder="请输入详细地址" bindinput="onInput" data-field="address" value="{{form.address}}" />
+      <text class="field-label">签到范围（米）</text>
+      <input class="field-input" type="number" placeholder="请输入签到范围" bindinput="onInputNumber" data-field="checkinRadius" value="{{form.checkinRadius}}" />
+      <text class="field-hint">参与者需在此范围内才能签到</text>
     </view>
   </view>
 </view>
 
-<view class="section">
+<!-- 步骤4: 人数与配置 -->
+<view class="section" wx:if="{{currentStep === 4}}">
   <view class="card shadow-card form-section">
     <text class="section-title">人数与配置</text>
     <view class="form-field">
-      <text class="field-label">人数上限</text>
+      <text class="field-label">人数上限 *</text>
       <input class="field-input" type="number" placeholder="请输入人数上限" bindinput="onInputNumber" data-field="total" value="{{form.total}}" />
+    </view>
+    <view class="form-field">
+      <text class="field-label">最少成行人数</text>
+      <input class="field-input" type="number" placeholder="请输入最少人数" bindinput="onInputNumber" data-field="minParticipants" value="{{form.minParticipants}}" />
+    </view>
+    <view class="form-field">
+      <text class="field-label">费用类型</text>
+      <picker mode="selector" range="{{feeTypes}}" bindchange="onFeeTypeChange">
+        <view class="picker-field">{{form.feeType || '请选择费用类型'}}</view>
+      </picker>
+    </view>
+    <view class="form-field" wx:if="{{form.feeType !== '免费'}}">
+      <text class="field-label">费用金额（元）</text>
+      <input class="field-input" type="digit" placeholder="请输入费用金额" bindinput="onInputNumber" data-field="fee" value="{{form.fee}}" />
     </view>
     <view class="option-row">
       <view class="option-label">
@@ -82,43 +133,84 @@
         <text class="text-md text-gray-800">需要审核报名</text>
         <text class="text-xs text-gray-500">开启后需手动审核</text>
       </view>
-      <switch checked="{{form.review}}" bindchange="onSwitch" data-field="review" />
+      <switch checked="{{form.needReview}}" bindchange="onSwitch" data-field="needReview" />
     </view>
   </view>
 </view>
 
-<view class="section">
+<!-- 步骤5: 自定义字段 -->
+<view class="section" wx:if="{{currentStep === 5}}">
   <view class="card shadow-card form-section">
     <view class="option-header">
       <text class="section-title">自定义字段</text>
-      <view class="ghost-btn ghost-btn--accent" bindtap="addField">添加字段</view>
+      <view class="ghost-btn ghost-btn--accent" bindtap="addField">+ 添加字段</view>
     </view>
+
+    <view class="field-hint" style="margin-bottom: 16rpx;">
+      这些字段将在用户报名时需要填写
+    </view>
+
     <view class="custom-list">
       <block wx:for="{{customFields}}" wx:key="id" wx:for-item="field">
         <view class="custom-item">
-          <view class="row-between">
-            <text class="text-md text-gray-800">{{field.label}}</text>
-            <text class="text-xs text-gray-500">{{field.required ? '必填' : '选填'}}</text>
+          <view class="custom-item-header">
+            <view class="custom-item-left">
+              <text class="text-md text-gray-800">{{field.label}}</text>
+              <text class="text-xs text-gray-500" wx:if="{{field.desc}}">{{field.desc}}</text>
+            </view>
+            <view class="custom-item-right">
+              <!-- 必填开关（姓名固定必填不可切换，手机号和自定义字段可切换） -->
+              <view class="field-required-toggle" wx:if="{{field.id !== 'name'}}">
+                <text class="toggle-label">必填</text>
+                <switch
+                  checked="{{field.required}}"
+                  bindchange="onFieldRequiredChange"
+                  data-field-id="{{field.id}}"
+                  color="#10b981"
+                />
+              </view>
+              <view class="field-required-badge" wx:else>
+                <text class="badge-text">必填</text>
+              </view>
+
+              <!-- 删除按钮（仅自定义字段显示） -->
+              <view
+                class="field-delete-btn"
+                wx:if="{{field.isCustom}}"
+                bindtap="deleteField"
+                data-field-id="{{field.id}}"
+              >
+                <text class="delete-icon">✕</text>
+              </view>
+            </view>
           </view>
-          <text class="text-xs text-gray-500">{{field.desc}}</text>
         </view>
       </block>
     </view>
-  </view>
-</view>
 
-<view class="section">
-  <view class="card shadow-card form-section">
-    <text class="section-title">活动海报</text>
-    <view class="upload-box" bindtap="uploadPoster">
-      <text class="upload-icon">云</text>
-      <text class="text-sm text-gray-500">点击上传活动海报</text>
-      <text class="text-xs text-gray-400">支持 JPG、PNG 格式，建议尺寸 750×400</text>
+    <view wx:if="{{customFields.length === 0}}" class="empty-hint">
+      <text class="text-sm text-gray-400">暂无自定义字段，点击上方"添加字段"按钮添加</text>
+    </view>
+
+    <view class="form-field" style="margin-top: 32rpx;">
+      <text class="field-label">报名要求</text>
+      <textarea class="field-textarea" placeholder="请输入报名要求和注意事项" bindinput="onInput" data-field="requirements" value="{{form.requirements}}" />
     </view>
   </view>
 </view>
 
-<view class="section">
+<!-- 步骤6: 活动海报与预览 -->
+<view class="section" wx:if="{{currentStep === 6}}">
+  <view class="card shadow-card form-section">
+    <text class="section-title">活动海报</text>
+    <view class="upload-box" bindtap="uploadPoster">
+      <text class="upload-icon">☁️</text>
+      <text class="text-sm text-gray-500">点击上传活动海报</text>
+      <text class="text-xs text-gray-400">支持 JPG、PNG 格式，建议尺寸 750×400</text>
+    </view>
+    <image wx:if="{{form.poster}}" src="{{form.poster}}" mode="aspectFill" class="poster-preview"></image>
+  </view>
+
   <view class="card shadow-card preview-card">
     <text class="section-title">实时预览</text>
     <view class="preview-banner banner banner--pink">
@@ -127,14 +219,19 @@
     <view class="preview-body">
       <text class="text-md text-gray-800 mb-8">{{form.title || '活动名称'}}</text>
       <text class="text-sm text-gray-500 mb-12">{{form.desc || '活动描述内容将显示在这里。'}}</text>
-      <text class="text-sm text-gray-500">时间：{{form.start || '待设置'}} - {{form.end || '待设置'}}</text>
+      <text class="text-sm text-gray-500">时间：{{form.startDate}} {{form.startTime}} - {{form.endDate}} {{form.endTime}}</text>
       <text class="text-sm text-gray-500 mt-8">地点：{{form.place || '待设置地点'}}</text>
+      <text class="text-sm text-gray-500 mt-8" wx:if="{{form.feeType !== '免费'}}">费用：{{form.feeType}} ¥{{form.fee}}</text>
     </view>
   </view>
 </view>
 
 <view class="bottom-space"></view>
 <view class="fixed-footer">
-  <view class="btn btn--secondary footer-btn" bindtap="prev">上一步</view>
-  <view class="btn btn--primary footer-btn" bindtap="next">下一步</view>
+  <view class="btn btn--primary footer-btn" bindtap="prev">
+    {{currentStep === 1 ? '返回' : '上一步'}}
+  </view>
+  <view class="btn btn--primary footer-btn" bindtap="next">
+    {{currentStep === 6 ? '发布' : '下一步'}}
+  </view>
 </view>

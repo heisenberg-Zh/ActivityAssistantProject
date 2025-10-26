@@ -1,0 +1,37 @@
+<!-- components/datetime-picker/datetime-picker.wxml -->
+<view class="datetime-picker">
+  <view class="picker-label">{{label}}<text wx:if="{{required}}" class="required">*</text></view>
+
+  <view class="picker-container">
+    <!-- 日期选择器 -->
+    <picker
+      mode="date"
+      value="{{dateValue}}"
+      start="{{startDate}}"
+      end="{{endDate}}"
+      bindchange="onDateChange"
+      disabled="{{disabled}}"
+    >
+      <view class="picker-input {{dateValue ? '' : 'placeholder'}}">
+        <text class="icon">📅</text>
+        <text class="value">{{dateValue || '选择日期'}}</text>
+      </view>
+    </picker>
+
+    <!-- 时间选择器 -->
+    <picker
+      mode="time"
+      value="{{timeValue}}"
+      bindchange="onTimeChange"
+      disabled="{{disabled}}"
+    >
+      <view class="picker-input {{timeValue ? '' : 'placeholder'}}">
+        <text class="icon">🕐</text>
+        <text class="value">{{timeValue || '选择时间'}}</text>
+      </view>
+    </picker>
+  </view>
+
+  <!-- 错误提示 -->
+  <view wx:if="{{error}}" class="error-msg">{{error}}</view>
+</view>
