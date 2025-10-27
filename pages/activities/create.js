@@ -530,14 +530,19 @@ Page({
 
   // 上传海报
   uploadPoster() {
-    wx.chooseImage({
+    wx.chooseMedia({
       count: 1,
+      mediaType: ['image'],
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       success: (res) => {
-        const tempFilePath = res.tempFilePaths[0];
+        const tempFilePath = res.tempFiles[0].tempFilePath;
         this.setData({ 'form.poster': tempFilePath });
         wx.showToast({ title: '海报已选择', icon: 'success' });
+      },
+      fail: (err) => {
+        console.error('选择图片失败:', err);
+        wx.showToast({ title: '选择图片失败', icon: 'none' });
       }
     });
   },

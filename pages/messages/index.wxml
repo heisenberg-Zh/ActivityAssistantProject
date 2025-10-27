@@ -1,15 +1,4 @@
 <!-- pages/messages/index.wxml -->
-<view class="top-bar">
-  <view class="row gap-16">
-    <view class="icon-btn" bindtap="goBack"><text class="icon-text">&lt;</text></view>
-    <text class="text-lg text-gray-800">娑堟伅涓績</text>
-  </view>
-  <view class="row gap-16">
-    <view class="icon-btn"><text class="icon-text">OK</text></view>
-    <view class="icon-btn"><text class="icon-text">...</text></view>
-  </view>
-</view>
-
 <view class="filter-strip">
   <scroll-view scroll-x enable-flex class="filter-scroll" show-scrollbar="false">
     <block wx:for="{{filters}}" wx:key="key">

@@ -1,15 +1,4 @@
 <!-- pages/activities/list.wxml -->
-<view class="top-bar">
-  <view class="row gap-16">
-    <view class="icon-btn" bindtap="goBack"><text class="icon-text">&lt;</text></view>
-    <text class="text-lg text-gray-800">活动列表</text>
-  </view>
-  <view class="row gap-16">
-    <view class="icon-btn"><text class="icon-text">筛</text></view>
-    <view class="icon-btn"><text class="icon-text">序</text></view>
-  </view>
-</view>
-
 <view class="search-section">
   <view class="search-box">
     <text class="search-icon">搜</text>

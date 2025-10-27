@@ -1,20 +1,4 @@
 <!-- pages/home/index.wxml -->
-<view class="home-hero">
-  <view class="row-between">
-    <view class="row gap-12">
-      <view class="icon-circle" style="background:rgba(255,255,255,0.2); color:#ffffff;">AA</view>
-      <text class="title" style="color:#ffffff;">活动助手</text>
-    </view>
-    <view class="row gap-16">
-      <view class="icon-btn icon-btn--hero"><text class="icon-text">搜</text></view>
-      <view style="position:relative;">
-        <view class="icon-btn icon-btn--hero"><text class="icon-text">铃</text></view>
-        <view class="icon-dot"></view>
-      </view>
-    </view>
-  </view>
-</view>
-
 <view class="px-24 py-24">
   <scroll-view scroll-x class="scroll-x" style="padding-bottom: 12rpx;" show-scrollbar="false">
     <block wx:for="{{slides}}" wx:key="id" wx:for-item="item">

@@ -41,5 +41,6 @@
     "getLocation"
   ],
   "__usePrivacyCheck__": true,
+  "lazyCodeLoading": "requiredComponents",
   "sitemapLocation": "sitemap.json"
 }
