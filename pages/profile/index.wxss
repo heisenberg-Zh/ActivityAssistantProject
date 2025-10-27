@@ -1,24 +1,130 @@
 /* pages/profile/index.wxss */
-.profile-card { padding: 24rpx; display: flex; flex-direction: column; gap: 16rpx; }
+.profile-card {
+  padding: 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
 .profile-head { align-items: center; }
-.profile-avatar { width: 120rpx; height: 120rpx; border-radius: 9999rpx; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 40rpx; font-weight: 600; }
-.profile-desc { background: #f3f4f6; border-radius: 20rpx; padding: 16rpx; }
+
+.profile-avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 9999rpx;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  font-weight: 600;
+  box-shadow: 0 8rpx 24rpx rgba(59, 130, 246, 0.35);
+}
+
+.profile-desc {
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  border-radius: 20rpx;
+  padding: 16rpx;
+  border: 1rpx solid #e5e7eb;
+}
 
 .section-title { display: block; font-size: 32rpx; font-weight: 600; color: #111827; margin-bottom: 16rpx; }
 
 .stats-card { padding: 24rpx; }
-.stats-grid { display: flex; justify-content: space-between; gap: 16rpx; }
-.stats-item { text-align: center; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8rpx; }
-.stats-icon { width: 72rpx; height: 72rpx; border-radius: 9999rpx; display: flex; align-items: center; justify-content: center; font-size: 28rpx; }
-.stats-value { font-size: 36rpx; font-weight: 700; color: #111827; }
-.stats-label { font-size: 22rpx; color: #6b7280; }
+
+.stats-grid {
+  display: flex;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.stats-item {
+  text-align: center;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.stats-icon {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 9999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+}
+
+.stats-value {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #111827;
+}
+
+.stats-label {
+  font-size: 22rpx;
+  color: #6b7280;
+}
 
 .menu-card { padding: 24rpx; }
 .menu-list { display: flex; flex-direction: column; }
-.menu-item { display: flex; align-items: center; gap: 16rpx; padding: 20rpx 0; border-top: 1px solid #f3f4f6; }
-.menu-item:first-child { border-top: none; }
-.menu-icon { width: 64rpx; height: 64rpx; border-radius: 9999rpx; display: flex; align-items: center; justify-content: center; font-size: 26rpx; font-weight: 600; }
-.menu-badge { background: #ef4444; color: #ffffff; border-radius: 9999rpx; padding: 4rpx 16rpx; font-size: 22rpx; margin-left: auto; }
 
-.logout-btn { width: 100%; text-align: center; background: #ef4444; color: #ffffff; padding: 20rpx 0; border-radius: 24rpx; font-size: 28rpx; font-weight: 600; }
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 20rpx 0;
+  border-top: 1px solid #f3f4f6;
+  transition: all 0.2s ease;
+}
+
+.menu-item:first-child { border-top: none; }
+
+.menu-item:active {
+  opacity: 0.7;
+}
+
+.menu-icon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 9999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26rpx;
+  font-weight: 600;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+}
+
+.menu-badge {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  border-radius: 9999rpx;
+  padding: 4rpx 16rpx;
+  font-size: 22rpx;
+  margin-left: auto;
+  box-shadow: 0 2rpx 8rpx rgba(239, 68, 68, 0.4);
+}
+
+.logout-btn {
+  width: 100%;
+  text-align: center;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  padding: 20rpx 0;
+  border-radius: 24rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  box-shadow: 0 4rpx 16rpx rgba(239, 68, 68, 0.3);
+  transition: all 0.3s ease;
+}
+
+.logout-btn:active {
+  transform: scale(0.98);
+}
+
 .icon-text { font-size: 28rpx; color: #4b5563; }

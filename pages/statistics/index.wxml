@@ -1,16 +1,4 @@
 <!-- pages/statistics/index.wxml -->
-<view class="top-bar">
-  <view class="row gap-16">
-    <view class="icon-btn" bindtap="goBack"><text class="icon-text">&lt;</text></view>
-    <text class="text-lg text-gray-800">数据统计</text>
-  </view>
-  <view class="row gap-16">
-    <view class="icon-btn"><text class="icon-text">享</text></view>
-    <view class="icon-btn"><text class="icon-text">下</text></view>
-    <view class="icon-btn"><text class="icon-text">筛</text></view>
-  </view>
-</view>
-
 <view class="filter-strip">
   <block wx:for="{{ranges}}" wx:key="key" wx:for-item="item">
     <view class="pill {{item.active ? 'pill--primary' : ''}}" bindtap="onRangeTap" data-key="{{item.key}}">{{item.label}}</view>
