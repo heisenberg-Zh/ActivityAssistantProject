@@ -1,34 +1,38 @@
 <!-- pages/messages/index.wxml -->
-<view class="filter-strip">
-  <scroll-view scroll-x enable-flex class="filter-scroll" show-scrollbar="false">
-    <block wx:for="{{filters}}" wx:key="key">
-      <view class="chip">
-        <view class="pill {{item.active ? 'pill--primary' : ''}}" bindtap="onFilterTap" data-key="{{item.key}}">{{item.name}}</view>
-      </view>
-    </block>
-  </scroll-view>
-</view>
-
-<view class="section">
-  <block wx:for="{{messages}}" wx:key="id">
-    <view class="message-card card shadow-card">
-      <view class="row gap-16 items-start">
-        <view class="message-icon" style="background: {{item.iconBg}}; color: {{item.iconColor}};">{{item.iconText}}</view>
-        <view class="flex-col message-body">
-          <view class="row-between mb-8">
-            <text class="text-md text-gray-800">{{item.title}}</text>
-            <text class="text-xs">{{item.time}}</text>
+<view class="page-container">
+  <view class="filter-section">
+    <scroll-view scroll-x class="filter-scroll-view" show-scrollbar="false">
+      <view class="filter-tabs">
+        <block wx:for="{{filters}}" wx:key="key" wx:for-item="item">
+          <view class="filter-tab {{item.active ? 'filter-tab--active' : ''}}" bindtap="onFilterTap" data-key="{{item.key}}">
+            {{item.name}}
           </view>
-          <text class="text-sm">{{item.content}}</text>
-          <view class="row gap-12 mt-16">
-            <block wx:for="{{item.tags}}" wx:for-item="tag" wx:key="name">
-              <view class="badge" style="background: {{tag.bg}}; color: {{tag.color}};">{{tag.name}}</view>
-            </block>
+        </block>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="content-section">
+    <block wx:for="{{messages}}" wx:key="id">
+      <view class="message-card card shadow-card">
+        <view class="row gap-16 items-start">
+          <view class="message-icon" style="background: {{item.iconBg}}; color: {{item.iconColor}};">{{item.iconText}}</view>
+          <view class="flex-col message-body">
+            <view class="row-between mb-8">
+              <text class="text-md text-gray-800">{{item.title}}</text>
+              <text class="text-xs">{{item.time}}</text>
+            </view>
+            <text class="text-sm">{{item.content}}</text>
+            <view class="row gap-12 mt-16">
+              <block wx:for="{{item.tags}}" wx:for-item="tag" wx:key="name">
+                <view class="badge" style="background: {{tag.bg}}; color: {{tag.color}};">{{tag.name}}</view>
+              </block>
+            </view>
           </view>
         </view>
       </view>
-    </view>
-  </block>
-</view>
+    </block>
+  </view>
 
-<view class="bottom-space"></view>
+  <view class="bottom-space"></view>
+</view>

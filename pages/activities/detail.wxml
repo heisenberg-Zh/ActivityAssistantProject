@@ -1,13 +1,6 @@
 <!-- pages/activities/detail.wxml -->
-<view class="top-bar">
-  <view class="row gap-16">
-    <view class="icon-btn" bindtap="goBack"><text class="icon-text">&lt;</text></view>
-    <text class="text-lg text-gray-800">活动详情</text>
-  </view>
-  <view class="row gap-16">
-    <view class="icon-btn" bindtap="onShare"><text class="icon-text">分享</text></view>
-    <view class="icon-btn"><text class="icon-text">...</text></view>
-  </view>
+<view class="detail-header">
+  <text class="detail-title">{{detail.title}}</text>
 </view>
 
 <view class="detail-cover banner banner--{{detail.banner}}">
@@ -17,7 +10,6 @@
 
 <view class="section">
   <view class="card shadow-card detail-card">
-    <text class="text-xl text-gray-800 mb-12">{{detail.title}}</text>
     <text class="text-sm text-gray-500 mb-16">{{detail.desc}}</text>
 
     <view class="organizer">
@@ -60,6 +52,14 @@
           <text class="text-sm text-gray-500">{{extra.feeInfo}}</text>
         </view>
       </view>
+      <view class="info-item">
+        <view class="info-item__icon" style="background:#FEF3C7; color:#D97706;">码</view>
+        <view class="flex-col info-item__body">
+          <text class="text-md text-gray-800">活动编号</text>
+          <text class="text-sm text-gray-500">{{detail.id}}</text>
+          <text class="text-xs text-gray-400">活动唯一标识</text>
+        </view>
+      </view>
     </view>
   </view>
 </view>
@@ -68,7 +68,7 @@
   <view class="card shadow-card participants-card">
     <view class="row-between mb-16">
       <text class="text-lg text-gray-800">参与成员 ({{members.length}})</text>
-      <navigator class="text-sm text-blue-500" url="/pages/my-activities/index" hover-class="none">查看全部</navigator>
+      <view class="text-sm text-blue-500" bindtap="viewAllMembers" hover-class="none">查看全部</view>
     </view>
     <view class="participants-grid">
       <block wx:for="{{members}}" wx:key="id" wx:for-item="item">
@@ -84,5 +84,5 @@
 <view class="bottom-space"></view>
 <view class="fixed-footer">
   <button class="btn btn--secondary footer-btn" bindtap="onShare">分享</button>
-  <button class="btn btn--primary footer-btn" bindtap="goRegister">报名</button>
+  <button class="btn {{isRegistered ? 'btn--danger' : 'btn--primary'}} footer-btn" bindtap="{{isRegistered ? 'cancelRegistration' : 'goRegister'}}">{{isRegistered ? '取消报名' : '报名'}}</button>
 </view>

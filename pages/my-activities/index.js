@@ -26,7 +26,7 @@ const dataset = [
     status: '进行中',
     actions: [
       { label: '签到', action: 'checkin', type: 'primary' },
-      { label: '退出', action: 'quit', type: 'secondary' }
+      { label: '取消报名', action: 'cancelRegistration', type: 'danger' }
     ]
   }),
   Object.assign({}, activities[0], {
@@ -79,6 +79,8 @@ Page({
 
   handleAction(e) {
     const action = e.currentTarget.dataset.action;
+    const id = e.currentTarget.dataset.id;
+
     switch (action) {
       case 'stats':
         wx.navigateTo({ url: '/pages/statistics/index' });
@@ -95,8 +97,8 @@ Page({
       case 'checkin':
         wx.navigateTo({ url: '/pages/checkin/index' });
         break;
-      case 'quit':
-        wx.showToast({ title: '已申请退出', icon: 'none' });
+      case 'cancelRegistration':
+        this.cancelRegistration(id);
         break;
       case 'review':
         wx.showToast({ title: '请填写评价', icon: 'none' });
@@ -107,6 +109,42 @@ Page({
       default:
         wx.showToast({ title: '功能开发中', icon: 'none' });
     }
+  },
+
+  // 取消报名
+  cancelRegistration(id) {
+    wx.showModal({
+      title: '确认取消报名',
+      content: '确定要取消报名吗？取消后需要重新报名才能参加活动。',
+      confirmText: '确认取消',
+      confirmColor: '#ef4444',
+      success: async (res) => {
+        if (res.confirm) {
+          wx.showLoading({ title: '处理中...' });
+
+          try {
+            // 这里应该调用API取消报名
+            // await activityAPI.cancelRegistration({ activityId: id });
+
+            // 模拟取消成功
+            setTimeout(() => {
+              wx.hideLoading();
+              wx.showToast({ title: '已取消报名', icon: 'success' });
+
+              // 刷新页面数据或移除该活动
+              setTimeout(() => {
+                // 可以选择刷新列表或跳转
+                wx.switchTab({ url: '/pages/home/index' });
+              }, 1500);
+            }, 1000);
+          } catch (err) {
+            wx.hideLoading();
+            console.error('取消报名失败:', err);
+            wx.showToast({ title: '取消失败，请重试', icon: 'none' });
+          }
+        }
+      }
+    });
   },
 
   createActivity() {

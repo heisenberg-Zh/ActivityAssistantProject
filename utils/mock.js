@@ -27,7 +27,12 @@ const activities = [
     organizerName: '张小北',
     tags: ['美食', '社交', '周末'],
     requirements: '请确认能够按时参加活动',
-    createdAt: '2025-12-10 10:00'
+    createdAt: '2025-12-10 10:00',
+    customFields: [
+      { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
+      { id: 'mobile', label: '手机号', required: true, desc: '用于联系参与者', isCustom: false },
+      { id: 'custom_1', label: '饮食偏好', required: false, desc: '', isCustom: true }
+    ]
   },
   {
     id: 'a2',
@@ -56,7 +61,13 @@ const activities = [
     organizerName: '李晓峰',
     tags: ['设计', '学习', '职业'],
     requirements: '请携带笔记本电脑',
-    createdAt: '2025-12-08 15:30'
+    createdAt: '2025-12-08 15:30',
+    customFields: [
+      { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
+      { id: 'mobile', label: '手机号', required: false, desc: '用于联系参与者', isCustom: false },
+      { id: 'custom_1', label: '公司名称', required: false, desc: '', isCustom: true },
+      { id: 'custom_2', label: '职位', required: false, desc: '', isCustom: true }
+    ]
   },
   {
     id: 'a3',
@@ -85,7 +96,13 @@ const activities = [
     organizerName: '王晨',
     tags: ['户外', '运动', '健康'],
     requirements: '请准备登山装备和饮用水',
-    createdAt: '2025-12-09 09:00'
+    createdAt: '2025-12-09 09:00',
+    customFields: [
+      { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
+      { id: 'mobile', label: '手机号', required: true, desc: '用于联系参与者', isCustom: false },
+      { id: 'custom_1', label: '紧急联系人', required: true, desc: '', isCustom: true },
+      { id: 'custom_2', label: '紧急联系电话', required: true, desc: '', isCustom: true }
+    ]
   },
   {
     id: 'a4',
@@ -114,7 +131,12 @@ const activities = [
     organizerName: '李小雅',
     tags: ['摄影', '艺术', '城市'],
     requirements: '请自备相机或手机',
-    createdAt: '2025-12-05 12:00'
+    createdAt: '2025-12-05 12:00',
+    customFields: [
+      { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
+      { id: 'mobile', label: '手机号', required: false, desc: '用于联系参与者', isCustom: false },
+      { id: 'custom_1', label: '摄影经验', required: false, desc: '', isCustom: true }
+    ]
   }
 ];
 

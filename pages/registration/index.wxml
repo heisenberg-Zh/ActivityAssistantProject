@@ -1,100 +1,114 @@
 <!-- pages/registration/index.wxml -->
-<view class="top-bar">
-  <view class="row gap-16">
-    <view class="icon-btn" bindtap="cancel"><text class="icon-text">&lt;</text></view>
-    <text class="text-lg text-gray-800">活动报名</text>
-  </view>
-  <view class="row gap-16">
-    <view class="ghost-btn" bindtap="share">
-      <text class="ghost-btn__icon">链</text>
-      <text class="ghost-btn__text">分享模式</text>
+<view class="registration-header">
+  <text class="registration-title">{{detail.title}}</text>
+</view>
+
+<!-- 活动信息卡片 -->
+<view class="activity-info-section">
+  <view class="activity-info-card">
+    <!-- 活动封面和状态 -->
+    <view class="activity-cover banner--{{detail.banner}}">
+      <view class="cover-badges">
+        <view class="cover-badge cover-badge--status">{{detail.status}}</view>
+        <view class="cover-badge cover-badge--type">{{detail.type}}</view>
+      </view>
+    </view>
+
+    <!-- 活动描述 -->
+    <view class="activity-desc">
+      <text class="desc-text">{{detail.desc}}</text>
+    </view>
+
+    <!-- 关键信息网格 -->
+    <view class="info-grid">
+      <view class="info-grid-item">
+        <view class="info-grid-icon info-grid-icon--time">
+          <text class="icon-emoji">🕐</text>
+        </view>
+        <view class="info-grid-content">
+          <text class="info-grid-label">活动时间</text>
+          <text class="info-grid-value">{{detail.timeRange}}</text>
+          <text class="info-grid-sub">截止：{{deadline}}</text>
+        </view>
+      </view>
+
+      <view class="info-grid-item">
+        <view class="info-grid-icon info-grid-icon--location">
+          <text class="icon-emoji">📍</text>
+        </view>
+        <view class="info-grid-content">
+          <text class="info-grid-label">活动地点</text>
+          <text class="info-grid-value">{{detail.place}}</text>
+          <text class="info-grid-sub">提前30分钟到达</text>
+        </view>
+      </view>
+
+      <view class="info-grid-item">
+        <view class="info-grid-icon info-grid-icon--people">
+          <text class="icon-emoji">👥</text>
+        </view>
+        <view class="info-grid-content">
+          <text class="info-grid-label">参与人数</text>
+          <text class="info-grid-value">{{detail.joined}} / {{detail.total}} 人</text>
+          <view class="mini-progress">
+            <view class="mini-progress-bar" style="width: {{progress}}%"></view>
+          </view>
+        </view>
+      </view>
     </view>
   </view>
 </view>
 
-<view class="section">
-  <view class="card shadow-card registration-card">
-    <view class="registration-banner banner banner--{{detail.banner}}">
-      <view class="row-between">
-        <view class="badge badge--info">{{detail.status}}</view>
-        <view class="badge badge--light">{{detail.type}}</view>
-      </view>
-    </view>
-    <view class="card--pad">
-      <text class="text-lg text-gray-800 mb-8">{{detail.title}}</text>
-      <text class="text-sm text-gray-500 mb-16">{{detail.desc}}</text>
-
-      <view class="info-line">
-        <view class="info-icon" style="background:#DBEAFE; color:#1d4ed8;">时</view>
-        <view class="flex-col info-body">
-          <text class="text-md text-gray-800">活动时间</text>
-          <text class="text-sm text-gray-500">{{detail.timeRange}}</text>
-          <text class="text-xs text-gray-400">报名截止：{{deadline}}</text>
-        </view>
-      </view>
-
-      <view class="info-line">
-        <view class="info-icon" style="background:#DCFCE7; color:#047857;">地</view>
-        <view class="flex-col info-body">
-          <text class="text-md text-gray-800">活动地点</text>
-          <text class="text-sm text-gray-500">{{detail.place}}</text>
-          <text class="text-xs text-gray-400">建议提前30分钟到达签到</text>
-        </view>
-      </view>
-
-      <view class="info-line">
-        <view class="info-icon" style="background:#FDE68A; color:#B45309;">员</view>
-        <view class="flex-col info-body">
-          <text class="text-md text-gray-800">参与人数</text>
-          <text class="text-sm text-gray-500">{{detail.joined}} / {{detail.total}} 人</text>
-          <view class="progress mt-12"><view class="bar" style="width: {{progress}}%"></view></view>
-        </view>
-      </view>
-    </view>
+<!-- 报名表单 -->
+<view class="form-section">
+  <view class="form-header">
+    <text class="form-title">填写报名信息</text>
+    <text class="form-subtitle">请如实填写以下信息</text>
   </view>
-</view>
 
-<view class="section">
-  <view class="card shadow-card form-card">
-    <text class="text-lg text-gray-800 mb-16">报名信息</text>
-
-    <view class="form-field">
-      <text class="field-label">姓名</text>
-      <input class="field-input" placeholder="请输入您的姓名" bindinput="onInput" data-field="name" value="{{form.name}}" />
+  <view class="form-container">
+    <!-- 动态字段 -->
+    <view class="form-group">
+      <block wx:for="{{customFields}}" wx:key="id" wx:for-item="field">
+        <view class="input-wrapper">
+          <view class="input-label-row">
+            <text class="input-label">{{field.label}}</text>
+            <text wx:if="{{field.required}}" class="input-required">*</text>
+          </view>
+          <input
+            class="input-field"
+            type="{{field.id === 'mobile' ? 'number' : 'text'}}"
+            placeholder="{{field.desc || '请输入' + field.label}}"
+            bindinput="onInput"
+            data-field="{{field.id}}"
+            value="{{formData[field.id]}}"
+          />
+          <text wx:if="{{field.desc}}" class="field-hint" style="font-size: 22rpx; color: #9ca3af; margin-top: 8rpx; display: block;">{{field.desc}}</text>
+        </view>
+      </block>
     </view>
 
-    <view class="form-field">
-      <text class="field-label">手机号</text>
-      <input class="field-input" type="number" placeholder="请输入手机号" bindinput="onInput" data-field="mobile" value="{{form.mobile}}" />
-    </view>
+    <!-- 费用和提示 -->
+    <view class="info-cards">
+      <view class="info-tip-card info-tip-card--blue">
+        <text class="info-tip-title">💰 费用说明</text>
+        <text class="info-tip-text">{{feeInfo}}</text>
+      </view>
 
-    <view class="form-field">
-      <text class="field-label">微信号</text>
-      <input class="field-input" placeholder="请输入微信号" bindinput="onInput" data-field="wechat" value="{{form.wechat}}" />
-    </view>
-
-    <view class="form-field">
-      <text class="field-label">备注信息</text>
-      <textarea class="field-textarea" placeholder="如有特殊需求可在此填写" bindinput="onInput" data-field="note"></textarea>
-    </view>
-
-    <view class="notice-card notice-card--info">
-      <text class="notice-title">费用说明</text>
-      <text class="notice-text">{{feeInfo}}</text>
-    </view>
-
-    <view class="notice-card notice-card--muted">
-      <text class="notice-title">温馨提示</text>
-      <view class="flex-col notice-list">
-        <block wx:for="{{guidelines}}" wx:key="text" wx:for-item="tip">
-          <text class="notice-item">- {{tip}}</text>
-        </block>
+      <view class="info-tip-card info-tip-card--gray">
+        <text class="info-tip-title">📌 温馨提示</text>
+        <view class="info-tip-list">
+          <block wx:for="{{guidelines}}" wx:key="text" wx:for-item="tip">
+            <text class="info-tip-item">• {{tip}}</text>
+          </block>
+        </view>
       </view>
     </view>
 
-    <view class="agreement row gap-12">
-      <checkbox checked="{{agree}}" bindchange="toggleAgree" />
-      <text class="text-sm text-gray-600">已阅读并同意《活动报名协议》和《隐私政策》</text>
+    <!-- 协议 -->
+    <view class="agreement-box">
+      <checkbox checked="{{agree}}" bindchange="toggleAgree" class="agreement-checkbox" />
+      <text class="agreement-text">已阅读并同意《活动报名协议》和《隐私政策》</text>
     </view>
   </view>
 </view>
@@ -123,6 +137,6 @@
 
 <view class="bottom-space"></view>
 <view class="fixed-footer">
-  <button class="btn btn--secondary footer-btn" bindtap="cancel">取消</button>
-  <button class="btn btn--primary footer-btn" bindtap="submit">确认报名</button>
+  <button class="btn btn--secondary footer-btn" bindtap="cancel">返回</button>
+  <button class="btn {{isRegistered ? 'btn--danger' : 'btn--primary'}} footer-btn" bindtap="{{isRegistered ? 'cancelRegistration' : 'submit'}}">{{isRegistered ? '取消报名' : '确认报名'}}</button>
 </view>
