@@ -101,12 +101,23 @@ Page({
       // 检查当前用户是否已报名
       const isRegistered = activityRegs.some(r => r.userId === 'u1'); // 应从登录态获取
 
+      // 组装 extra 额外信息对象
+      const extra = {
+        organizer: organizerInfo.name,
+        organizerInitial: organizerInfo.initial,
+        deadline: detail.registerDeadline || '活动开始前',
+        addressDetail: detail.address || '详细地址待确定',
+        feeInfo: feeInfo,
+        activityId: detail.id
+      };
+
       this.setData({
         detail,
         organizer: organizerInfo,
         members,
         progress,
         feeInfo,
+        extra,
         statusInfo,
         canRegister,
         canCheckin,
@@ -139,6 +150,43 @@ Page({
     wx.navigateTo({ url: `/pages/registration/index?id=${id}` });
   },
 
+  // 取消报名
+  cancelRegistration() {
+    const { id } = this.data;
+
+    wx.showModal({
+      title: '确认取消报名',
+      content: '确定要取消报名吗？取消后需要重新报名才能参加活动。',
+      confirmText: '确认取消',
+      confirmColor: '#ef4444',
+      success: async (res) => {
+        if (res.confirm) {
+          wx.showLoading({ title: '处理中...' });
+
+          try {
+            // 这里应该调用API取消报名
+            // await activityAPI.cancelRegistration({ activityId: id });
+
+            // 模拟取消成功
+            setTimeout(() => {
+              wx.hideLoading();
+              wx.showToast({ title: '已取消报名', icon: 'success' });
+
+              // 刷新页面数据
+              setTimeout(() => {
+                this.loadActivityDetail(id);
+              }, 1500);
+            }, 1000);
+          } catch (err) {
+            wx.hideLoading();
+            console.error('取消报名失败:', err);
+            wx.showToast({ title: '取消失败，请重试', icon: 'none' });
+          }
+        }
+      }
+    });
+  },
+
   // 跳转签到页
   goCheckin() {
     const { id, canCheckin } = this.data;
@@ -167,12 +215,25 @@ Page({
     );
   },
 
-  // 查看参与者列表
-  viewMembers() {
+  // 查看所有参与者
+  viewAllMembers() {
+    const { members } = this.data;
+
+    if (members.length === 0) {
+      wx.showToast({ title: '暂无参与者', icon: 'none' });
+      return;
+    }
+
+    // 构建参与者列表内容
+    const memberList = members.map((member, index) =>
+      `${index + 1}. ${member.name}`
+    ).join('\n');
+
     wx.showModal({
-      title: '参与者列表',
-      content: `共${this.data.members.length}人参与`,
-      showCancel: false
+      title: `参与者列表 (${members.length}人)`,
+      content: memberList,
+      showCancel: false,
+      confirmText: '知道了'
     });
   },
 

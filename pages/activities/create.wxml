@@ -1,8 +1,6 @@
 <!-- pages/activities/create.wxml -->
 <view class="top-bar top-bar--fixed">
-  <view class="row gap-16">
-    <view class="icon-btn" bindtap="goBack"><text class="icon-text">&lt;</text></view>
-  </view>
+  <view class="row gap-16"></view>
   <view class="row gap-16">
     <view class="ghost-btn" bindtap="saveDraft">保存草稿</view>
     <view class="ghost-btn ghost-btn--accent" bindtap="copyActivity">复制活动</view>
@@ -138,11 +136,11 @@
   </view>
 </view>
 
-<!-- 步骤5: 自定义字段 -->
+<!-- 步骤5: 展示字段 -->
 <view class="section" wx:if="{{currentStep === 5}}">
   <view class="card shadow-card form-section">
     <view class="option-header">
-      <text class="section-title">自定义字段</text>
+      <text class="section-title">展示字段</text>
       <view class="ghost-btn ghost-btn--accent" bindtap="addField">+ 添加字段</view>
     </view>
 
@@ -159,7 +157,7 @@
               <text class="text-xs text-gray-500" wx:if="{{field.desc}}">{{field.desc}}</text>
             </view>
             <view class="custom-item-right">
-              <!-- 必填开关（姓名固定必填不可切换，手机号和自定义字段可切换） -->
+              <!-- 必填开关（昵称固定必填不可切换，手机号和自定义字段可切换） -->
               <view class="field-required-toggle" wx:if="{{field.id !== 'name'}}">
                 <text class="toggle-label">必填</text>
                 <switch

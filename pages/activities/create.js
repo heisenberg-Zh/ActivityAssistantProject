@@ -16,7 +16,7 @@ Page({
       { index: 2, label: '时间设置', active: false, completed: false },
       { index: 3, label: '地点设置', active: false, completed: false },
       { index: 4, label: '人数配置', active: false, completed: false },
-      { index: 5, label: '自定义字段', active: false, completed: false },
+      { index: 5, label: '展示字段', active: false, completed: false },
       { index: 6, label: '发布预览', active: false, completed: false }
     ],
     form: {
@@ -43,7 +43,7 @@ Page({
       requirements: ''
     },
     customFields: [
-      { id: 'name', label: '姓名', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
+      { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
       { id: 'mobile', label: '手机号', required: false, desc: '用于联系参与者', isCustom: false }
     ],
     feeTypes: ['免费', 'AA', '统一收费'],
@@ -126,7 +126,7 @@ Page({
         }
         break;
 
-      case 5: // 自定义字段（可选，无需强制验证）
+      case 5: // 展示字段（可选，无需强制验证）
         break;
 
       case 6: // 海报预览（可选，无需强制验证）

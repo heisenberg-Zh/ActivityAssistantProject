@@ -69,7 +69,7 @@
         </view>
         <view class="row-between">
           <text class="text-sm">已报 {{item.joined}}/{{item.total}} 人</text>
-          <view class="btn btn--primary btn--small" catchtap="goRegister" data-id="{{item.id}}">立即报名</view>
+          <view class="btn {{item.isRegistered ? 'btn--registered' : 'btn--primary'}} btn--small" catchtap="{{item.isRegistered ? 'onRegisteredClick' : 'goRegister'}}" data-id="{{item.id}}">{{item.isRegistered ? '已报名' : '立即报名'}}</view>
         </view>
       </view>
     </view>

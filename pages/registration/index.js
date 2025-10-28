@@ -21,12 +21,8 @@ Page({
     feeInfo: '',
     guidelines: defaultGuidelines,
     participants: [],
-    form: {
-      name: '',
-      mobile: '',
-      wechat: '',
-      note: ''
-    },
+    customFields: [], // 动态字段配置
+    formData: {}, // 动态表单数据
     agree: false,
     isRegistered: false,
     isFull: false
@@ -73,6 +69,18 @@ Page({
       );
       const isRegistered = userRegs.length > 0;
 
+      // 获取自定义字段配置
+      const customFields = detail.customFields || [
+        { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
+        { id: 'mobile', label: '手机号', required: true, desc: '用于联系参与者', isCustom: false }
+      ];
+
+      // 初始化表单数据
+      const formData = {};
+      customFields.forEach(field => {
+        formData[field.id] = '';
+      });
+
       this.setData({
         id,
         detail,
@@ -81,10 +89,12 @@ Page({
         feeInfo,
         guidelines,
         isFull,
-        isRegistered
+        isRegistered,
+        customFields,
+        formData
       });
 
-      // 如果是微信用户，自动填充姓名
+      // 如果是微信用户，自动填充昵称
       this.autoFillUserInfo();
     } catch (err) {
       console.error('加载活动详情失败:', err);
@@ -121,7 +131,7 @@ Page({
       const userInfo = wx.getStorageSync('userInfo');
       if (userInfo && userInfo.nickName) {
         this.setData({
-          'form.name': userInfo.nickName
+          'formData.name': userInfo.nickName
         });
       }
     } catch (err) {
@@ -133,7 +143,7 @@ Page({
   onInput(e) {
     const field = e.currentTarget.dataset.field;
     if (!field) return;
-    this.setData({ [`form.${field}`]: e.detail.value });
+    this.setData({ [`formData.${field}`]: e.detail.value });
   },
 
   // 同意协议
@@ -154,7 +164,7 @@ Page({
 
   // 验证表单
   validateForm() {
-    const { form, agree, detail } = this.data;
+    const { formData, customFields, agree } = this.data;
 
     // 验证协议
     if (!agree) {
@@ -162,35 +172,84 @@ Page({
       return false;
     }
 
-    // 验证姓名
-    if (!form.name || form.name.trim().length < 2) {
-      wx.showToast({ title: '请输入姓名（至少2个字）', icon: 'none' });
-      return false;
-    }
+    // 动态验证必填字段
+    for (const field of customFields) {
+      if (field.required) {
+        const value = formData[field.id];
 
-    if (form.name.length > 20) {
-      wx.showToast({ title: '姓名不能超过20个字', icon: 'none' });
-      return false;
-    }
+        // 验证是否填写
+        if (!value || value.trim().length === 0) {
+          wx.showToast({ title: `请填写${field.label}`, icon: 'none' });
+          return false;
+        }
 
-    // 验证手机号
-    if (!form.mobile) {
-      wx.showToast({ title: '请输入手机号', icon: 'none' });
-      return false;
-    }
+        // 特殊字段的额外验证
+        if (field.id === 'name') {
+          if (value.trim().length < 2) {
+            wx.showToast({ title: '昵称至少2个字', icon: 'none' });
+            return false;
+          }
+          if (value.length > 20) {
+            wx.showToast({ title: '昵称不能超过20个字', icon: 'none' });
+            return false;
+          }
+        }
 
-    const mobileReg = /^1[3-9]\d{9}$/;
-    if (!mobileReg.test(form.mobile)) {
-      wx.showToast({ title: '手机号格式不正确', icon: 'none' });
-      return false;
+        if (field.id === 'mobile') {
+          const mobileReg = /^1[3-9]\d{9}$/;
+          if (!mobileReg.test(value)) {
+            wx.showToast({ title: '手机号格式不正确', icon: 'none' });
+            return false;
+          }
+        }
+      }
     }
 
     return true;
   },
 
+  // 取消报名
+  cancelRegistration() {
+    const { id, detail } = this.data;
+
+    wx.showModal({
+      title: '确认取消报名',
+      content: '确定要取消报名吗？取消后需要重新报名才能参加活动。',
+      confirmText: '确认取消',
+      confirmColor: '#ef4444',
+      success: async (res) => {
+        if (res.confirm) {
+          wx.showLoading({ title: '处理中...' });
+
+          try {
+            // 这里应该调用API取消报名
+            // await registrationAPI.cancel({ activityId: id });
+
+            // 模拟取消成功
+            setTimeout(() => {
+              wx.hideLoading();
+              wx.showToast({ title: '已取消报名', icon: 'success' });
+
+              // 延迟跳转到活动详情页
+              setTimeout(() => {
+                wx.redirectTo({
+                  url: `/pages/activities/detail?id=${id}`
+                });
+              }, 1500);
+            }, 1000);
+          } catch (err) {
+            wx.hideLoading();
+            console.error('取消报名失败:', err);
+            wx.showToast({ title: '取消失败，请重试', icon: 'none' });
+          }
+        }
+      }
+    });
+  },
+
   // 提交报名
   async submit() {
-    const { id, detail, form, isRegistered, isFull } = this.data;
+    const { id, detail, formData, isRegistered, isFull } = this.data;
 
     // 检查是否已报名
     if (isRegistered) {
@@ -212,14 +271,14 @@ Page({
     wx.showLoading({ title: '提交中...' });
 
     try {
-      const result = await registrationAPI.create({
+      // 构建提交数据，包含所有动态字段
+      const submissionData = {
         activityId: id,
-        name: form.name.trim(),
-        mobile: form.mobile,
-        wechat: form.wechat,
-        note: form.note,
+        ...formData,
         needReview: detail.needReview
-      });
+      };
+
+      const result = await registrationAPI.create(submissionData);
 
       wx.hideLoading();
 

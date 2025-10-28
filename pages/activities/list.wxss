@@ -1,8 +1,24 @@
 /* pages/activities/list.wxss */
+
+/* 页面容器 */
+.page-container {
+  min-height: 100vh;
+  background: #f7f8fa;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 头部区域（搜索+筛选） */
+.header-section {
+  background: #ffffff;
+  position: relative;
+  z-index: 10;
+}
+
+/* 搜索区域 */
 .search-section {
   background: #ffffff;
-  padding: 16rpx 24rpx 24rpx 24rpx;
-  border-bottom: none;
+  padding: 24rpx;
 }
 
 .search-box {
@@ -10,43 +26,109 @@
   align-items: center;
   background: #f3f4f6;
   border-radius: 9999rpx;
-  padding: 12rpx 24rpx;
+  padding: 14rpx 24rpx;
+  height: 68rpx;
 }
 
-.search-icon { font-size: 24rpx; color: #6b7280; margin-right: 12rpx; }
-.search-input { flex: 1; font-size: 26rpx; color: #374151; background: transparent; border: none; }
+.search-icon {
+  font-size: 24rpx;
+  color: #6b7280;
+  margin-right: 12rpx;
+}
 
-.filter-strip {
+.search-input {
+  flex: 1;
+  font-size: 26rpx;
+  color: #374151;
+  background: transparent;
+  border: none;
+}
+
+/* 状态筛选区域 */
+.filter-section {
   background: #ffffff;
-  padding: 24rpx 24rpx;
+  padding: 0 24rpx 24rpx 24rpx;
   border-bottom: 1px solid #e5e7eb;
 }
 
-.filter-scroll {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.filter-scroll .chip {
-  margin-right: 0;
-}
-
-.filter-scroll .pill {
-  font-size: 26rpx;
-  padding: 14rpx 28rpx;
-  font-weight: 500;
-  transition: all 0.3s ease;
+.filter-scroll-view {
   white-space: nowrap;
 }
 
-.filter-scroll .pill--primary {
-  box-shadow: 0 4rpx 12rpx rgba(59, 130, 246, 0.25);
+.filter-tabs {
+  display: inline-flex;
+  gap: 12rpx;
+  padding-bottom: 8rpx;
 }
 
-.activity-card { padding: 24rpx; margin-bottom: 24rpx; }
-.activity-card__header { margin-bottom: 16rpx; }
-.activity-card__body { display: flex; flex-direction: column; }
+.filter-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12rpx 24rpx;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 26rpx;
+  font-weight: 500;
+  border-radius: 24rpx;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  border: 1rpx solid transparent;
+}
 
-.btn--small { padding: 12rpx 24rpx; font-size: 24rpx; border-radius: 24rpx; }
-.icon-text { font-size: 28rpx; color: #4b5563; }
+.filter-tab:active {
+  transform: scale(0.96);
+}
+
+.filter-tab--active {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #ffffff;
+  box-shadow: 0 4rpx 12rpx rgba(59, 130, 246, 0.25);
+  border-color: transparent;
+}
+
+/* 内容区域 */
+.content-section {
+  flex: 1;
+  padding: 24rpx;
+  padding-bottom: 0;
+}
+
+/* 活动卡片 */
+.activity-card {
+  padding: 24rpx;
+  margin-bottom: 24rpx;
+}
+
+.activity-card__header {
+  margin-bottom: 16rpx;
+}
+
+.activity-card__body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 按钮样式 */
+.btn--small {
+  padding: 12rpx 24rpx;
+  font-size: 24rpx;
+  border-radius: 24rpx;
+}
+
+.btn--registered {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 2rpx 8rpx rgba(16, 185, 129, 0.25);
+}
+
+.btn--registered:active {
+  background: linear-gradient(135deg, #059669, #047857);
+  transform: scale(0.96);
+}
+
+.icon-text {
+  font-size: 28rpx;
+  color: #4b5563;
+}

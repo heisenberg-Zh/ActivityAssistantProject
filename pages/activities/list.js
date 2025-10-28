@@ -1,5 +1,5 @@
 // pages/activities/list.js
-const { activities } = require('../../utils/mock.js');
+const { activities, registrations } = require('../../utils/mock.js');
 
 const filters = [
   { key: 'all', name: '全部', active: true },
@@ -16,8 +16,24 @@ Page({
     keyword: '',
     filters,
     activeFilter: 'all',
-    list: activities,
-    filtered: activities
+    list: [],
+    filtered: []
+  },
+
+  onLoad() {
+    // 为活动列表添加已报名状态
+    const currentUserId = 'u1'; // 应从登录态获取
+    const enrichedActivities = activities.map(activity => {
+      const isRegistered = registrations.some(
+        r => r.activityId === activity.id && r.userId === currentUserId && r.status !== 'cancelled'
+      );
+      return { ...activity, isRegistered };
+    });
+
+    this.setData({
+      list: enrichedActivities,
+      filtered: enrichedActivities
+    });
   },
 
   onSearchInput(e) {
@@ -63,6 +79,12 @@ Page({
   goRegister(e) {
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({ url: `/pages/registration/index?id=${id}` });
+  },
+
+  onRegisteredClick(e) {
+    const id = e.currentTarget.dataset.id;
+    // 已报名的活动，点击后跳转到详情页
+    wx.navigateTo({ url: `/pages/activities/detail?id=${id}` });
   },
 
   goBack() {
