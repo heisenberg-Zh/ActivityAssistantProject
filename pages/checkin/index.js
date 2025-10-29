@@ -9,6 +9,7 @@ Page({
   data: {
     activityId: '',
     activity: null,
+    activityStatusClass: '', // 活动状态的CSS类名
     checked: false,
     checkTime: '',
     currentLocation: null,
@@ -21,6 +22,17 @@ Page({
     checkedCount: 0,
     progress: 0,
     loading: false
+  },
+
+  // 状态映射函数
+  getStatusClass(status) {
+    const statusMap = {
+      '进行中': 'status-ongoing',
+      '已结束': 'status-finished',
+      '未开始': 'status-upcoming',
+      '报名中': 'status-ongoing'
+    };
+    return statusMap[status] || 'status-ongoing';
   },
 
   onLoad(options) {
@@ -40,7 +52,13 @@ Page({
         return;
       }
 
-      this.setData({ activity });
+      // 获取状态对应的CSS类名
+      const activityStatusClass = this.getStatusClass(activity.status);
+
+      this.setData({
+        activity,
+        activityStatusClass
+      });
 
       // 检查是否在签到时间窗口内
       const inWindow = isInCheckinWindow(activity.startTime, 30);

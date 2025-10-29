@@ -46,3 +46,65 @@
 
   <view class="bottom-space"></view>
 </view>
+
+<!-- 评价弹窗 -->
+<view class="review-modal {{showReviewModal ? 'review-modal--show' : ''}}" catchtap="closeReviewModal">
+  <view class="review-modal__content" catchtap="preventClose">
+    <!-- 弹窗头部 -->
+    <view class="review-modal__header">
+      <text class="review-modal__title">活动评价</text>
+      <view class="review-modal__close" catchtap="closeReviewModal">
+        <text class="review-modal__close-icon">✕</text>
+      </view>
+    </view>
+
+    <!-- 活动名称 -->
+    <view class="review-modal__activity">
+      <text class="review-modal__activity-label">活动名称</text>
+      <text class="review-modal__activity-name">{{currentActivityTitle}}</text>
+    </view>
+
+    <!-- 星级评分 -->
+    <view class="review-modal__rating-section">
+      <text class="review-modal__section-title">满意度评分</text>
+      <view class="review-stars">
+        <block wx:for="{{[1,2,3,4,5]}}" wx:key="*this">
+          <view
+            class="star-item"
+            data-star="{{item}}"
+            bindtap="onStarTap"
+            bindtouchstart="onStarTouchStart"
+            bindtouchend="onStarTouchEnd"
+          >
+            <text class="star-icon {{(hoverRating > 0 ? hoverRating : rating) >= item ? 'star-filled' : 'star-empty'}}">★</text>
+          </view>
+        </block>
+      </view>
+      <text class="review-rating-text">
+        {{rating === 0 ? '请点击星星打分' : (rating === 5 ? '非常满意' : (rating === 4 ? '比较满意' : (rating === 3 ? '一般' : (rating === 2 ? '不太满意' : '很不满意'))))}}
+      </text>
+    </view>
+
+    <!-- 文字评价 -->
+    <view class="review-modal__text-section">
+      <text class="review-modal__section-title">意见和建议（选填）</text>
+      <textarea
+        class="review-textarea"
+        placeholder="请分享您对本次活动的感受和建议..."
+        maxlength="500"
+        value="{{reviewText}}"
+        bindinput="onReviewInput"
+        placeholder-class="review-textarea-placeholder"
+      />
+      <view class="review-textarea-counter">
+        <text class="counter-text">{{reviewText.length}}/500</text>
+      </view>
+    </view>
+
+    <!-- 提交按钮 -->
+    <view class="review-modal__actions">
+      <button class="review-cancel-btn" catchtap="closeReviewModal">取消</button>
+      <button class="review-submit-btn" catchtap="submitReview">提交评价</button>
+    </view>
+  </view>
+</view>
