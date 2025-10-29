@@ -23,11 +23,12 @@ page {
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 8rpx 20rpx;
+  padding: 10rpx 22rpx;
   border-radius: 9999rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   font-weight: 500;
   transition: all 0.2s ease;
+  line-height: 1;
 }
 
 .badge--light { background: rgba(255,255,255,0.92); color: #1f2937; backdrop-filter: blur(8rpx); }
@@ -40,12 +41,13 @@ page {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 16rpx 32rpx;
+  padding: 18rpx 36rpx;
   border-radius: 28rpx;
-  font-size: 26rpx;
+  font-size: 28rpx;
   font-weight: 600;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  line-height: 1;
 }
 
 .btn:active {
@@ -87,12 +89,13 @@ page {
 .row-around { display: flex; align-items: center; justify-content: space-around; }
 .gap-8 { gap: 8rpx; } .gap-12 { gap: 12rpx; } .gap-16 { gap: 16rpx; } .gap-20 { gap: 20rpx; }
 
-.text-sm { font-size: 24rpx; color: #6b7280; }
-.text-md { font-size: 28rpx; color: #374151; }
-.text-lg { font-size: 32rpx; color: #111827; }
-.title { font-size: 36rpx; font-weight: 700; color: #111827; }
+/* 优化后的字体大小系统 - 提升可读性 */
+.text-sm { font-size: 26rpx; color: #6b7280; line-height: 1.5; }
+.text-md { font-size: 30rpx; color: #374151; line-height: 1.5; }
+.text-lg { font-size: 34rpx; color: #111827; font-weight: 500; line-height: 1.4; }
+.title { font-size: 38rpx; font-weight: 700; color: #111827; line-height: 1.3; }
 
-.subtitle { font-size: 24rpx; color: #6b7280; }
+.subtitle { font-size: 26rpx; color: #6b7280; line-height: 1.5; }
 
 .mt-8 { margin-top: 8rpx; } .mt-12 { margin-top: 12rpx; } .mt-16 { margin-top: 16rpx; } .mt-24 { margin-top: 24rpx; } .mt-32 { margin-top: 32rpx; }
 .mb-8 { margin-bottom: 8rpx; } .mb-12 { margin-bottom: 12rpx; } .mb-16 { margin-bottom: 16rpx; } .mb-24 { margin-bottom: 24rpx; } .mb-32 { margin-bottom: 32rpx; }
@@ -159,10 +162,10 @@ page {
 .text-center { text-align: center; }
 .text-right { text-align: right; }
 
-.text-xs { font-size: 20rpx; color: #6b7280; }
-.text-base { font-size: 28rpx; color: #374151; }
-.text-xl { font-size: 40rpx; font-weight: 700; color: #111827; }
-.text-2xl { font-size: 44rpx; font-weight: 700; color: #111827; }
+.text-xs { font-size: 24rpx; color: #6b7280; line-height: 1.5; }
+.text-base { font-size: 30rpx; color: #374151; line-height: 1.5; }
+.text-xl { font-size: 42rpx; font-weight: 700; color: #111827; line-height: 1.3; }
+.text-2xl { font-size: 46rpx; font-weight: 700; color: #111827; line-height: 1.2; }
 .text-gray-400 { color: #9ca3af; }
 .text-gray-500 { color: #6b7280; }
 .text-gray-600 { color: #4b5563; }
@@ -292,4 +295,4 @@ page {
 }
 
 .badge + .badge { margin-left: 12rpx; }
-.btn--small { padding: 12rpx 24rpx; font-size: 24rpx; border-radius: 24rpx; }
+.btn--small { padding: 14rpx 28rpx; font-size: 26rpx; border-radius: 24rpx; }

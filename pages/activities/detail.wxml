@@ -22,42 +22,42 @@
 
     <view class="info-list">
       <view class="info-item">
-        <view class="info-item__icon" style="background:#DBEAFE; color:#1d4ed8;">时</view>
+        <view class="info-item__icon" style="background:#DBEAFE; color:#1d4ed8;">🕐</view>
         <view class="flex-col info-item__body">
-          <text class="text-md text-gray-800">活动时间</text>
-          <text class="text-sm text-gray-500">{{detail.timeRange}}</text>
-          <text class="text-xs text-gray-400">报名截止：{{extra.deadline}}</text>
+          <text class="info-label">活动时间</text>
+          <text class="info-value">{{detail.timeRange}}</text>
+          <text class="info-hint">报名截止：{{extra.deadline}}</text>
         </view>
       </view>
       <view class="info-item">
-        <view class="info-item__icon" style="background:#DCFCE7; color:#047857;">地</view>
+        <view class="info-item__icon" style="background:#DCFCE7; color:#047857;">📍</view>
         <view class="flex-col info-item__body">
-          <text class="text-md text-gray-800">活动地点</text>
-          <text class="text-sm text-gray-500">{{detail.place}}</text>
-          <text class="text-xs text-gray-400">{{extra.addressDetail}}</text>
+          <text class="info-label">活动地点</text>
+          <text class="info-value">{{detail.place}}</text>
+          <text class="info-hint">{{extra.addressDetail}}</text>
         </view>
       </view>
       <view class="info-item">
-        <view class="info-item__icon" style="background:#FDE68A; color:#B45309;">员</view>
+        <view class="info-item__icon" style="background:#FDE68A; color:#B45309;">👥</view>
         <view class="flex-col info-item__body">
-          <text class="text-md text-gray-800">参与人数</text>
-          <text class="text-sm text-gray-500">{{detail.joined}} / {{detail.total}}</text>
+          <text class="info-label">参与人数</text>
+          <text class="info-value">{{detail.joined}} / {{detail.total}} 人</text>
           <view class="progress mt-12"><view class="bar" style="width: {{progress}}%"></view></view>
         </view>
       </view>
       <view class="info-item">
-        <view class="info-item__icon" style="background:#E0E7FF; color:#4338CA;">费</view>
+        <view class="info-item__icon" style="background:#E0E7FF; color:#4338CA;">💰</view>
         <view class="flex-col info-item__body">
-          <text class="text-md text-gray-800">活动费用</text>
-          <text class="text-sm text-gray-500">{{extra.feeInfo}}</text>
+          <text class="info-label">活动费用</text>
+          <text class="info-value">{{extra.feeInfo}}</text>
         </view>
       </view>
       <view class="info-item">
-        <view class="info-item__icon" style="background:#FEF3C7; color:#D97706;">码</view>
+        <view class="info-item__icon" style="background:#FEF3C7; color:#D97706;">🔖</view>
         <view class="flex-col info-item__body">
-          <text class="text-md text-gray-800">活动编号</text>
-          <text class="text-sm text-gray-500">{{detail.id}}</text>
-          <text class="text-xs text-gray-400">活动唯一标识</text>
+          <text class="info-label">活动编号</text>
+          <text class="info-value">{{detail.id}}</text>
+          <text class="info-hint">活动唯一标识</text>
         </view>
       </view>
     </view>

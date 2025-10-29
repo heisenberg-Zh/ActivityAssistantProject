@@ -109,12 +109,7 @@
   flex-direction: column;
 }
 
-/* 按钮样式 */
-.btn--small {
-  padding: 12rpx 24rpx;
-  font-size: 24rpx;
-  border-radius: 24rpx;
-}
+/* 按钮样式 - 使用全局样式 */
 
 .btn--registered {
   background: linear-gradient(135deg, #10b981, #059669);

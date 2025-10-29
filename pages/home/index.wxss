@@ -28,8 +28,9 @@
 
 .quick-desc {
   margin-top: 12rpx;
-  font-size: 24rpx;
+  font-size: 26rpx;
   color: #6b7280;
+  line-height: 1.5;
   display: block;
 }
 
@@ -100,7 +101,7 @@
   box-shadow: 0 12rpx 40rpx rgba(0, 0, 0, 0.15);
 }
 
-.btn--small { padding: 12rpx 24rpx; font-size: 24rpx; border-radius: 24rpx; }
+/* 使用全局的 btn--small 样式 */
 .icon-text { font-size: 28rpx; color: #ffffff; }
 
 .icon-btn--hero {

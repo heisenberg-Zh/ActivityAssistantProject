@@ -8,7 +8,7 @@ const {
   getNameInitial,
   getAvatarColor
 } = require('../../utils/formatter.js');
-const { formatDateCN, getRelativeTime } = require('../../utils/datetime.js');
+const { formatDateCN, getRelativeTime, isBeforeRegisterDeadline } = require('../../utils/datetime.js');
 const { openMapNavigation } = require('../../utils/location.js');
 
 Page({
@@ -135,15 +135,26 @@ Page({
 
   // 跳转报名页
   goRegister() {
-    const { id, canRegister, isRegistered } = this.data;
+    const { id, canRegister, isRegistered, detail } = this.data;
 
     if (isRegistered) {
       wx.showToast({ title: '您已报名', icon: 'none' });
       return;
     }
 
+    // 校验报名截止时间
+    const deadlineCheck = isBeforeRegisterDeadline(detail.registerDeadline);
+    if (!deadlineCheck.valid) {
+      wx.showToast({
+        title: deadlineCheck.message,
+        icon: 'none',
+        duration: 2500
+      });
+      return;
+    }
+
     if (!canRegister) {
-      wx.showToast({ title: '报名已截止或已满员', icon: 'none' });
+      wx.showToast({ title: '活动已满员', icon: 'none' });
       return;
     }
 
@@ -152,7 +163,19 @@ Page({
 
   // 取消报名
   cancelRegistration() {
-    const { id } = this.data;
+    const { id, detail } = this.data;
+
+    // 校验报名截止时间
+    const deadlineCheck = isBeforeRegisterDeadline(detail.registerDeadline);
+    if (!deadlineCheck.valid) {
+      wx.showModal({
+        title: '无法取消报名',
+        content: deadlineCheck.message + '\n\n报名截止后不支持取消报名操作，如有问题请联系活动组织者。',
+        showCancel: false,
+        confirmText: '我知道了'
+      });
+      return;
+    }
 
     wx.showModal({
       title: '确认取消报名',

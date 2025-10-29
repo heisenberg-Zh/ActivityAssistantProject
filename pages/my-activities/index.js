@@ -1,5 +1,6 @@
 // pages/my-activities/index.js
 const { activities } = require('../../utils/mock.js');
+const { isBeforeRegisterDeadline } = require('../../utils/datetime.js');
 
 const dataset = [
   Object.assign({}, activities[0], {
@@ -36,7 +37,7 @@ const dataset = [
     banner: 'purple',
     actions: [
       { label: '评价', action: 'review', type: 'primary' },
-      { label: '回顾', action: 'timeline', type: 'secondary' }
+      { label: '详情', action: 'detail', type: 'secondary' }
     ]
   })
 ];
@@ -53,7 +54,14 @@ Page({
     filters,
     activeFilter: 'all',
     list: dataset,
-    display: dataset
+    display: dataset,
+    // 评价弹窗相关
+    showReviewModal: false,
+    currentActivityId: '',
+    currentActivityTitle: '',
+    rating: 0,
+    reviewText: '',
+    hoverRating: 0
   },
 
   onFilterTap(e) {
@@ -101,10 +109,10 @@ Page({
         this.cancelRegistration(id);
         break;
       case 'review':
-        wx.showToast({ title: '请填写评价', icon: 'none' });
+        this.openReviewModal(id);
         break;
-      case 'timeline':
-        wx.showToast({ title: '打开活动回顾', icon: 'none' });
+      case 'detail':
+        wx.navigateTo({ url: `/pages/activities/detail?id=${id}` });
         break;
       default:
         wx.showToast({ title: '功能开发中', icon: 'none' });
@@ -113,6 +121,25 @@ Page({
 
   // 取消报名
   cancelRegistration(id) {
+    // 找到对应的活动
+    const activity = this.data.display.find(item => item.id === id);
+    if (!activity) {
+      wx.showToast({ title: '活动不存在', icon: 'none' });
+      return;
+    }
+
+    // 校验报名截止时间
+    const deadlineCheck = isBeforeRegisterDeadline(activity.registerDeadline);
+    if (!deadlineCheck.valid) {
+      wx.showModal({
+        title: '无法取消报名',
+        content: deadlineCheck.message + '\n\n报名截止后不支持取消报名操作，如有问题请联系活动组织者。',
+        showCancel: false,
+        confirmText: '我知道了'
+      });
+      return;
+    }
+
     wx.showModal({
       title: '确认取消报名',
       content: '确定要取消报名吗？取消后需要重新报名才能参加活动。',
@@ -155,5 +182,99 @@ Page({
     if (getCurrentPages().length > 1) {
       wx.navigateBack({ delta: 1 });
     }
+  },
+
+  // 打开评价弹窗
+  openReviewModal(id) {
+    const activity = this.data.display.find(item => item.id === id);
+    if (!activity) return;
+
+    this.setData({
+      showReviewModal: true,
+      currentActivityId: id,
+      currentActivityTitle: activity.title,
+      rating: 0,
+      reviewText: '',
+      hoverRating: 0
+    });
+  },
+
+  // 关闭评价弹窗
+  closeReviewModal() {
+    this.setData({
+      showReviewModal: false,
+      currentActivityId: '',
+      currentActivityTitle: '',
+      rating: 0,
+      reviewText: '',
+      hoverRating: 0
+    });
+  },
+
+  // 阻止弹窗内容区域的点击事件冒泡
+  preventClose() {
+    // 空函数，仅用于阻止事件冒泡
+  },
+
+  // 点击星星评分
+  onStarTap(e) {
+    const star = e.currentTarget.dataset.star;
+    this.setData({ rating: star });
+  },
+
+  // 星星悬停效果（触摸开始）
+  onStarTouchStart(e) {
+    const star = e.currentTarget.dataset.star;
+    this.setData({ hoverRating: star });
+  },
+
+  // 星星悬停效果（触摸结束）
+  onStarTouchEnd() {
+    this.setData({ hoverRating: 0 });
+  },
+
+  // 输入评价文字
+  onReviewInput(e) {
+    this.setData({ reviewText: e.detail.value });
+  },
+
+  // 提交评价
+  submitReview() {
+    const { rating, reviewText, currentActivityId, currentActivityTitle } = this.data;
+
+    // 验证评分
+    if (rating === 0) {
+      wx.showToast({ title: '请先打分', icon: 'none' });
+      return;
+    }
+
+    // 评价文字可选，但如果填写了需要至少5个字
+    if (reviewText.trim() && reviewText.trim().length < 5) {
+      wx.showToast({ title: '评价至少5个字', icon: 'none' });
+      return;
+    }
+
+    wx.showLoading({ title: '提交中...' });
+
+    // 模拟提交评价
+    setTimeout(() => {
+      wx.hideLoading();
+      wx.showToast({
+        title: '评价成功',
+        icon: 'success',
+        duration: 2000
+      });
+
+      // 关闭弹窗
+      this.closeReviewModal();
+
+      // 这里可以调用后端API保存评价
+      console.log('提交评价:', {
+        activityId: currentActivityId,
+        activityTitle: currentActivityTitle,
+        rating,
+        review: reviewText.trim()
+      });
+    }, 1000);
   }
 });

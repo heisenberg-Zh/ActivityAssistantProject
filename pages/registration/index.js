@@ -3,14 +3,46 @@ const { activities, registrations } = require('../../utils/mock.js');
 const { registrationAPI } = require('../../utils/api.js');
 const { validateRegistrationForm } = require('../../utils/validator.js');
 const { formatMobile, formatMoney, getAvatarColor } = require('../../utils/formatter.js');
-const { formatDateCN } = require('../../utils/datetime.js');
+const { formatDateCN, isBeforeRegisterDeadline } = require('../../utils/datetime.js');
 
-const defaultGuidelines = [
-  '请确认能够按时参加活动',
-  '如需取消请提前2小时联系组织者',
-  '活动开始前30分钟可到现场签到',
-  '请保持手机畅通，及时接收活动通知'
-];
+// 生成温馨提示
+const generateGuidelines = (detail) => {
+  const guidelines = [];
+
+  // 审核提示
+  if (detail.needReview) {
+    guidelines.push('本活动需要审核，报名后请耐心等待审核通过');
+  } else {
+    guidelines.push('报名提交后立即生效，请确认信息准确无误');
+  }
+
+  // 截止时间提示
+  guidelines.push('报名截止时间后将无法取消报名，请谨慎操作');
+
+  // 签到提示
+  guidelines.push('活动开始前后30分钟内可进行现场签到');
+  guidelines.push('签到需在活动地点范围内（通常为50-500米）');
+
+  // 联系方式提示
+  guidelines.push('请确保填写的联系方式准确，以便接收活动通知');
+
+  // 费用提示
+  if (detail.feeType === 'AA') {
+    guidelines.push('本活动AA制，费用活动现场结算，请准备现金或电子支付');
+  } else if (detail.feeType !== '免费') {
+    guidelines.push(`本活动收费${formatMoney(detail.fee)}/人，请提前做好缴费准备`);
+  }
+
+  // 名额紧张提示
+  if (detail.joined >= detail.total * 0.8) {
+    guidelines.push('活动名额有限，报名从速，先到先得');
+  }
+
+  // 取消提示
+  guidelines.push('如因特殊原因无法参加，请及时联系组织者');
+
+  return guidelines;
+};
 
 Page({
   data: {
@@ -19,7 +51,7 @@ Page({
     deadline: '',
     progress: 0,
     feeInfo: '',
-    guidelines: defaultGuidelines,
+    guidelines: [],
     participants: [],
     customFields: [], // 动态字段配置
     formData: {}, // 动态表单数据
@@ -55,10 +87,8 @@ Page({
         feeInfo = `本次活动费用${formatMoney(detail.fee)}/人`;
       }
 
-      // 生成指引
-      const guidelines = detail.requirements
-        ? [detail.requirements, ...defaultGuidelines]
-        : defaultGuidelines;
+      // 生成指引（温馨提示）
+      const guidelines = generateGuidelines(detail);
 
       // 检查是否已满员
       const isFull = detail.joined >= detail.total;
@@ -212,6 +242,18 @@ Page({
   cancelRegistration() {
     const { id, detail } = this.data;
 
+    // 校验报名截止时间
+    const deadlineCheck = isBeforeRegisterDeadline(detail.registerDeadline);
+    if (!deadlineCheck.valid) {
+      wx.showModal({
+        title: '无法取消报名',
+        content: deadlineCheck.message + '\n\n报名截止后不支持取消报名操作，如有问题请联系活动组织者。',
+        showCancel: false,
+        confirmText: '我知道了'
+      });
+      return;
+    }
+
     wx.showModal({
       title: '确认取消报名',
       content: '确定要取消报名吗？取消后需要重新报名才能参加活动。',
@@ -254,6 +296,17 @@ Page({
     // 检查是否已报名
     if (isRegistered) {
       wx.showToast({ title: '您已报名，请勿重复报名', icon: 'none' });
+      return;
+    }
+
+    // 校验报名截止时间
+    const deadlineCheck = isBeforeRegisterDeadline(detail.registerDeadline);
+    if (!deadlineCheck.valid) {
+      wx.showToast({
+        title: deadlineCheck.message,
+        icon: 'none',
+        duration: 2500
+      });
       return;
     }
 

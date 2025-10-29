@@ -90,15 +90,23 @@
 
     <!-- 费用和提示 -->
     <view class="info-cards">
+      <!-- 报名要求 -->
+      <view wx:if="{{detail.requirements}}" class="info-tip-card info-tip-card--orange">
+        <text class="info-tip-title">⚠️ 报名要求</text>
+        <text class="info-tip-text">{{detail.requirements}}</text>
+      </view>
+
+      <!-- 费用说明 -->
       <view class="info-tip-card info-tip-card--blue">
         <text class="info-tip-title">💰 费用说明</text>
         <text class="info-tip-text">{{feeInfo}}</text>
       </view>
 
+      <!-- 温馨提示 -->
       <view class="info-tip-card info-tip-card--gray">
         <text class="info-tip-title">📌 温馨提示</text>
         <view class="info-tip-list">
-          <block wx:for="{{guidelines}}" wx:key="text" wx:for-item="tip">
+          <block wx:for="{{guidelines}}" wx:key="index" wx:for-item="tip">
             <text class="info-tip-item">• {{tip}}</text>
           </block>
         </view>

@@ -132,6 +132,58 @@ const parseDateTime = (dateStr, timeStr) => {
   return date;
 };
 
+// 检查是否在报名截止时间内
+const isBeforeRegisterDeadline = (registerDeadline) => {
+  if (!registerDeadline) {
+    // 如果没有设置截止时间，默认允许报名
+    return { valid: true, message: '' };
+  }
+
+  const now = new Date();
+  const deadline = new Date(registerDeadline);
+
+  if (isNaN(deadline.getTime())) {
+    // 时间格式错误，默认允许
+    return { valid: true, message: '' };
+  }
+
+  if (now > deadline) {
+    // 已超过截止时间
+    const deadlineStr = formatDateCN(registerDeadline);
+    return {
+      valid: false,
+      message: `报名已截止（截止时间：${deadlineStr}）`
+    };
+  }
+
+  return { valid: true, message: '' };
+};
+
+// 获取距离截止时间的友好提示
+const getDeadlineHint = (registerDeadline) => {
+  if (!registerDeadline) return '';
+
+  const now = new Date();
+  const deadline = new Date(registerDeadline);
+  const diff = deadline.getTime() - now.getTime();
+
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (diff < 0) {
+    return '已截止';
+  } else if (diff < hour) {
+    return `还剩${Math.floor(diff / minute)}分钟`;
+  } else if (diff < day) {
+    return `还剩${Math.floor(diff / hour)}小时`;
+  } else if (diff < 7 * day) {
+    return `还剩${Math.floor(diff / day)}天`;
+  }
+
+  return formatDateCN(registerDeadline);
+};
+
 module.exports = {
   formatDateTime,
   formatDateCN,
@@ -141,5 +193,7 @@ module.exports = {
   getTimeDiffMinutes,
   isLate,
   generateTimeOptions,
-  parseDateTime
+  parseDateTime,
+  isBeforeRegisterDeadline,
+  getDeadlineHint
 };
