@@ -337,3 +337,168 @@
 
 .fixed-footer { position: fixed; left: 0; right: 0; bottom: 0; background: #ffffff; border-top: 1px solid #e5e7eb; padding: 16rpx 24rpx; display: flex; gap: 16rpx; }
 .footer-btn { flex: 1; }
+
+/* 返回选择分组按钮 */
+.back-to-selection {
+  font-size: 24rpx;
+  color: #3b82f6;
+  margin-top: 8rpx;
+  display: inline-block;
+}
+
+/* 分组选择界面 */
+.group-selection-section {
+  padding: 32rpx 24rpx;
+  min-height: 80vh;
+}
+
+.section-header {
+  margin-bottom: 32rpx;
+  text-align: center;
+}
+
+.section-title-large {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #111827;
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+.section-subtitle {
+  font-size: 26rpx;
+  color: #6b7280;
+  display: block;
+  line-height: 1.6;
+}
+
+.groups-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.group-card {
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  box-shadow: 0 4rpx 20rpx rgba(15, 23, 42, 0.08);
+  border: 3rpx solid transparent;
+  transition: all 0.3s ease;
+}
+
+.group-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 2rpx 10rpx rgba(15, 23, 42, 0.1);
+}
+
+.group-card--full {
+  opacity: 0.6;
+  background: #f9fafb;
+}
+
+.group-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16rpx;
+}
+
+.group-card-name {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #111827;
+  flex: 1;
+}
+
+.group-card-status {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.group-card-count {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #3b82f6;
+}
+
+.group-card-count--full {
+  color: #9ca3af;
+}
+
+.group-card-full-badge {
+  padding: 4rpx 12rpx;
+  background: #fee2e2;
+  color: #ef4444;
+  border-radius: 9999rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+.group-card-desc {
+  margin-bottom: 16rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid #f3f4f6;
+}
+
+.group-card-info {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-bottom: 16rpx;
+}
+
+.group-info-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.info-icon {
+  font-size: 28rpx;
+}
+
+.info-text {
+  font-size: 26rpx;
+  color: #374151;
+  font-weight: 500;
+}
+
+.group-card-requirements {
+  padding: 16rpx;
+  background: #fffbeb;
+  border-radius: 12rpx;
+  border-left: 4rpx solid #f59e0b;
+  margin-bottom: 16rpx;
+}
+
+.requirements-label {
+  font-size: 24rpx;
+  color: #92400e;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 6rpx;
+}
+
+.requirements-text {
+  font-size: 24rpx;
+  color: #78350f;
+  line-height: 1.6;
+}
+
+.group-card-action {
+  text-align: center;
+  padding-top: 12rpx;
+  border-top: 1rpx solid #f3f4f6;
+}
+
+.action-text {
+  font-size: 28rpx;
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.group-card--full .action-text {
+  color: #9ca3af;
+}

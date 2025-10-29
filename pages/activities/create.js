@@ -15,15 +15,18 @@ Page({
       { index: 1, label: '基本信息', active: true, completed: false },
       { index: 2, label: '时间设置', active: false, completed: false },
       { index: 3, label: '地点设置', active: false, completed: false },
-      { index: 4, label: '人数配置', active: false, completed: false },
-      { index: 5, label: '展示字段', active: false, completed: false },
-      { index: 6, label: '发布预览', active: false, completed: false }
+      { index: 4, label: '人数设置', active: false, completed: false },
+      { index: 5, label: '报名信息', active: false, completed: false },
+      { index: 6, label: '活动说明', active: false, completed: false },
+      { index: 7, label: '发布预览', active: false, completed: false }
     ],
     form: {
       title: '',
       desc: '',
       type: '',
       typeIndex: 0,
+      hasGroups: false, // 是否启用分组
+      groupCount: 2, // 分组数量（2-5）
       startDate: '',
       startTime: '09:00',
       endDate: '',
@@ -37,12 +40,13 @@ Page({
       checkinRadius: 500,
       total: 20,
       minParticipants: 5,
-      fee: 0,
-      feeType: '免费',
-      needReview: false,
-      requirements: ''
+      needReview: false
     },
-    customFields: [
+    // 分组配置
+    groups: [],
+    currentGroupIndex: 0, // 当前正在配置的分组索引
+    // 默认的自定义字段（用于无分组或复制到分组）
+    defaultCustomFields: [
       { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
       { id: 'mobile', label: '手机号', required: false, desc: '用于联系参与者', isCustom: false }
     ],
@@ -69,7 +73,7 @@ Page({
 
   // 验证当前步骤
   validateCurrentStep() {
-    const { currentStep, form } = this.data;
+    const { currentStep, form, groups } = this.data;
 
     switch (currentStep) {
       case 1: // 基本信息
@@ -80,6 +84,25 @@ Page({
         if (!form.type) {
           wx.showToast({ title: '请选择活动类型', icon: 'none' });
           return false;
+        }
+        // 验证分组配置
+        if (form.hasGroups) {
+          const count = parseInt(form.groupCount);
+          if (isNaN(count) || count < 2 || count > 5) {
+            wx.showToast({ title: '分组数量必须在2-5之间', icon: 'none' });
+            return false;
+          }
+          if (groups.length !== count) {
+            wx.showToast({ title: '请完成分组配置', icon: 'none' });
+            return false;
+          }
+          // 验证分组名称
+          for (let i = 0; i < groups.length; i++) {
+            if (!groups[i].name || groups[i].name.trim().length === 0) {
+              wx.showToast({ title: `请输入分组${i + 1}的名称`, icon: 'none' });
+              return false;
+            }
+          }
         }
         break;
 
@@ -233,7 +256,119 @@ Page({
 
   onSwitch(e) {
     const field = e.currentTarget.dataset.field;
-    this.setData({ [`form.${field}`]: e.detail.value });
+
+    // 特殊处理 hasGroups 切换
+    if (field === 'hasGroups') {
+      const hasGroups = e.detail.value;
+      this.setData({ 'form.hasGroups': hasGroups });
+
+      if (hasGroups) {
+        // 启用分组时，初始化分组数据
+        this.initGroups(this.data.form.groupCount || 2);
+      } else {
+        // 关闭分组时，清空分组数据
+        this.setData({ groups: [] });
+      }
+    } else {
+      this.setData({ [`form.${field}`]: e.detail.value });
+    }
+  },
+
+  // 分组数量改变
+  onGroupCountChange(e) {
+    const count = parseInt(e.detail.value) || 2;
+    this.setData({ 'form.groupCount': count });
+
+    // 如果已启用分组，重新初始化分组
+    if (this.data.form.hasGroups) {
+      this.initGroups(count);
+    }
+  },
+
+  // 初始化分组数据
+  initGroups(count) {
+    const groups = [];
+    for (let i = 0; i < count; i++) {
+      groups.push({
+        id: `g${i + 1}`,
+        name: this.data.groups[i]?.name || `分组${i + 1}`, // 保留已有的名称
+        total: this.data.groups[i]?.total || 10,
+        fee: this.data.groups[i]?.fee || 0,
+        feeType: this.data.groups[i]?.feeType || '免费',
+        requirements: this.data.groups[i]?.requirements || '',
+        description: this.data.groups[i]?.description || '',
+        customFields: this.data.groups[i]?.customFields || JSON.parse(JSON.stringify(this.data.defaultCustomFields))
+      });
+    }
+    this.setData({ groups, currentGroupIndex: 0 });
+  },
+
+  // 分组名称输入
+  onGroupNameInput(e) {
+    const index = e.currentTarget.dataset.index;
+    const value = e.detail.value;
+    this.setData({ [`groups[${index}].name`]: value });
+  },
+
+  // 切换当前配置的分组
+  switchGroup(e) {
+    const index = e.currentTarget.dataset.index;
+    this.setData({ currentGroupIndex: index });
+  },
+
+  // 复制首组信息到当前分组
+  copyFirstGroup() {
+    const { groups, currentGroupIndex } = this.data;
+
+    if (currentGroupIndex === 0) {
+      wx.showToast({ title: '当前已是首组', icon: 'none' });
+      return;
+    }
+
+    if (groups.length === 0) {
+      return;
+    }
+
+    const firstGroup = groups[0];
+    const currentGroup = groups[currentGroupIndex];
+
+    // 复制首组的配置（保留当前组的名称）
+    const updatedGroup = {
+      ...currentGroup,
+      total: firstGroup.total,
+      fee: firstGroup.fee,
+      feeType: firstGroup.feeType,
+      requirements: firstGroup.requirements,
+      description: firstGroup.description,
+      customFields: JSON.parse(JSON.stringify(firstGroup.customFields))
+    };
+
+    this.setData({ [`groups[${currentGroupIndex}]`]: updatedGroup });
+    wx.showToast({ title: '已复制首组信息', icon: 'success' });
+  },
+
+  // 分组字段输入（用于人数、费用等）
+  onGroupFieldInput(e) {
+    const { field, index } = e.currentTarget.dataset;
+    const value = e.detail.value;
+    this.setData({ [`groups[${index}].${field}`]: value });
+  },
+
+  onGroupFieldInputNumber(e) {
+    const { field, index } = e.currentTarget.dataset;
+    const value = parseInt(e.detail.value || '0', 10) || 0;
+    this.setData({ [`groups[${index}].${field}`]: value });
+  },
+
+  // 分组费用类型改变
+  onGroupFeeTypeChange(e) {
+    const index = e.currentTarget.dataset.index;
+    const feeTypeIndex = Number(e.detail.value);
+    const feeType = this.data.feeTypes[feeTypeIndex];
+    this.setData({
+      [`groups[${index}].feeType`]: feeType,
+      [`groups[${index}].fee`]: feeType === '免费' ? 0 : this.data.groups[index].fee
+    });
   },
 
   // 开始时间改变
@@ -411,6 +546,8 @@ Page({
 
   // 添加自定义字段
   addField() {
+    const { form, groups, currentGroupIndex } = this.data;
+
     // 第一步：输入字段名称
     wx.showModal({
       title: '添加自定义字段',
@@ -426,8 +563,13 @@ Page({
             return;
           }
 
+          // 获取当前字段列表
+          const currentFields = form.hasGroups
+            ? groups[currentGroupIndex].customFields
+            : this.data.defaultCustomFields;
+
           // 检查是否已存在相同名称的字段
-          const exists = this.data.customFields.some(f => f.label === fieldLabel);
+          const exists = currentFields.some(f => f.label === fieldLabel);
           if (exists) {
             wx.showToast({ title: '该字段已存在', icon: 'none' });
             return;
@@ -454,10 +596,19 @@ Page({
                 isCustom: true
               };
 
-              this.setData({
-                customFields: [...this.data.customFields, newField],
-                nextFieldId: this.data.nextFieldId + 1
-              });
+              if (form.hasGroups) {
+                // 添加到当前分组
+                this.setData({
+                  [`groups[${currentGroupIndex}].customFields`]: [...currentFields, newField],
+                  nextFieldId: this.data.nextFieldId + 1
+                });
+              } else {
+                // 添加到默认字段
+                this.setData({
+                  defaultCustomFields: [...currentFields, newField],
+                  nextFieldId: this.data.nextFieldId + 1
+                });
+              }
 
               wx.showToast({
                 title: `已添加"${fieldLabel}"`,
@@ -473,32 +624,63 @@ Page({
   // 切换字段必填状态
   onFieldRequiredChange(e) {
     const fieldId = e.currentTarget.dataset.fieldId;
+    const groupIndex = e.currentTarget.dataset.groupIndex;
     const newValue = e.detail.value;
+    const { form, groups } = this.data;
 
-    const updatedFields = this.data.customFields.map(field => {
-      if (field.id === fieldId) {
-        return { ...field, required: newValue };
-      }
-      return field;
-    });
+    if (form.hasGroups && groupIndex >= 0) {
+      // 分组模式
+      const currentFields = groups[groupIndex].customFields;
+      const updatedFields = currentFields.map(field => {
+        if (field.id === fieldId) {
+          return { ...field, required: newValue };
+        }
+        return field;
+      });
 
-    this.setData({
-      customFields: updatedFields
-    });
+      this.setData({
+        [`groups[${groupIndex}].customFields`]: updatedFields
+      });
 
-    const field = updatedFields.find(f => f.id === fieldId);
-    wx.showToast({
-      title: `${field.label}已设为${newValue ? '必填' : '选填'}`,
-      icon: 'none'
-    });
+      const field = updatedFields.find(f => f.id === fieldId);
+      wx.showToast({
+        title: `${field.label}已设为${newValue ? '必填' : '选填'}`,
+        icon: 'none'
+      });
+    } else {
+      // 无分组模式
+      const updatedFields = this.data.defaultCustomFields.map(field => {
+        if (field.id === fieldId) {
+          return { ...field, required: newValue };
+        }
+        return field;
+      });
+
+      this.setData({
+        defaultCustomFields: updatedFields
+      });
+
+      const field = updatedFields.find(f => f.id === fieldId);
+      wx.showToast({
+        title: `${field.label}已设为${newValue ? '必填' : '选填'}`,
+        icon: 'none'
+      });
+    }
   },
 
   // 删除自定义字段
   deleteField(e) {
     const fieldId = e.currentTarget.dataset.fieldId;
+    const groupIndex = e.currentTarget.dataset.groupIndex;
+    const { form, groups } = this.data;
 
     // 查找字段
-    const field = this.data.customFields.find(f => f.id === fieldId);
+    let field;
+    if (form.hasGroups && groupIndex >= 0) {
+      field = groups[groupIndex].customFields.find(f => f.id === fieldId);
+    } else {
+      field = this.data.defaultCustomFields.find(f => f.id === fieldId);
+    }
 
     if (!field) {
       return;
@@ -512,12 +694,19 @@ Page({
       confirmColor: '#ef4444',
       success: (res) => {
         if (res.confirm) {
-          // 过滤掉要删除的字段
-          const updatedFields = this.data.customFields.filter(f => f.id !== fieldId);
-
-          this.setData({
-            customFields: updatedFields
-          });
+          if (form.hasGroups && groupIndex >= 0) {
+            // 分组模式
+            const updatedFields = groups[groupIndex].customFields.filter(f => f.id !== fieldId);
+            this.setData({
+              [`groups[${groupIndex}].customFields`]: updatedFields
+            });
+          } else {
+            // 无分组模式
+            const updatedFields = this.data.defaultCustomFields.filter(f => f.id !== fieldId);
+            this.setData({
+              defaultCustomFields: updatedFields
+            });
+          }
 
           wx.showToast({
             title: '已删除',
@@ -576,7 +765,7 @@ Page({
 
   // 发布活动
   async publish() {
-    const { form, canPublish } = this.data;
+    const { form, groups, defaultCustomFields, canPublish } = this.data;
 
     // 检查是否可以发布
     if (!canPublish) {
@@ -588,6 +777,24 @@ Page({
     if (!form.title || !form.type || !form.startDate || !form.place) {
       wx.showToast({ title: '请完善必填信息', icon: 'none' });
       return;
+    }
+
+    // 如果有分组，验证分组信息完整性
+    if (form.hasGroups) {
+      if (groups.length === 0) {
+        wx.showToast({ title: '请配置分组信息', icon: 'none' });
+        return;
+      }
+      for (let i = 0; i < groups.length; i++) {
+        if (!groups[i].name || groups[i].name.trim().length === 0) {
+          wx.showToast({ title: `请输入分组${i + 1}的名称`, icon: 'none' });
+          return;
+        }
+        if (!groups[i].total || groups[i].total <= 0) {
+          wx.showToast({ title: `请设置${groups[i].name}的人数上限`, icon: 'none' });
+          return;
+        }
+      }
     }
 
     // 组装提交数据
@@ -605,13 +812,27 @@ Page({
       latitude: form.latitude,
       longitude: form.longitude,
       checkinRadius: form.checkinRadius,
-      total: form.total,
-      minParticipants: form.minParticipants,
-      fee: form.fee,
-      feeType: form.feeType,
       needReview: form.needReview,
-      requirements: form.requirements
+      hasGroups: form.hasGroups
     };
+
+    // 分组配置
+    if (form.hasGroups) {
+      // 计算总人数
+      const totalCount = groups.reduce((sum, g) => sum + (parseInt(g.total) || 0), 0);
+      activityData.total = totalCount;
+      activityData.minParticipants = Math.floor(totalCount * 0.5); // 默认一半成行
+      activityData.groups = groups;
+    } else {
+      // 无分组配置
+      activityData.total = form.total;
+      activityData.minParticipants = form.minParticipants;
+      activityData.fee = form.fee || 0;
+      activityData.feeType = form.feeType || '免费';
+      activityData.requirements = form.requirements || '';
+      activityData.description = form.description || '';
+      activityData.customFields = defaultCustomFields;
+    }
 
     wx.showLoading({ title: '发布中...' });
 
