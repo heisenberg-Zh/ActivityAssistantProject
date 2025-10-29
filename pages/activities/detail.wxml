@@ -46,13 +46,6 @@
         </view>
       </view>
       <view class="info-item">
-        <view class="info-item__icon" style="background:#E0E7FF; color:#4338CA;">💰</view>
-        <view class="flex-col info-item__body">
-          <text class="info-label">活动费用</text>
-          <text class="info-value">{{extra.feeInfo}}</text>
-        </view>
-      </view>
-      <view class="info-item">
         <view class="info-item__icon" style="background:#FEF3C7; color:#D97706;">🔖</view>
         <view class="flex-col info-item__body">
           <text class="info-label">活动编号</text>
@@ -60,6 +53,67 @@
           <text class="info-hint">活动唯一标识</text>
         </view>
       </view>
+    </view>
+  </view>
+</view>
+
+<!-- 分组信息 -->
+<view class="section" wx:if="{{detail.hasGroups && detail.groups && detail.groups.length > 0}}">
+  <view class="card shadow-card">
+    <text class="text-lg text-gray-800 mb-16" style="display: block; font-weight: 600;">活动分组</text>
+
+    <!-- 分组Tab -->
+    <view class="group-tabs-detail">
+      <block wx:for="{{detail.groups}}" wx:key="id" wx:for-item="group" wx:for-index="idx">
+        <view class="group-tab-detail {{currentGroupIndex === idx ? 'group-tab-detail--active' : ''}}" bindtap="switchGroup" data-index="{{idx}}">
+          <text class="group-tab-detail__name">{{group.name}}</text>
+          <text class="group-tab-detail__count">{{group.joined}}/{{group.total}}</text>
+        </view>
+      </block>
+    </view>
+
+    <!-- 当前分组详情 -->
+    <view wx:if="{{detail.groups[currentGroupIndex]}}" class="group-detail-content">
+      <view class="info-item" style="margin-top: 24rpx;">
+        <view class="info-item__icon" style="background:#E0E7FF; color:#4338CA;">💰</view>
+        <view class="flex-col info-item__body">
+          <text class="info-label">费用</text>
+          <text class="info-value">{{detail.groups[currentGroupIndex].feeType}} {{detail.groups[currentGroupIndex].feeType !== '免费' ? '¥' + detail.groups[currentGroupIndex].fee : ''}}</text>
+        </view>
+      </view>
+
+      <view wx:if="{{detail.groups[currentGroupIndex].requirements}}" style="margin-top: 24rpx; padding: 20rpx; background: #fffbeb; border-radius: 12rpx; border-left: 4rpx solid #f59e0b;">
+        <text class="text-sm text-gray-700" style="display: block; font-weight: 600; margin-bottom: 8rpx;">⚠️ 报名要求</text>
+        <text class="text-sm text-gray-600">{{detail.groups[currentGroupIndex].requirements}}</text>
+      </view>
+
+      <view wx:if="{{detail.groups[currentGroupIndex].description}}" style="margin-top: 16rpx; padding: 20rpx; background: #eff6ff; border-radius: 12rpx; border-left: 4rpx solid #3b82f6;">
+        <text class="text-sm text-gray-700" style="display: block; font-weight: 600; margin-bottom: 8rpx;">📝 活动说明</text>
+        <text class="text-sm text-gray-600">{{detail.groups[currentGroupIndex].description}}</text>
+      </view>
+    </view>
+  </view>
+</view>
+
+<!-- 无分组时的费用和说明信息 -->
+<view class="section" wx:if="{{!detail.hasGroups}}">
+  <view class="card shadow-card">
+    <view class="info-item">
+      <view class="info-item__icon" style="background:#E0E7FF; color:#4338CA;">💰</view>
+      <view class="flex-col info-item__body">
+        <text class="info-label">活动费用</text>
+        <text class="info-value">{{extra.feeInfo}}</text>
+      </view>
+    </view>
+
+    <view wx:if="{{detail.requirements}}" style="margin-top: 24rpx; padding: 20rpx; background: #fffbeb; border-radius: 12rpx; border-left: 4rpx solid #f59e0b;">
+      <text class="text-sm text-gray-700" style="display: block; font-weight: 600; margin-bottom: 8rpx;">⚠️ 报名要求</text>
+      <text class="text-sm text-gray-600">{{detail.requirements}}</text>
+    </view>
+
+    <view wx:if="{{detail.description}}" style="margin-top: 16rpx; padding: 20rpx; background: #eff6ff; border-radius: 12rpx; border-left: 4rpx solid #3b82f6;">
+      <text class="text-sm text-gray-700" style="display: block; font-weight: 600; margin-bottom: 8rpx;">📝 活动说明</text>
+      <text class="text-sm text-gray-600">{{detail.description}}</text>
     </view>
   </view>
 </view>

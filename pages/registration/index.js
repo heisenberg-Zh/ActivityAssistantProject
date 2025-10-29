@@ -57,7 +57,9 @@ Page({
     formData: {}, // 动态表单数据
     agree: false,
     isRegistered: false,
-    isFull: false
+    isFull: false,
+    selectedGroupId: null, // 选中的分组ID
+    showGroupSelection: true // 是否显示分组选择界面
   },
 
   onLoad(query) {
@@ -99,17 +101,26 @@ Page({
       );
       const isRegistered = userRegs.length > 0;
 
-      // 获取自定义字段配置
-      const customFields = detail.customFields || [
-        { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
-        { id: 'mobile', label: '手机号', required: true, desc: '用于联系参与者', isCustom: false }
-      ];
+      // 判断是否有分组
+      const hasGroups = detail.hasGroups && detail.groups && detail.groups.length > 0;
 
-      // 初始化表单数据
-      const formData = {};
-      customFields.forEach(field => {
-        formData[field.id] = '';
-      });
+      // 如果没有分组，直接加载自定义字段
+      let customFields = [];
+      let formData = {};
+      let showGroupSelection = hasGroups; // 有分组时显示分组选择
+
+      if (!hasGroups) {
+        // 获取自定义字段配置
+        customFields = detail.customFields || [
+          { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
+          { id: 'mobile', label: '手机号', required: true, desc: '用于联系参与者', isCustom: false }
+        ];
+
+        // 初始化表单数据
+        customFields.forEach(field => {
+          formData[field.id] = '';
+        });
+      }
 
       this.setData({
         id,
@@ -121,11 +132,14 @@ Page({
         isFull,
         isRegistered,
         customFields,
-        formData
+        formData,
+        showGroupSelection
       });
 
-      // 如果是微信用户，自动填充昵称
-      this.autoFillUserInfo();
+      // 如果是微信用户且无分组，自动填充昵称
+      if (!hasGroups) {
+        this.autoFillUserInfo();
+      }
     } catch (err) {
       console.error('加载活动详情失败:', err);
       wx.showToast({ title: '加载失败', icon: 'none' });
@@ -174,6 +188,55 @@ Page({
     const field = e.currentTarget.dataset.field;
     if (!field) return;
     this.setData({ [`formData.${field}`]: e.detail.value });
+  },
+
+  // 选择分组
+  selectGroup(e) {
+    const groupId = e.currentTarget.dataset.groupId;
+    const { detail } = this.data;
+
+    // 查找分组
+    const group = detail.groups.find(g => g.id === groupId);
+    if (!group) {
+      return;
+    }
+
+    // 检查是否已满员
+    if (group.joined >= group.total) {
+      wx.showToast({ title: '该分组已满员', icon: 'none' });
+      return;
+    }
+
+    // 获取该分组的自定义字段
+    const customFields = group.customFields || this.data.detail.customFields || [
+      { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
+      { id: 'mobile', label: '手机号', required: true, desc: '用于联系参与者', isCustom: false }
+    ];
+
+    // 初始化表单数据
+    const formData = {};
+    customFields.forEach(field => {
+      formData[field.id] = '';
+    });
+
+    this.setData({
+      selectedGroupId: groupId,
+      showGroupSelection: false,
+      customFields,
+      formData
+    });
+
+    // 自动填充用户信息
+    this.autoFillUserInfo();
+  },
+
+  // 返回分组选择
+  backToGroupSelection() {
+    this.setData({
+      showGroupSelection: true,
+      selectedGroupId: null,
+      agree: false
+    });
   },
 
   // 同意协议
@@ -291,11 +354,17 @@ Page({
 
   // 提交报名
   async submit() {
-    const { id, detail, formData, isRegistered, isFull } = this.data;
+    const { id, detail, formData, isRegistered, isFull, selectedGroupId } = this.data;
 
     // 检查是否已报名
     if (isRegistered) {
       wx.showToast({ title: '您已报名，请勿重复报名', icon: 'none' });
+      return;
+    }
+
+    // 如果有分组，检查是否选择了分组
+    if (detail.hasGroups && !selectedGroupId) {
+      wx.showToast({ title: '请先选择报名分组', icon: 'none' });
       return;
     }
 
@@ -316,6 +385,15 @@ Page({
       return;
     }
 
+    // 如果有分组，检查分组是否已满员
+    if (detail.hasGroups && selectedGroupId) {
+      const group = detail.groups.find(g => g.id === selectedGroupId);
+      if (group && group.joined >= group.total) {
+        wx.showToast({ title: '该分组已满员', icon: 'none' });
+        return;
+      }
+    }
+
     // 验证表单
     if (!this.validateForm()) {
       return;
@@ -327,6 +405,7 @@ Page({
       // 构建提交数据，包含所有动态字段
       const submissionData = {
         activityId: id,
+        groupId: selectedGroupId, // 添加分组ID
         ...formData,
         needReview: detail.needReview
       };

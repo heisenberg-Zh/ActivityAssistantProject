@@ -1,21 +1,85 @@
 // utils/mock.js
 const activities = [
+  // 有分组的活动示例
   {
     id: 'a1',
+    title: '周末网球活动',
+    desc: '奥体中心网球场，分基础教学组和进阶比赛组，欢迎不同水平的球友参加。',
+    date: '12月15日 14:00',
+    timeRange: '12月15日 14:00-18:00',
+    startTime: '2025-12-15 14:00',
+    endTime: '2025-12-15 18:00',
+    registerDeadline: '2025-12-15 12:00',
+    place: '奥体中心网球场',
+    address: '北京市朝阳区奥体中心',
+    latitude: 39.9928,
+    longitude: 116.3972,
+    checkinRadius: 500,
+    type: '运动',
+    status: '进行中',
+    total: 20, // 总人数上限（所有分组之和）
+    joined: 13, // 总已报名人数（所有分组之和）
+    minParticipants: 10,
+    banner: 'blue',
+    fee: 0, // 默认费用（当有分组时，以各分组费用为准）
+    feeType: '免费',
+    needReview: false,
+    organizerId: 'u1',
+    organizerName: '张小北',
+    tags: ['运动', '网球', '周末'],
+    requirements: '请自带球拍和运动装备',
+    createdAt: '2025-12-10 10:00',
+    hasGroups: true, // 标识此活动有分组
+    groups: [
+      {
+        id: 'g1',
+        name: 'A组-基础教学',
+        total: 12,
+        joined: 8,
+        fee: 50,
+        feeType: 'AA',
+        requirements: '适合初学者，在8号场地，需自带球拍',
+        description: '基础动作教学，适合零基础和初学者，教练现场指导。',
+        customFields: [
+          { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
+          { id: 'mobile', label: '手机号', required: true, desc: '用于联系参与者', isCustom: false },
+          { id: 'custom_1', label: '网球经验', required: false, desc: '请简述您的网球经验', isCustom: true }
+        ]
+      },
+      {
+        id: 'g2',
+        name: 'B组-进阶比赛',
+        total: 8,
+        joined: 5,
+        fee: 80,
+        feeType: 'AA',
+        requirements: '需有一定基础，在9号场地，需自带球拍和运动鞋',
+        description: '适合有一定基础的球友，进行实战对抗和技术提升。',
+        customFields: [
+          { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
+          { id: 'mobile', label: '手机号', required: true, desc: '用于联系参与者', isCustom: false },
+          { id: 'custom_1', label: '技术水平', required: true, desc: '初级/中级/高级', isCustom: true }
+        ]
+      }
+    ]
+  },
+  // 无分组的活动示例
+  {
+    id: 'a1b',
     title: '周末聚餐活动',
     desc: '邀约伙伴一起享受美食时光，畅聊生活与工作心得。',
-    date: '12月15日 18:00',
-    timeRange: '12月15日 18:00-21:00',
-    startTime: '2025-12-15 18:00',
-    endTime: '2025-12-15 21:00',
-    registerDeadline: '2025-12-15 17:00',
+    date: '12月16日 18:00',
+    timeRange: '12月16日 18:00-21:00',
+    startTime: '2025-12-16 18:00',
+    endTime: '2025-12-16 21:00',
+    registerDeadline: '2025-12-16 17:00',
     place: '海底捞火锅（朝阳店）',
     address: '北京市朝阳区三里屯太古里南区',
     latitude: 39.9354,
     longitude: 116.4481,
     checkinRadius: 500,
     type: '聚会',
-    status: '进行中',
+    status: '即将开始',
     total: 12,
     joined: 8,
     minParticipants: 5,
@@ -28,6 +92,7 @@ const activities = [
     tags: ['美食', '社交', '周末'],
     requirements: '请确认能够按时参加活动',
     createdAt: '2025-12-10 10:00',
+    hasGroups: false, // 无分组
     customFields: [
       { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
       { id: 'mobile', label: '手机号', required: true, desc: '用于联系参与者', isCustom: false },
@@ -202,26 +267,54 @@ const registrations = [
   {
     id: 'r1',
     activityId: 'a1',
+    groupId: 'g1', // 报名的分组ID（如果活动有分组）
     userId: 'u1',
     name: '张小北',
     mobile: '138****1234',
     status: 'approved',
-    registeredAt: '2025-12-14 18:30',
-    approvedAt: '2025-12-14 18:30',
+    registeredAt: '2025-12-14 12:30',
+    approvedAt: '2025-12-14 12:30',
     checkinStatus: 'checked',
-    checkinTime: '2025-12-15 18:05'
+    checkinTime: '2025-12-15 14:05'
   },
   {
     id: 'r2',
     activityId: 'a1',
+    groupId: 'g1',
     userId: 'u2',
     name: '李小雅',
     mobile: '139****5678',
     status: 'approved',
-    registeredAt: '2025-12-14 19:15',
-    approvedAt: '2025-12-14 19:15',
+    registeredAt: '2025-12-14 13:15',
+    approvedAt: '2025-12-14 13:15',
     checkinStatus: 'checked',
-    checkinTime: '2025-12-15 18:12'
+    checkinTime: '2025-12-15 14:12'
+  },
+  {
+    id: 'r3',
+    activityId: 'a1',
+    groupId: 'g2',
+    userId: 'u3',
+    name: '王小文',
+    mobile: '136****9012',
+    status: 'approved',
+    registeredAt: '2025-12-14 14:00',
+    approvedAt: '2025-12-14 14:00',
+    checkinStatus: 'pending',
+    checkinTime: null
+  },
+  {
+    id: 'r4',
+    activityId: 'a1b',
+    groupId: null, // 无分组活动
+    userId: 'u4',
+    name: '赵小海',
+    mobile: '137****3456',
+    status: 'approved',
+    registeredAt: '2025-12-15 10:00',
+    approvedAt: '2025-12-15 10:00',
+    checkinStatus: 'pending',
+    checkinTime: null
   }
 ];
 

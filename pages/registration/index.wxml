@@ -1,10 +1,55 @@
 <!-- pages/registration/index.wxml -->
 <view class="registration-header">
   <text class="registration-title">{{detail.title}}</text>
+  <text wx:if="{{!showGroupSelection && detail.hasGroups}}" class="back-to-selection" bindtap="backToGroupSelection">← 重新选择分组</text>
 </view>
 
-<!-- 活动信息卡片 -->
-<view class="activity-info-section">
+<!-- 分组选择界面 -->
+<view wx:if="{{showGroupSelection && detail.hasGroups && detail.groups}}" class="group-selection-section">
+  <view class="section-header">
+    <text class="section-title-large">请选择报名分组</text>
+    <text class="section-subtitle">活动分为多个组别，请根据自身情况选择合适的分组</text>
+  </view>
+
+  <view class="groups-list">
+    <block wx:for="{{detail.groups}}" wx:key="id" wx:for-item="group">
+      <view class="group-card {{group.joined >= group.total ? 'group-card--full' : ''}}" bindtap="selectGroup" data-group-id="{{group.id}}">
+        <view class="group-card-header">
+          <text class="group-card-name">{{group.name}}</text>
+          <view class="group-card-status">
+            <text class="group-card-count {{group.joined >= group.total ? 'group-card-count--full' : ''}}">
+              {{group.joined}}/{{group.total}}人
+            </text>
+            <text wx:if="{{group.joined >= group.total}}" class="group-card-full-badge">已满</text>
+          </view>
+        </view>
+
+        <view wx:if="{{group.description}}" class="group-card-desc">
+          <text class="desc-text">{{group.description}}</text>
+        </view>
+
+        <view class="group-card-info">
+          <view class="group-info-item">
+            <text class="info-icon">💰</text>
+            <text class="info-text">{{group.feeType}} {{group.feeType !== '免费' ? '¥' + group.fee : ''}}</text>
+          </view>
+        </view>
+
+        <view wx:if="{{group.requirements}}" class="group-card-requirements">
+          <text class="requirements-label">⚠️ 报名要求：</text>
+          <text class="requirements-text">{{group.requirements}}</text>
+        </view>
+
+        <view class="group-card-action">
+          <text class="action-text">{{group.joined >= group.total ? '已满员' : '选择此组 →'}}</text>
+        </view>
+      </view>
+    </block>
+  </view>
+</view>
+
+<!-- 活动信息卡片（非分组选择时显示） -->
+<view wx:if="{{!showGroupSelection}}" class="activity-info-section">
   <view class="activity-info-card">
     <!-- 活动封面和状态 -->
     <view class="activity-cover banner--{{detail.banner}}">
@@ -59,8 +104,8 @@
   </view>
 </view>
 
-<!-- 报名表单 -->
-<view class="form-section">
+<!-- 报名表单（非分组选择时显示） -->
+<view wx:if="{{!showGroupSelection}}" class="form-section">
   <view class="form-header">
     <text class="form-title">填写报名信息</text>
     <text class="form-subtitle">请如实填写以下信息</text>
@@ -121,7 +166,7 @@
   </view>
 </view>
 
-<view class="section">
+<view wx:if="{{!showGroupSelection}}" class="section">
   <view class="card shadow-card participant-card">
     <view class="row-between mb-16">
       <text class="text-lg text-gray-800">报名列表</text>
@@ -146,5 +191,5 @@
 <view class="bottom-space"></view>
 <view class="fixed-footer">
   <button class="btn btn--secondary footer-btn" bindtap="cancel">返回</button>
-  <button class="btn {{isRegistered ? 'btn--danger' : 'btn--primary'}} footer-btn" bindtap="{{isRegistered ? 'cancelRegistration' : 'submit'}}">{{isRegistered ? '取消报名' : '确认报名'}}</button>
+  <button wx:if="{{!showGroupSelection}}" class="btn {{isRegistered ? 'btn--danger' : 'btn--primary'}} footer-btn" bindtap="{{isRegistered ? 'cancelRegistration' : 'submit'}}">{{isRegistered ? '取消报名' : '确认报名'}}</button>
 </view>

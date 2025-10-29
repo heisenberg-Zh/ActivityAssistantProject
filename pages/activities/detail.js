@@ -23,7 +23,8 @@ Page({
     canRegister: true,
     canCheckin: false,
     isRegistered: false,
-    loading: true
+    loading: true,
+    currentGroupIndex: 0 // 当前查看的分组索引
   },
 
   onLoad(query) {
@@ -131,6 +132,12 @@ Page({
       console.error('加载活动详情失败:', err);
       wx.showToast({ title: '加载失败', icon: 'none' });
     }
+  },
+
+  // 切换分组
+  switchGroup(e) {
+    const index = e.currentTarget.dataset.index;
+    this.setData({ currentGroupIndex: index });
   },
 
   // 跳转报名页
