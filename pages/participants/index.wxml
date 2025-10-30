@@ -1,0 +1,46 @@
+<!-- pages/participants/index.wxml -->
+<view class="participants-page">
+  <!-- 顶部信息栏 -->
+  <view class="page-header">
+    <view class="header-content">
+      <text class="activity-title">{{activityTitle}}</text>
+      <text class="group-name" wx:if="{{hasGroup}}">{{groupName}}</text>
+      <text class="member-count">共 {{members.length}} 人</text>
+    </view>
+  </view>
+
+  <!-- 参与者列表 -->
+  <view class="members-list">
+    <block wx:for="{{members}}" wx:key="id" wx:for-item="member">
+      <view class="member-item">
+        <!-- 头像 -->
+        <view class="member-avatar-wrapper">
+          <image
+            wx:if="{{member.avatar}}"
+            src="{{member.avatar}}"
+            mode="cover"
+            class="member-avatar-img"
+          />
+          <view wx:else class="member-avatar-placeholder" style="background: {{member.bgColor}};">
+            <text class="avatar-initial">{{member.initial}}</text>
+          </view>
+        </view>
+
+        <!-- 信息 -->
+        <view class="member-info">
+          <text class="member-name">{{member.name}}</text>
+          <text class="member-time" wx:if="{{member.registeredAt}}">报名时间：{{member.registeredAt}}</text>
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <!-- 空状态 -->
+  <view wx:if="{{members.length === 0}}" class="empty-state">
+    <text class="empty-icon">👥</text>
+    <text class="empty-text">暂无参与者</text>
+    <text class="empty-hint">还没有人报名参加这个{{hasGroup ? '分组' : '活动'}}</text>
+  </view>
+
+  <view class="bottom-space"></view>
+</view>

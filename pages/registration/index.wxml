@@ -1,7 +1,6 @@
 <!-- pages/registration/index.wxml -->
 <view class="registration-header">
   <text class="registration-title">{{detail.title}}</text>
-  <text wx:if="{{!showGroupSelection && detail.hasGroups}}" class="back-to-selection" bindtap="backToGroupSelection">← 重新选择分组</text>
 </view>
 
 <!-- 分组选择界面 -->
@@ -13,7 +12,7 @@
 
   <view class="groups-list">
     <block wx:for="{{detail.groups}}" wx:key="id" wx:for-item="group">
-      <view class="group-card {{group.joined >= group.total ? 'group-card--full' : ''}}" bindtap="selectGroup" data-group-id="{{group.id}}">
+      <view class="group-card {{group.joined >= group.total ? 'group-card--full' : ''}}">
         <view class="group-card-header">
           <text class="group-card-name">{{group.name}}</text>
           <view class="group-card-status">
@@ -40,8 +39,8 @@
           <text class="requirements-text">{{group.requirements}}</text>
         </view>
 
-        <view class="group-card-action">
-          <text class="action-text">{{group.joined >= group.total ? '已满员' : '选择此组 →'}}</text>
+        <view class="group-card-action" bindtap="selectGroup" data-group-id="{{group.id}}">
+          <text class="action-text">{{group.joined >= group.total ? '已满员' : '选择此组'}}</text>
         </view>
       </view>
     </block>
@@ -160,30 +159,35 @@
 
     <!-- 协议 -->
     <view class="agreement-box">
-      <checkbox checked="{{agree}}" bindchange="toggleAgree" class="agreement-checkbox" />
+      <checkbox-group bindchange="toggleAgree">
+        <checkbox value="agree" checked="{{agree}}" class="agreement-checkbox" />
+      </checkbox-group>
       <text class="agreement-text">已阅读并同意《活动报名协议》和《隐私政策》</text>
     </view>
   </view>
 </view>
 
 <view wx:if="{{!showGroupSelection}}" class="section">
-  <view class="card shadow-card participant-card">
+  <view class="card shadow-card participants-card-reg">
     <view class="row-between mb-16">
-      <text class="text-lg text-gray-800">报名列表</text>
-      <text class="text-sm text-gray-500">{{participants.length}} 人已报名</text>
+      <text class="text-lg text-gray-800">已报名人员 ({{participants.length}})</text>
+      <view class="text-sm text-blue-500" bindtap="viewAllParticipants" hover-class="none" wx:if="{{participants.length > 0}}">查看全部</view>
     </view>
-    <view class="flex-col">
+    <!-- 只展示一行头像（最多8个） -->
+    <view class="participants-row-reg" wx:if="{{participants.length > 0}}">
       <block wx:for="{{participants}}" wx:key="id" wx:for-item="item" wx:for-index="idx">
-        <view class="participant-item">
-          <view class="participant-avatar" style="background: {{item.bg}};">{{item.index}}</view>
-          <view class="flex-col participant-info">
-            <text class="text-md text-gray-800">{{item.name}}</text>
-            <text class="text-xs text-gray-500">{{item.mobile}}</text>
-          </view>
-          <text class="text-xs text-gray-400">{{item.time}}</text>
+        <view wx:if="{{idx < 8}}" class="participants-avatar-item-reg">
+          <image src="{{item.avatar}}" mode="cover" class="participants-avatar-img-reg" />
         </view>
-        <view wx:if="{{idx < participants.length - 1}}" class="list-divider"></view>
       </block>
+      <!-- 如果超过8个，显示更多提示 -->
+      <view wx:if="{{participants.length > 8}}" class="participants-more-reg" bindtap="viewAllParticipants">
+        <text class="participants-more-text-reg">+{{participants.length - 8}}</text>
+      </view>
+    </view>
+    <!-- 空状态 -->
+    <view wx:if="{{participants.length === 0}}" class="participants-empty-reg">
+      <text class="text-sm text-gray-400">暂无报名人员</text>
     </view>
   </view>
 </view>

@@ -325,3 +325,60 @@
   transform: scale(0.98);
   box-shadow: 0 2rpx 8rpx rgba(59, 130, 246, 0.3);
 }
+
+/* ===== 活动编号区域 ===== */
+.activity-id-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 8rpx 16rpx;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-radius: 12rpx;
+  border-left: 4rpx solid #3b82f6;
+}
+
+.activity-id-label {
+  font-size: 22rpx;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.activity-id-value {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #1d4ed8;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+/* ===== 信息网格 ===== */
+.info-grid-row {
+  display: flex;
+  gap: 24rpx;
+}
+
+.info-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  padding: 16rpx;
+  background: #f9fafb;
+  border-radius: 12rpx;
+  border: 1rpx solid #e5e7eb;
+}
+
+.info-label {
+  font-size: 22rpx;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.info-value {
+  font-size: 26rpx;
+  color: #1f2937;
+  font-weight: 500;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

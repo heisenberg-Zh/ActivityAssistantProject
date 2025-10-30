@@ -28,7 +28,10 @@ Page({
   },
 
   onLoad(query) {
-    const id = query.id || 'a1';
+    // 确保ID是字符串类型，并去除可能的空格
+    const id = String(query.id || 'a1').trim();
+    console.log('详情页接收到的原始 query:', query);
+    console.log('处理后的活动 ID:', id, '类型:', typeof id);
     this.setData({ id });
     this.loadActivityDetail(id);
   },
@@ -38,12 +41,41 @@ Page({
     try {
       wx.showLoading({ title: '加载中...' });
 
-      const detail = activities.find(item => item.id === id);
+      // 调试信息：打印活动ID和活动列表
+      console.log('正在查找活动 ID:', id);
+      console.log('活动列表数量:', activities.length);
+      console.log('活动列表ID:', activities.map(a => a.id));
+
+      let detail = activities.find(item => item.id === id);
+
+      // 如果严格匹配失败，尝试宽松匹配
       if (!detail) {
+        console.warn('严格匹配失败，尝试宽松匹配...');
+        detail = activities.find(item => String(item.id).trim() === String(id).trim());
+      }
+
+      // 如果还是失败，尝试不区分大小写匹配
+      if (!detail) {
+        console.warn('宽松匹配失败，尝试不区分大小写匹配...');
+        detail = activities.find(item =>
+          String(item.id).trim().toLowerCase() === String(id).trim().toLowerCase()
+        );
+      }
+
+      if (!detail) {
+        console.error('所有匹配方式都失败了！');
+        console.error('查找的 ID:', id, '(类型:', typeof id, ')');
+        console.error('可用的活动 IDs:', activities.map(a => ({
+          id: a.id,
+          idType: typeof a.id,
+          title: a.title
+        })));
         wx.hideLoading();
         wx.showToast({ title: '活动不存在', icon: 'none' });
         return;
       }
+
+      console.log('成功找到活动:', detail.title, '(匹配方式:', detail.id === id ? '严格' : '宽松', ')');
 
       // 获取组织者信息
       const organizer = participants.find(p => p.id === detail.organizerId) || {
@@ -60,16 +92,27 @@ Page({
       };
 
       // 获取参与者列表
-      const activityRegs = registrations.filter(
-        r => r.activityId === id && r.status === 'approved'
-      );
+      // 如果活动有分组，初始显示第一个分组的参与者；否则显示全部参与者
+      const currentGroupId = detail.hasGroups && detail.groups && detail.groups.length > 0
+        ? detail.groups[0].id
+        : null;
+
+      const activityRegs = registrations.filter(r => {
+        if (r.activityId !== id || r.status !== 'approved') return false;
+        // 如果有分组，只显示当前分组的参与者
+        if (currentGroupId) {
+          return r.groupId === currentGroupId;
+        }
+        return true;
+      });
 
       const members = activityRegs.map(reg => {
         const user = participants.find(p => p.id === reg.userId);
         return {
           id: reg.userId,
           name: reg.name,
-          avatar: user?.avatar || `/activityassistant_avatar_0${Math.floor(Math.random() * 4) + 1}.png`
+          avatar: user?.avatar || `/activityassistant_avatar_0${Math.floor(Math.random() * 4) + 1}.png`,
+          groupId: reg.groupId
         };
       });
 
@@ -138,6 +181,40 @@ Page({
   switchGroup(e) {
     const index = e.currentTarget.dataset.index;
     this.setData({ currentGroupIndex: index });
+
+    // 更新参与成员列表，显示当前分组的成员
+    this.updateMembersByGroup(index);
+  },
+
+  // 根据分组更新参与成员列表
+  updateMembersByGroup(groupIndex) {
+    const { detail, id } = this.data;
+
+    if (!detail.hasGroups || !detail.groups || detail.groups.length === 0) {
+      return;
+    }
+
+    const currentGroup = detail.groups[groupIndex];
+    if (!currentGroup) return;
+
+    // 获取该分组的参与者
+    const activityRegs = registrations.filter(r => {
+      return r.activityId === id &&
+             r.status === 'approved' &&
+             r.groupId === currentGroup.id;
+    });
+
+    const members = activityRegs.map(reg => {
+      const user = participants.find(p => p.id === reg.userId);
+      return {
+        id: reg.userId,
+        name: reg.name,
+        avatar: user?.avatar || `/activityassistant_avatar_0${Math.floor(Math.random() * 4) + 1}.png`,
+        groupId: reg.groupId
+      };
+    });
+
+    this.setData({ members });
   },
 
   // 跳转报名页
@@ -247,24 +324,25 @@ Page({
 
   // 查看所有参与者
   viewAllMembers() {
-    const { members } = this.data;
+    const { id, detail, currentGroupIndex, members } = this.data;
 
     if (members.length === 0) {
       wx.showToast({ title: '暂无参与者', icon: 'none' });
       return;
     }
 
-    // 构建参与者列表内容
-    const memberList = members.map((member, index) =>
-      `${index + 1}. ${member.name}`
-    ).join('\n');
+    // 构建跳转参数
+    let url = `/pages/participants/index?activityId=${id}`;
 
-    wx.showModal({
-      title: `参与者列表 (${members.length}人)`,
-      content: memberList,
-      showCancel: false,
-      confirmText: '知道了'
-    });
+    // 如果有分组，传递当前分组信息
+    if (detail.hasGroups && detail.groups && detail.groups.length > 0) {
+      const currentGroup = detail.groups[currentGroupIndex];
+      url += `&groupId=${currentGroup.id}&groupName=${encodeURIComponent(currentGroup.name)}`;
+    }
+
+    url += `&activityTitle=${encodeURIComponent(detail.title)}`;
+
+    wx.navigateTo({ url });
   },
 
   // 联系组织者

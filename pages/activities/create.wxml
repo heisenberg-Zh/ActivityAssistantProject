@@ -49,8 +49,8 @@
     <view wx:if="{{form.hasGroups}}" class="group-config-section">
       <view class="form-field">
         <text class="field-label">分组数量 *</text>
-        <input class="field-input" type="number" placeholder="请输入分组数量（2-5）" bindinput="onGroupCountChange" value="{{form.groupCount}}" maxlength="1" />
-        <text class="field-hint">至少2个分组，最多5个分组</text>
+        <input class="field-input" type="number" placeholder="请输入分组数量（2-5）" bindinput="onGroupCountChange" value="{{form.groupCount}}" />
+        <text class="field-hint">请输入2-5之间的数字，修改后分组列表会自动更新</text>
       </view>
 
       <!-- 分组名称输入 -->
@@ -263,7 +263,9 @@
     </view>
 
     <!-- 添加字段按钮 -->
-    <view class="ghost-btn ghost-btn--accent" style="margin-top: 16rpx; width: 100%;" bindtap="addField">+ 添加字段</view>
+    <view class="add-field-btn-container">
+      <view class="ghost-btn ghost-btn--accent" bindtap="addField">+ 添加字段</view>
+    </view>
   </view>
 </view>
 
@@ -300,6 +302,32 @@
         <text class="field-label">活动说明及注意事项</text>
         <textarea class="field-textarea" placeholder="请输入活动说明及注意事项" bindinput="onInput" data-field="description" value="{{form.description}}" />
       </view>
+
+      <!-- 自定义说明字段 -->
+      <block wx:for="{{descriptionFields}}" wx:key="id" wx:for-item="field">
+        <view class="form-field">
+          <view class="field-label-with-delete">
+            <text class="field-label">{{field.label}}</text>
+            <view class="field-delete-btn-small" bindtap="deleteDescriptionField" data-field-id="{{field.id}}" data-group-index="-1">
+              <text class="delete-icon">✕</text>
+            </view>
+          </view>
+          <textarea
+            class="field-textarea"
+            placeholder="请输入{{field.label}}"
+            bindinput="onDescriptionFieldInput"
+            data-field-id="{{field.id}}"
+            data-group-index="-1"
+            value="{{field.value}}"
+          />
+        </view>
+      </block>
+
+      <!-- 添加字段按钮 -->
+      <view class="add-field-btn-container">
+        <view class="ghost-btn ghost-btn--accent" bindtap="addDescriptionField">+ 添加字段</view>
+      </view>
+
       <view class="form-field">
         <text class="field-label">费用类型</text>
         <picker mode="selector" range="{{feeTypes}}" bindchange="onFeeTypeChange">
@@ -336,6 +364,32 @@
           value="{{groups[currentGroupIndex].description}}"
         />
       </view>
+
+      <!-- 自定义说明字段 -->
+      <block wx:for="{{groups[currentGroupIndex].descriptionFields}}" wx:key="id" wx:for-item="field">
+        <view class="form-field">
+          <view class="field-label-with-delete">
+            <text class="field-label">{{field.label}}</text>
+            <view class="field-delete-btn-small" bindtap="deleteDescriptionField" data-field-id="{{field.id}}" data-group-index="{{currentGroupIndex}}">
+              <text class="delete-icon">✕</text>
+            </view>
+          </view>
+          <textarea
+            class="field-textarea"
+            placeholder="请输入{{field.label}}"
+            bindinput="onDescriptionFieldInput"
+            data-field-id="{{field.id}}"
+            data-group-index="{{currentGroupIndex}}"
+            value="{{field.value}}"
+          />
+        </view>
+      </block>
+
+      <!-- 添加字段按钮 -->
+      <view class="add-field-btn-container">
+        <view class="ghost-btn ghost-btn--accent" bindtap="addDescriptionField">+ 添加字段</view>
+      </view>
+
       <view class="form-field">
         <text class="field-label">费用类型</text>
         <picker mode="selector" range="{{feeTypes}}" bindchange="onGroupFeeTypeChange" data-index="{{currentGroupIndex}}">
@@ -405,6 +459,6 @@
     {{currentStep === 1 ? '返回' : '上一步'}}
   </view>
   <view class="btn btn--primary footer-btn" bindtap="next">
-    {{currentStep === 6 ? '发布' : '下一步'}}
+    {{currentStep === 7 ? '发布' : '下一步'}}
   </view>
 </view>

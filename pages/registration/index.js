@@ -95,9 +95,10 @@ Page({
       // 检查是否已满员
       const isFull = detail.joined >= detail.total;
 
-      // 检查当前用户是否已报名
+      // 检查当前用户是否已报名（当前用户ID假设为u1）
+      const currentUserId = 'u1';
       const userRegs = registrations.filter(
-        r => r.activityId === id && r.status !== 'cancelled'
+        r => r.activityId === id && r.userId === currentUserId && r.status !== 'cancelled'
       );
       const isRegistered = userRegs.length > 0;
 
@@ -147,11 +148,17 @@ Page({
   },
 
   // 加载参与者列表
-  async loadParticipants(id) {
+  async loadParticipants(id, groupId = null) {
     try {
-      const activityRegs = registrations.filter(
-        r => r.activityId === id && r.status === 'approved'
-      );
+      // 如果指定了分组ID，只显示该分组的参与者
+      const activityRegs = registrations.filter(r => {
+        if (r.activityId !== id || r.status !== 'approved') return false;
+        // 如果有分组ID，只显示该分组的参与者
+        if (groupId) {
+          return r.groupId === groupId;
+        }
+        return true;
+      });
 
       const participants = activityRegs.map((reg, index) => ({
         id: reg.id,
@@ -159,7 +166,9 @@ Page({
         name: reg.name,
         mobile: formatMobile(reg.mobile),
         time: formatDateCN(reg.registeredAt),
-        bg: getAvatarColor(reg.name)
+        avatar: `/activityassistant_avatar_0${(index % 4) + 1}.png`,
+        bg: getAvatarColor(reg.name),
+        groupId: reg.groupId
       }));
 
       this.setData({ participants });
@@ -193,7 +202,7 @@ Page({
   // 选择分组
   selectGroup(e) {
     const groupId = e.currentTarget.dataset.groupId;
-    const { detail } = this.data;
+    const { detail, id } = this.data;
 
     // 查找分组
     const group = detail.groups.find(g => g.id === groupId);
@@ -206,6 +215,13 @@ Page({
       wx.showToast({ title: '该分组已满员', icon: 'none' });
       return;
     }
+
+    // 检查当前用户是否已报名该分组
+    const currentUserId = 'u1';
+    const userRegInGroup = registrations.find(
+      r => r.activityId === id && r.userId === currentUserId && r.groupId === groupId && r.status !== 'cancelled'
+    );
+    const isRegistered = !!userRegInGroup;
 
     // 获取该分组的自定义字段
     const customFields = group.customFields || this.data.detail.customFields || [
@@ -223,8 +239,12 @@ Page({
       selectedGroupId: groupId,
       showGroupSelection: false,
       customFields,
-      formData
+      formData,
+      isRegistered
     });
+
+    // 重新加载该分组的参与者列表
+    this.loadParticipants(id, groupId);
 
     // 自动填充用户信息
     this.autoFillUserInfo();
@@ -399,6 +419,35 @@ Page({
       return;
     }
 
+    // 如果有多个分组，显示二次确认
+    if (detail.hasGroups && detail.groups && detail.groups.length > 1 && selectedGroupId) {
+      const selectedGroup = detail.groups.find(g => g.id === selectedGroupId);
+      const groupName = selectedGroup ? selectedGroup.name : '未知分组';
+
+      wx.showModal({
+        title: '确认报名信息',
+        content: `本活动有 ${detail.groups.length} 个分组\n您选择报名的是：${groupName}\n\n请确认后提交报名`,
+        confirmText: '确认报名',
+        confirmColor: '#3b82f6',
+        cancelText: '重新选择',
+        success: (res) => {
+          if (res.confirm) {
+            // 用户确认后执行提交
+            this.performSubmit(id, detail, formData, selectedGroupId);
+          } else if (res.cancel) {
+            // 用户选择重新选择，返回分组选择界面
+            this.backToGroupSelection();
+          }
+        }
+      });
+    } else {
+      // 没有多分组或只有一个分组，直接提交
+      this.performSubmit(id, detail, formData, selectedGroupId);
+    }
+  },
+
+  // 执行实际的报名提交
+  async performSubmit(id, detail, formData, selectedGroupId) {
     wx.showLoading({ title: '提交中...' });
 
     try {
@@ -434,8 +483,42 @@ Page({
     }
   },
 
+  // 查看所有参与者
+  viewAllParticipants() {
+    const { id, detail, selectedGroupId, participants } = this.data;
+
+    if (participants.length === 0) {
+      wx.showToast({ title: '暂无报名人员', icon: 'none' });
+      return;
+    }
+
+    // 构建跳转参数
+    let url = `/pages/participants/index?activityId=${id}`;
+
+    // 如果有选中的分组，传递分组信息
+    if (selectedGroupId) {
+      const group = detail.groups.find(g => g.id === selectedGroupId);
+      if (group) {
+        url += `&groupId=${group.id}&groupName=${encodeURIComponent(group.name)}`;
+      }
+    }
+
+    url += `&activityTitle=${encodeURIComponent(detail.title)}`;
+
+    wx.navigateTo({ url });
+  },
+
   // 取消
   cancel() {
+    const { showGroupSelection, detail } = this.data;
+
+    // 如果正在显示报名表单且活动有分组，返回到分组选择
+    if (!showGroupSelection && detail.hasGroups) {
+      this.backToGroupSelection();
+      return;
+    }
+
+    // 否则返回上一页
     if (getCurrentPages().length > 1) {
       wx.navigateBack({ delta: 1 });
     } else {

@@ -51,7 +51,10 @@ Page({
       { id: 'mobile', label: '手机号', required: false, desc: '用于联系参与者', isCustom: false }
     ],
     feeTypes: ['免费', 'AA', '统一收费'],
-    nextFieldId: 1 // 用于生成自定义字段的唯一ID
+    nextFieldId: 1, // 用于生成自定义字段的唯一ID
+    // 第6步活动说明页的自定义字段（无分组时使用）
+    descriptionFields: [],
+    nextDescFieldId: 1 // 用于生成活动说明自定义字段的唯一ID
   },
 
   // 步骤切换
@@ -135,17 +138,25 @@ Page({
         break;
 
       case 4: // 人数配置
-        if (!form.total || form.total < 1) {
-          wx.showToast({ title: '人数上限不能少于1人', icon: 'none' });
-          return false;
+        // 无分组时需要验证人数
+        if (!form.hasGroups) {
+          if (!form.total || form.total < 1) {
+            wx.showToast({ title: '人数上限不能少于1人', icon: 'none' });
+            return false;
+          }
+          if (form.minParticipants && form.minParticipants > form.total) {
+            wx.showToast({ title: '最少成行人数不能大于人数上限', icon: 'none' });
+            return false;
+          }
         }
-        if (form.minParticipants && form.minParticipants > form.total) {
-          wx.showToast({ title: '最少成行人数不能大于人数上限', icon: 'none' });
-          return false;
-        }
-        if (form.feeType !== '免费' && (!form.fee || form.fee <= 0)) {
-          wx.showToast({ title: '请输入费用金额', icon: 'none' });
-          return false;
+        // 有分组时验证分组人数
+        if (form.hasGroups) {
+          for (let i = 0; i < groups.length; i++) {
+            if (!groups[i].total || groups[i].total < 1) {
+              wx.showToast({ title: `请设置${groups[i].name}的人数上限`, icon: 'none' });
+              return false;
+            }
+          }
         }
         break;
 
@@ -276,7 +287,15 @@ Page({
 
   // 分组数量改变
   onGroupCountChange(e) {
-    const count = parseInt(e.detail.value) || 2;
+    let count = parseInt(e.detail.value);
+
+    // 验证范围：2-5
+    if (isNaN(count) || count < 2) {
+      count = 2;
+    } else if (count > 5) {
+      count = 5;
+    }
+
     this.setData({ 'form.groupCount': count });
 
     // 如果已启用分组，重新初始化分组
@@ -297,7 +316,8 @@ Page({
         feeType: this.data.groups[i]?.feeType || '免费',
         requirements: this.data.groups[i]?.requirements || '',
         description: this.data.groups[i]?.description || '',
-        customFields: this.data.groups[i]?.customFields || JSON.parse(JSON.stringify(this.data.defaultCustomFields))
+        customFields: this.data.groups[i]?.customFields || JSON.parse(JSON.stringify(this.data.defaultCustomFields)),
+        descriptionFields: this.data.groups[i]?.descriptionFields || [] // 活动说明自定义字段
       });
     }
     this.setData({ groups, currentGroupIndex: 0 });
@@ -715,6 +735,147 @@ Page({
         }
       }
     });
+  },
+
+  // 添加活动说明自定义字段（第6步）
+  addDescriptionField() {
+    const { form, groups, currentGroupIndex } = this.data;
+
+    wx.showModal({
+      title: '添加自定义字段',
+      editable: true,
+      placeholderText: '例如：携带物品、特殊要求',
+      content: '请输入字段名称',
+      success: (res) => {
+        if (res.confirm && res.content) {
+          const fieldLabel = res.content.trim();
+
+          if (fieldLabel.length === 0) {
+            wx.showToast({ title: '字段名称不能为空', icon: 'none' });
+            return;
+          }
+
+          // 获取当前字段列表
+          const currentFields = form.hasGroups
+            ? groups[currentGroupIndex].descriptionFields
+            : this.data.descriptionFields;
+
+          // 检查是否已存在相同名称的字段
+          const exists = currentFields.some(f => f.label === fieldLabel);
+          if (exists) {
+            wx.showToast({ title: '该字段已存在', icon: 'none' });
+            return;
+          }
+
+          // 生成唯一ID
+          const fieldId = `desc_${this.data.nextDescFieldId}`;
+
+          // 添加到字段列表
+          const newField = {
+            id: fieldId,
+            label: fieldLabel,
+            value: '', // 文本框的值
+            isCustom: true
+          };
+
+          if (form.hasGroups) {
+            // 添加到当前分组
+            this.setData({
+              [`groups[${currentGroupIndex}].descriptionFields`]: [...currentFields, newField],
+              nextDescFieldId: this.data.nextDescFieldId + 1
+            });
+          } else {
+            // 添加到默认字段
+            this.setData({
+              descriptionFields: [...currentFields, newField],
+              nextDescFieldId: this.data.nextDescFieldId + 1
+            });
+          }
+
+          wx.showToast({
+            title: `已添加"${fieldLabel}"`,
+            icon: 'success'
+          });
+        }
+      }
+    });
+  },
+
+  // 删除活动说明自定义字段（第6步）
+  deleteDescriptionField(e) {
+    const fieldId = e.currentTarget.dataset.fieldId;
+    const groupIndex = e.currentTarget.dataset.groupIndex;
+    const { form, groups } = this.data;
+
+    // 查找字段
+    let field;
+    if (form.hasGroups && groupIndex >= 0) {
+      field = groups[groupIndex].descriptionFields.find(f => f.id === fieldId);
+    } else {
+      field = this.data.descriptionFields.find(f => f.id === fieldId);
+    }
+
+    if (!field) {
+      return;
+    }
+
+    // 确认删除
+    wx.showModal({
+      title: '确认删除',
+      content: `确定要删除"${field.label}"字段吗？`,
+      confirmText: '删除',
+      confirmColor: '#ef4444',
+      success: (res) => {
+        if (res.confirm) {
+          if (form.hasGroups && groupIndex >= 0) {
+            // 分组模式
+            const updatedFields = groups[groupIndex].descriptionFields.filter(f => f.id !== fieldId);
+            this.setData({
+              [`groups[${groupIndex}].descriptionFields`]: updatedFields
+            });
+          } else {
+            // 无分组模式
+            const updatedFields = this.data.descriptionFields.filter(f => f.id !== fieldId);
+            this.setData({
+              descriptionFields: updatedFields
+            });
+          }
+
+          wx.showToast({
+            title: '已删除',
+            icon: 'success'
+          });
+        }
+      }
+    });
+  },
+
+  // 活动说明字段内容输入（第6步）
+  onDescriptionFieldInput(e) {
+    const fieldId = e.currentTarget.dataset.fieldId;
+    const groupIndex = e.currentTarget.dataset.groupIndex;
+    const value = e.detail.value;
+    const { form, groups } = this.data;
+
+    if (form.hasGroups && groupIndex >= 0) {
+      // 分组模式
+      const fields = groups[groupIndex].descriptionFields;
+      const fieldIndex = fields.findIndex(f => f.id === fieldId);
+      if (fieldIndex >= 0) {
+        this.setData({
+          [`groups[${groupIndex}].descriptionFields[${fieldIndex}].value`]: value
+        });
+      }
+    } else {
+      // 无分组模式
+      const fields = this.data.descriptionFields;
+      const fieldIndex = fields.findIndex(f => f.id === fieldId);
+      if (fieldIndex >= 0) {
+        this.setData({
+          [`descriptionFields[${fieldIndex}].value`]: value
+        });
+      }
+    }
   },
 
   // 上传海报

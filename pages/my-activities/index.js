@@ -3,35 +3,60 @@ const { activities } = require('../../utils/mock.js');
 const { isBeforeRegisterDeadline } = require('../../utils/datetime.js');
 
 const dataset = [
+  // 我创建的 - 进行中
   Object.assign({}, activities[0], {
-    id: 'm1',
+    displayId: 'm1', // 用于页面显示的ID
+    // 保留原始的 id 字段，用于跳转
     role: '我创建的',
     status: '进行中',
     actions: [
-      { label: '查看统计', action: 'stats', type: 'secondary' },
-      { label: '管理', action: 'manage', type: 'secondary' }
+      { label: '管理', action: 'manage', type: 'primary' },
+      { label: '详情', action: 'detail', type: 'secondary' }
     ]
   }),
+  // 我创建的 - 即将开始
   Object.assign({}, activities[1], {
-    id: 'm2',
+    displayId: 'm2',
     role: '我创建的',
     status: '即将开始',
     actions: [
-      { label: '发布', action: 'publish', type: 'primary' },
-      { label: '编辑', action: 'edit', type: 'secondary' }
+      { label: '编辑', action: 'edit', type: 'primary' },
+      { label: '详情', action: 'detail', type: 'secondary' }
     ]
   }),
+  // 我创建的 - 已结束
   Object.assign({}, activities[2], {
-    id: 'm3',
+    displayId: 'm5',
+    role: '我创建的',
+    status: '已结束',
+    actions: [
+      { label: '查看统计', action: 'stats', type: 'primary' },
+      { label: '详情', action: 'detail', type: 'secondary' }
+    ]
+  }),
+  // 我参加的 - 即将开始
+  Object.assign({}, activities[1], {
+    displayId: 'm6',
+    role: '我参加的',
+    status: '即将开始',
+    actions: [
+      { label: '详情', action: 'detail', type: 'primary' },
+      { label: '取消报名', action: 'cancelRegistration', type: 'danger' }
+    ]
+  }),
+  // 我参加的 - 进行中
+  Object.assign({}, activities[2], {
+    displayId: 'm3',
     role: '我参加的',
     status: '进行中',
     actions: [
       { label: '签到', action: 'checkin', type: 'primary' },
-      { label: '取消报名', action: 'cancelRegistration', type: 'danger' }
+      { label: '详情', action: 'detail', type: 'secondary' }
     ]
   }),
+  // 我参加的 - 已结束
   Object.assign({}, activities[0], {
-    id: 'm4',
+    displayId: 'm4',
     role: '我参加的',
     status: '已结束',
     banner: 'purple',
@@ -91,27 +116,32 @@ Page({
 
     switch (action) {
       case 'stats':
+        // 跳转到统计页面
         wx.navigateTo({ url: '/pages/statistics/index' });
         break;
       case 'manage':
-        wx.showToast({ title: '进入管理界面', icon: 'none' });
-        break;
-      case 'publish':
-        wx.showToast({ title: '已发布', icon: 'success' });
+        // 跳转到活动详情页（管理功能在详情页中）
+        // 未来可以创建专门的管理页面
+        wx.navigateTo({ url: `/pages/activities/detail?id=${id}&mode=manage` });
         break;
       case 'edit':
-        wx.navigateTo({ url: '/pages/activities/create' });
+        // 跳转到编辑页面（创建页面可复用为编辑页面）
+        wx.navigateTo({ url: `/pages/activities/create?id=${id}` });
         break;
       case 'checkin':
+        // 跳转到签到页面
         wx.navigateTo({ url: '/pages/checkin/index' });
         break;
       case 'cancelRegistration':
+        // 取消报名
         this.cancelRegistration(id);
         break;
       case 'review':
+        // 打开评价弹窗
         this.openReviewModal(id);
         break;
       case 'detail':
+        // 跳转到活动详情页
         wx.navigateTo({ url: `/pages/activities/detail?id=${id}` });
         break;
       default:
@@ -121,12 +151,14 @@ Page({
 
   // 取消报名
   cancelRegistration(id) {
-    // 找到对应的活动
+    // 找到对应的活动（id 是原始活动ID）
     const activity = this.data.display.find(item => item.id === id);
     if (!activity) {
       wx.showToast({ title: '活动不存在', icon: 'none' });
       return;
     }
+
+    console.log('取消报名的活动ID:', id, '活动信息:', activity);
 
     // 校验报名截止时间
     const deadlineCheck = isBeforeRegisterDeadline(activity.registerDeadline);

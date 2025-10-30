@@ -59,37 +59,58 @@
 
 <!-- 分组信息 -->
 <view class="section" wx:if="{{detail.hasGroups && detail.groups && detail.groups.length > 0}}">
-  <view class="card shadow-card">
-    <text class="text-lg text-gray-800 mb-16" style="display: block; font-weight: 600;">活动分组</text>
-
-    <!-- 分组Tab -->
-    <view class="group-tabs-detail">
-      <block wx:for="{{detail.groups}}" wx:key="id" wx:for-item="group" wx:for-index="idx">
-        <view class="group-tab-detail {{currentGroupIndex === idx ? 'group-tab-detail--active' : ''}}" bindtap="switchGroup" data-index="{{idx}}">
-          <text class="group-tab-detail__name">{{group.name}}</text>
-          <text class="group-tab-detail__count">{{group.joined}}/{{group.total}}</text>
-        </view>
-      </block>
+  <view class="card shadow-card groups-section">
+    <view class="groups-header">
+      <text class="groups-title">活动分组</text>
+      <text class="groups-subtitle">共 {{detail.groups.length}} 个分组</text>
     </view>
 
+    <!-- 分组选择器 - 横向滚动 -->
+    <scroll-view scroll-x class="groups-scroll" show-scrollbar="{{false}}">
+      <view class="groups-tabs">
+        <block wx:for="{{detail.groups}}" wx:key="id" wx:for-item="group" wx:for-index="idx">
+          <view class="group-tab-card {{currentGroupIndex === idx ? 'group-tab-card--active' : ''}}" bindtap="switchGroup" data-index="{{idx}}">
+            <view class="group-tab-header">
+              <text class="group-tab-name">{{group.name}}</text>
+              <view class="group-tab-status {{group.joined >= group.total ? 'status-full' : 'status-ok'}}">
+                <text class="status-text">{{group.joined >= group.total ? '已满' : '可报'}}</text>
+              </view>
+            </view>
+            <view class="group-tab-count">
+              <text class="count-text">{{group.joined}}/{{group.total}} 人</text>
+            </view>
+          </view>
+        </block>
+      </view>
+    </scroll-view>
+
     <!-- 当前分组详情 -->
-    <view wx:if="{{detail.groups[currentGroupIndex]}}" class="group-detail-content">
-      <view class="info-item" style="margin-top: 24rpx;">
-        <view class="info-item__icon" style="background:#E0E7FF; color:#4338CA;">💰</view>
-        <view class="flex-col info-item__body">
-          <text class="info-label">费用</text>
+    <view wx:if="{{detail.groups[currentGroupIndex]}}" class="group-detail-section">
+      <!-- 费用信息 -->
+      <view class="detail-info-card detail-info-card--primary">
+        <view class="info-icon">💰</view>
+        <view class="info-content">
+          <text class="info-label">活动费用</text>
           <text class="info-value">{{detail.groups[currentGroupIndex].feeType}} {{detail.groups[currentGroupIndex].feeType !== '免费' ? '¥' + detail.groups[currentGroupIndex].fee : ''}}</text>
         </view>
       </view>
 
-      <view wx:if="{{detail.groups[currentGroupIndex].requirements}}" style="margin-top: 24rpx; padding: 20rpx; background: #fffbeb; border-radius: 12rpx; border-left: 4rpx solid #f59e0b;">
-        <text class="text-sm text-gray-700" style="display: block; font-weight: 600; margin-bottom: 8rpx;">⚠️ 报名要求</text>
-        <text class="text-sm text-gray-600">{{detail.groups[currentGroupIndex].requirements}}</text>
+      <!-- 报名要求 -->
+      <view wx:if="{{detail.groups[currentGroupIndex].requirements}}" class="detail-info-card detail-info-card--warning">
+        <view class="info-icon">⚠️</view>
+        <view class="info-content">
+          <text class="info-label">报名要求</text>
+          <text class="info-text">{{detail.groups[currentGroupIndex].requirements}}</text>
+        </view>
       </view>
 
-      <view wx:if="{{detail.groups[currentGroupIndex].description}}" style="margin-top: 16rpx; padding: 20rpx; background: #eff6ff; border-radius: 12rpx; border-left: 4rpx solid #3b82f6;">
-        <text class="text-sm text-gray-700" style="display: block; font-weight: 600; margin-bottom: 8rpx;">📝 活动说明</text>
-        <text class="text-sm text-gray-600">{{detail.groups[currentGroupIndex].description}}</text>
+      <!-- 活动说明 -->
+      <view wx:if="{{detail.groups[currentGroupIndex].description}}" class="detail-info-card detail-info-card--info">
+        <view class="info-icon">📝</view>
+        <view class="info-content">
+          <text class="info-label">活动说明</text>
+          <text class="info-text">{{detail.groups[currentGroupIndex].description}}</text>
+        </view>
       </view>
     </view>
   </view>
@@ -122,15 +143,23 @@
   <view class="card shadow-card participants-card">
     <view class="row-between mb-16">
       <text class="text-lg text-gray-800">参与成员 ({{members.length}})</text>
-      <view class="text-sm text-blue-500" bindtap="viewAllMembers" hover-class="none">查看全部</view>
+      <view class="text-sm text-blue-500" bindtap="viewAllMembers" hover-class="none" wx:if="{{members.length > 0}}">查看全部</view>
     </view>
-    <view class="participants-grid">
-      <block wx:for="{{members}}" wx:key="id" wx:for-item="item">
-        <view class="participants-item">
-          <image src="{{item.avatar}}" mode="cover" class="participants-avatar" />
-          <text class="text-xs text-gray-600">{{item.name}}</text>
+    <!-- 只展示一行头像（最多8个） -->
+    <view class="participants-row" wx:if="{{members.length > 0}}">
+      <block wx:for="{{members}}" wx:key="id" wx:for-item="item" wx:for-index="idx">
+        <view wx:if="{{idx < 8}}" class="participants-avatar-item">
+          <image src="{{item.avatar}}" mode="cover" class="participants-avatar-img" />
         </view>
       </block>
+      <!-- 如果超过8个，显示更多提示 -->
+      <view wx:if="{{members.length > 8}}" class="participants-more" bindtap="viewAllMembers">
+        <text class="participants-more-text">+{{members.length - 8}}</text>
+      </view>
+    </view>
+    <!-- 空状态 -->
+    <view wx:if="{{members.length === 0}}" class="participants-empty">
+      <text class="text-sm text-gray-400">暂无参与者</text>
     </view>
   </view>
 </view>
