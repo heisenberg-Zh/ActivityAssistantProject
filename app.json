@@ -10,7 +10,8 @@
     "pages/my-activities/index",
     "pages/messages/index",
     "pages/settings/index",
-    "pages/activities/create"
+    "pages/activities/create",
+    "pages/participants/index"
   ],
   "window": {
     "navigationBarTitleText": "ActivityAssistant",

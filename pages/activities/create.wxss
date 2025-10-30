@@ -289,3 +289,46 @@
   flex-direction: column;
   gap: 4rpx;
 }
+
+/* 添加字段按钮容器 */
+.add-field-btn-container {
+  margin-top: 24rpx;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.add-field-btn-container .ghost-btn {
+  padding: 16rpx 48rpx;
+  font-size: 28rpx;
+}
+
+/* 字段标签带删除按钮 */
+.field-label-with-delete {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+
+.field-delete-btn-small {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: #fee2e2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+
+.field-delete-btn-small:active {
+  background: #fecaca;
+  transform: scale(0.95);
+}
+
+.field-delete-btn-small .delete-icon {
+  font-size: 28rpx;
+  color: #ef4444;
+  font-weight: bold;
+}

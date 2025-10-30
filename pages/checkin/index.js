@@ -36,7 +36,10 @@ Page({
   },
 
   onLoad(options) {
-    const activityId = options.id || 'a1';
+    // 确保ID是字符串类型，并去除可能的空格
+    const activityId = String(options.id || 'a1').trim();
+    console.log('签到页接收到的原始 options:', options);
+    console.log('处理后的活动 ID:', activityId, '类型:', typeof activityId);
     this.setData({ activityId });
     this.loadActivity(activityId);
     this.loadCheckinRecords(activityId);
@@ -46,11 +49,40 @@ Page({
   // 加载活动信息
   async loadActivity(activityId) {
     try {
-      const activity = activities.find(a => a.id === activityId);
+      // 调试信息：打印活动ID和活动列表
+      console.log('正在查找活动 ID:', activityId);
+      console.log('活动列表数量:', activities.length);
+      console.log('活动列表ID:', activities.map(a => a.id));
+
+      let activity = activities.find(a => a.id === activityId);
+
+      // 如果严格匹配失败，尝试宽松匹配
       if (!activity) {
+        console.warn('严格匹配失败，尝试宽松匹配...');
+        activity = activities.find(a => String(a.id).trim() === String(activityId).trim());
+      }
+
+      // 如果还是失败，尝试不区分大小写匹配
+      if (!activity) {
+        console.warn('宽松匹配失败，尝试不区分大小写匹配...');
+        activity = activities.find(a =>
+          String(a.id).trim().toLowerCase() === String(activityId).trim().toLowerCase()
+        );
+      }
+
+      if (!activity) {
+        console.error('所有匹配方式都失败了！');
+        console.error('查找的 ID:', activityId, '(类型:', typeof activityId, ')');
+        console.error('可用的活动 IDs:', activities.map(a => ({
+          id: a.id,
+          idType: typeof a.id,
+          title: a.title
+        })));
         wx.showToast({ title: '活动不存在', icon: 'none' });
         return;
       }
+
+      console.log('成功找到活动:', activity.title, '(匹配方式:', activity.id === activityId ? '严格' : '宽松', ')');
 
       // 获取状态对应的CSS类名
       const activityStatusClass = this.getStatusClass(activity.status);
@@ -90,7 +122,7 @@ Page({
       );
 
       // 合并报名和签到信息
-      const records = activityRegs.map(reg => {
+      const records = activityRegs.map((reg, index) => {
         const checkin = activityCheckins.find(c => c.registrationId === reg.id);
         return {
           id: reg.userId,
@@ -99,7 +131,7 @@ Page({
           checked: !!checkin,
           time: checkin ? formatDateTime(checkin.checkinTime, 'HH:mm') : '',
           isLate: checkin ? checkin.isLate : false,
-          avatar: `/activityassistant_avatar_0${(Math.floor(Math.random() * 4) + 1)}.png`
+          avatar: `/activityassistant_avatar_0${(index % 4) + 1}.png`
         };
       });
 

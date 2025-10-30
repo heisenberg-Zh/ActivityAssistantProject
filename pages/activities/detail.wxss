@@ -82,6 +82,57 @@
 }
 
 .participants-card { padding: 24rpx; }
+
+/* 参与者头像一行展示 */
+.participants-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  overflow-x: hidden;
+}
+
+.participants-avatar-item {
+  flex-shrink: 0;
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 9999rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+  border: 3rpx solid #ffffff;
+}
+
+.participants-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 9999rpx;
+}
+
+.participants-more {
+  flex-shrink: 0;
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 9999rpx;
+  background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+  border: 3rpx solid #ffffff;
+}
+
+.participants-more-text {
+  font-size: 24rpx;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.participants-empty {
+  padding: 40rpx 0;
+  text-align: center;
+}
+
+/* 旧样式保留以防其他地方使用 */
 .participants-grid { display: flex; flex-wrap: wrap; gap: 24rpx 20rpx; }
 .participants-item { width: 120rpx; display: flex; flex-direction: column; align-items: center; gap: 8rpx; }
 .participants-avatar { width: 96rpx; height: 96rpx; border-radius: 9999rpx; }
@@ -91,53 +142,192 @@
 
 .icon-text { font-size: 28rpx; color: #4b5563; }
 
-/* 分组Tab样式 */
-.group-tabs-detail {
+/* ===== 活动分组模块 ===== */
+.groups-section {
+  padding: 28rpx 24rpx;
+}
+
+/* 分组头部 */
+.groups-header {
   display: flex;
-  gap: 12rpx;
-  margin-bottom: 24rpx;
-  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
 }
 
-.group-tab-detail {
-  flex: 1;
-  min-width: 140rpx;
-  padding: 20rpx 24rpx;
-  border: 2rpx solid #e5e7eb;
-  border-radius: 16rpx;
-  text-align: center;
-  background: #f9fafb;
-  transition: all 0.3s;
-  display: flex;
-  flex-direction: column;
-  gap: 6rpx;
+.groups-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1f2937;
 }
 
-.group-tab-detail--active {
-  border-color: #3b82f6;
-  background: #dbeafe;
-}
-
-.group-tab-detail__name {
-  font-size: 28rpx;
-  color: #4b5563;
+.groups-subtitle {
+  font-size: 24rpx;
+  color: #9ca3af;
   font-weight: 500;
 }
 
-.group-tab-detail--active .group-tab-detail__name {
+/* 横向滚动容器 */
+.groups-scroll {
+  width: 100%;
+  white-space: nowrap;
+  margin-bottom: 24rpx;
+}
+
+.groups-tabs {
+  display: inline-flex;
+  gap: 16rpx;
+  padding-bottom: 8rpx;
+}
+
+/* 分组卡片 */
+.group-tab-card {
+  display: inline-flex;
+  flex-direction: column;
+  width: 220rpx;
+  min-width: 220rpx;
+  padding: 20rpx;
+  background: #f9fafb;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 20rpx;
+  transition: all 0.3s ease;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+
+.group-tab-card:active {
+  transform: scale(0.98);
+}
+
+.group-tab-card--active {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border-color: #3b82f6;
+  box-shadow: 0 4rpx 16rpx rgba(59, 130, 246, 0.2);
+}
+
+/* 卡片头部 */
+.group-tab-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+  gap: 8rpx;
+}
+
+.group-tab-name {
+  font-size: 28rpx;
+  color: #4b5563;
+  font-weight: 600;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-tab-card--active .group-tab-name {
   color: #1d4ed8;
+}
+
+/* 状态徽标 */
+.group-tab-status {
+  flex-shrink: 0;
+  padding: 6rpx 12rpx;
+  border-radius: 8rpx;
+  font-size: 20rpx;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.status-ok {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.status-full {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.status-text {
+  display: block;
+}
+
+/* 人数统计 */
+.group-tab-count {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.count-text {
+  font-size: 24rpx;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.group-tab-card--active .count-text {
+  color: #60a5fa;
   font-weight: 600;
 }
 
-.group-tab-detail__count {
-  font-size: 22rpx;
-  color: #9ca3af;
+/* 分组详情区域 */
+.group-detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
 }
 
-.group-tab-detail--active .group-tab-detail__count {
-  color: #60a5fa;
+/* 详情信息卡片 */
+.detail-info-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 20rpx;
+  border-radius: 16rpx;
+  border-left: 4rpx solid;
 }
 
-.group-detail-content {
-  margin-top: 24rpx;
+.detail-info-card--primary {
+  background: linear-gradient(135deg, #eff6ff 0%, #e0f2fe 100%);
+  border-left-color: #3b82f6;
+}
+
+.detail-info-card--warning {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-left-color: #f59e0b;
+}
+
+.detail-info-card--info {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-left-color: #10b981;
+}
+
+.info-icon {
+  font-size: 36rpx;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.info-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.detail-info-card .info-label {
+  font-size: 24rpx;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.detail-info-card .info-value {
+  font-size: 30rpx;
+  color: #1f2937;
+  font-weight: 700;
+}
+
+.info-text {
+  font-size: 26rpx;
+  color: #4b5563;
+  line-height: 1.6;
 }

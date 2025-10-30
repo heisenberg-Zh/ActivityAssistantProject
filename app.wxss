@@ -140,7 +140,7 @@ page {
 .banner--green { background: linear-gradient(135deg, #34d399 0%, #14b8a6 100%); }
 .banner--purple { background: linear-gradient(135deg, #a78bfa 0%, #f472b6 100%); }
 
-.bottom-space { height: 140rpx; }
+.bottom-space { height: 200rpx; }
 
 .scroll-x { white-space: nowrap; }
 .chip { display: inline-block; margin-right: 12rpx; }

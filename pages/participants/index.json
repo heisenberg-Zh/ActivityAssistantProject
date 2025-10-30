@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "参与成员",
+  "navigationBarBackgroundColor": "#3b82f6",
+  "navigationBarTextStyle": "white",
+  "backgroundColor": "#f7f8fa",
+  "enablePullDownRefresh": false,
+  "usingComponents": {}
+}

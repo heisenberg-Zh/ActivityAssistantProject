@@ -330,10 +330,58 @@
   line-height: 1.6;
 }
 
-.participant-card { padding: 24rpx; }
-.participant-item { display: flex; align-items: center; justify-content: space-between; padding: 12rpx 0; }
-.participant-avatar { width: 64rpx; height: 64rpx; border-radius: 20rpx; display: flex; align-items: center; justify-content: center; font-size: 28rpx; font-weight: 600; color: #ffffff; margin-right: 16rpx; }
-.participant-info { gap: 4rpx; flex: 1; }
+/* 已报名人员模块 */
+.participants-card-reg {
+  padding: 24rpx;
+}
+
+/* 参与者头像一行展示 */
+.participants-row-reg {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  overflow-x: hidden;
+}
+
+.participants-avatar-item-reg {
+  flex-shrink: 0;
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 9999rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+  border: 3rpx solid #ffffff;
+}
+
+.participants-avatar-img-reg {
+  width: 100%;
+  height: 100%;
+  border-radius: 9999rpx;
+}
+
+.participants-more-reg {
+  flex-shrink: 0;
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 9999rpx;
+  background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+  border: 3rpx solid #ffffff;
+}
+
+.participants-more-text-reg {
+  font-size: 24rpx;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.participants-empty-reg {
+  padding: 40rpx 0;
+  text-align: center;
+}
 
 .fixed-footer { position: fixed; left: 0; right: 0; bottom: 0; background: #ffffff; border-top: 1px solid #e5e7eb; padding: 16rpx 24rpx; display: flex; gap: 16rpx; }
 .footer-btn { flex: 1; }
