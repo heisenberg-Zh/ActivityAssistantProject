@@ -4,6 +4,9 @@ const { API_CONFIG, WX_CONFIG } = require('./utils/config.js');
 App({
   globalData: {
     userInfo: null,
+    isLoggedIn: false,
+    currentUserId: null,
+    currentUser: null,
     apiBase: API_CONFIG.baseUrl,
     useMock: API_CONFIG.useMock,
     appId: WX_CONFIG.appId
@@ -52,13 +55,45 @@ App({
   initUserInfo() {
     try {
       const userInfo = wx.getStorageSync('userInfo');
-      if (userInfo) {
+      const isLoggedIn = wx.getStorageSync('isLoggedIn');
+      const currentUserId = wx.getStorageSync('currentUserId');
+      const currentUser = wx.getStorageSync('currentUser');
+
+      // 确保 isLoggedIn 是布尔值
+      const loggedIn = isLoggedIn === true || isLoggedIn === 'true';
+
+      if (userInfo && loggedIn) {
         this.globalData.userInfo = userInfo;
-        console.log('用户信息已加载');
+        this.globalData.isLoggedIn = true;
+        this.globalData.currentUserId = currentUserId || 'u1';
+        this.globalData.currentUser = currentUser || {
+          id: 'u1',
+          name: '张小北',
+          avatar: '/activityassistant_avatar_01.png'
+        };
+        console.log('✅ 用户信息已加载:', this.globalData.currentUser);
+      } else {
+        console.log('⚠️ 用户未登录');
       }
     } catch (err) {
-      console.error('加载用户信息失败:', err);
+      console.error('❌ 加载用户信息失败:', err);
     }
+  },
+
+  // 检查登录状态
+  checkLoginStatus() {
+    return this.globalData.isLoggedIn;
+  },
+
+  // 要求登录
+  requireLogin() {
+    if (!this.checkLoginStatus()) {
+      wx.navigateTo({
+        url: '/pages/auth/login'
+      });
+      return false;
+    }
+    return true;
   },
 
   // 设置用户信息
@@ -74,8 +109,14 @@ App({
   // 清除用户信息
   clearUserInfo() {
     this.globalData.userInfo = null;
+    this.globalData.isLoggedIn = false;
+    this.globalData.currentUserId = null;
+    this.globalData.currentUser = null;
     try {
       wx.removeStorageSync('userInfo');
+      wx.removeStorageSync('isLoggedIn');
+      wx.removeStorageSync('currentUserId');
+      wx.removeStorageSync('currentUser');
       wx.removeStorageSync('user_token');
     } catch (err) {
       console.error('清除用户信息失败:', err);

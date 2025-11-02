@@ -1,6 +1,7 @@
 // pages/activities/detail.js
 const { activities, participants, registrations } = require('../../utils/mock.js');
 const { activityAPI } = require('../../utils/api.js');
+const { parseDate } = require('../../utils/date-helper.js');
 const {
   formatMoney,
   formatParticipants,
@@ -134,11 +135,11 @@ Page({
 
       // 判断是否可以报名
       const now = new Date();
-      const deadline = new Date(detail.registerDeadline);
+      const deadline = parseDate(detail.registerDeadline);
       const canRegister = now < deadline && detail.joined < detail.total;
 
       // 判断是否可以签到
-      const startTime = new Date(detail.startTime);
+      const startTime = parseDate(detail.startTime);
       const canCheckin = detail.status === '进行中' ||
         (Math.abs(now.getTime() - startTime.getTime()) <= 30 * 60 * 1000);
 

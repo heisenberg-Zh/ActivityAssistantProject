@@ -1,0 +1,42 @@
+<!-- pages/statistics/created-detail.wxml -->
+<view class="container">
+  <!-- 核心数据卡片 -->
+  <view class="summary-section">
+    <view class="summary-grid">
+      <view class="summary-item">
+        <text class="summary-value">{{totalCreated}}</text>
+        <text class="summary-label">创建活动数</text>
+      </view>
+      <view class="summary-item">
+        <text class="summary-value">{{totalJoined}}</text>
+        <text class="summary-label">总报名人数</text>
+      </view>
+      <view class="summary-item">
+        <text class="summary-value">{{avgRate}}%</text>
+        <text class="summary-label">平均报名率</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 活动类型分布 - 饼图 -->
+  <view class="chart-section">
+    <view class="section-header">
+      <text class="section-title">活动类型分布</text>
+    </view>
+    <view class="chart-container">
+      <canvas canvas-id="pie-canvas" id="pie-canvas" style="width: {{canvasWidth}}px; height: {{canvasHeight}}px;"></canvas>
+    </view>
+  </view>
+
+  <!-- 每月创建活动趋势 - 柱状图 -->
+  <view class="chart-section">
+    <view class="section-header">
+      <text class="section-title">每月创建活动趋势</text>
+    </view>
+    <view class="chart-container">
+      <canvas canvas-id="bar-canvas" id="bar-canvas" style="width: {{canvasWidth}}px; height: {{canvasHeight}}px;"></canvas>
+    </view>
+  </view>
+
+  <view class="bottom-space"></view>
+</view>

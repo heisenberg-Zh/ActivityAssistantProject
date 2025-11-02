@@ -1,0 +1,30 @@
+<!-- pages/my-activities/created-list.wxml -->
+<view class="container">
+  <!-- 空状态 -->
+  <view wx:if="{{activities.length === 0}}" class="empty-state">
+    <view class="empty-icon">🎯</view>
+    <text class="empty-title">还没有创建活动</text>
+    <text class="empty-desc">立即发起第一场活动！</text>
+    <view class="empty-btn" bindtap="goToCreateActivity">创建活动</view>
+  </view>
+
+  <!-- 活动列表 -->
+  <view wx:else class="activity-list">
+    <block wx:for="{{activities}}" wx:key="id" wx:for-item="activity">
+      <view class="activity-item">
+        <view class="activity-header">
+          <text class="activity-title">{{activity.title}}</text>
+          <view class="status-badge status-{{activity.statusClass}}">
+            {{activity.status}}
+          </view>
+        </view>
+        <view class="activity-meta">
+          <view class="meta-item">
+            <text class="meta-icon">🕐</text>
+            <text class="meta-text">{{activity.date}}</text>
+          </view>
+        </view>
+      </view>
+    </block>
+  </view>
+</view>

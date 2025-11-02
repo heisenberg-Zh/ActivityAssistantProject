@@ -3,15 +3,20 @@
     "pages/home/index",
     "pages/activities/list",
     "pages/activities/detail",
+    "pages/activities/create",
     "pages/registration/index",
     "pages/checkin/index",
     "pages/statistics/index",
+    "pages/statistics/joined-detail",
+    "pages/statistics/created-detail",
     "pages/profile/index",
     "pages/my-activities/index",
+    "pages/my-activities/joined-list",
+    "pages/my-activities/created-list",
     "pages/messages/index",
     "pages/settings/index",
-    "pages/activities/create",
-    "pages/participants/index"
+    "pages/participants/index",
+    "pages/auth/login"
   ],
   "window": {
     "navigationBarTitleText": "ActivityAssistant",
