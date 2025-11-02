@@ -1,0 +1,51 @@
+<!-- pages/auth/login.wxml -->
+<view class="login-container">
+  <view class="login-content">
+    <!-- Logo区域 -->
+    <view class="logo-section">
+      <view class="logo-icon">📅</view>
+      <text class="app-name">活动助手</text>
+      <text class="app-slogan">让每一场活动都精彩</text>
+    </view>
+
+    <!-- 功能介绍 -->
+    <view class="feature-list">
+      <view class="feature-item">
+        <view class="feature-icon">✨</view>
+        <text class="feature-text">轻松创建和管理活动</text>
+      </view>
+      <view class="feature-item">
+        <view class="feature-icon">👥</view>
+        <text class="feature-text">快速组织报名和签到</text>
+      </view>
+      <view class="feature-item">
+        <view class="feature-icon">📊</view>
+        <text class="feature-text">实时统计活动数据</text>
+      </view>
+    </view>
+
+    <!-- 登录按钮 -->
+    <view class="login-action">
+      <!-- 开发模式快捷登录 -->
+      <button wx:if="{{isDev}}" class="dev-login-btn" bindtap="handleDevLogin">
+        <view class="btn-content">
+          <text class="dev-icon">🚀</text>
+          <text class="btn-text">开发模式登录（快捷）</text>
+        </view>
+      </button>
+
+      <!-- 微信授权登录 -->
+      <button class="login-btn" bindtap="handleLogin">
+        <view class="btn-content">
+          <text class="wechat-icon">💬</text>
+          <text class="btn-text">微信授权登录</text>
+        </view>
+      </button>
+
+      <text class="privacy-tips">登录即表示同意《隐私政策》和《用户协议》</text>
+    </view>
+  </view>
+
+  <!-- 底部装饰 -->
+  <view class="bottom-decoration"></view>
+</view>

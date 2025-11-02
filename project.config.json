@@ -2,7 +2,7 @@
   "setting": {
     "es6": true,
     "postcss": true,
-    "minified": true,
+    "minified": false,
     "uglifyFileName": false,
     "enhance": true,
     "packNpmRelationList": [],
@@ -21,7 +21,11 @@
     "disableUseStrict": false,
     "condition": false,
     "swc": false,
-    "disableSWC": true
+    "disableSWC": true,
+    "ignoreDevUnusedFiles": false,
+    "ignoreUploadUnusedFiles": false,
+    "useIsolateContext": true,
+    "userConfirmedBundleSwitch": false
   },
   "compileType": "miniprogram",
   "simulatorPluginLibVersion": {},

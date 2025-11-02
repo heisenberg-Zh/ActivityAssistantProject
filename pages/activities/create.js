@@ -2,6 +2,7 @@
 const { activityAPI } = require('../../utils/api.js');
 const { validateActivityForm } = require('../../utils/validator.js');
 const { formatDateTime } = require('../../utils/datetime.js');
+const { parseDate } = require('../../utils/date-helper.js');
 
 const TYPE_OPTIONS = ['聚会', '培训', '户外', '运动', '会议'];
 
@@ -118,8 +119,8 @@ Page({
           wx.showToast({ title: '请选择活动结束时间', icon: 'none' });
           return false;
         }
-        const startDateTime = new Date(`${form.startDate} ${form.startTime}`);
-        const endDateTime = new Date(`${form.endDate} ${form.endTime}`);
+        const startDateTime = parseDate(`${form.startDate} ${form.startTime}`);
+        const endDateTime = parseDate(`${form.endDate} ${form.endTime}`);
         if (endDateTime <= startDateTime) {
           wx.showToast({ title: '结束时间必须晚于开始时间', icon: 'none' });
           return false;
