@@ -1,0 +1,98 @@
+<!-- pages/management/administrators.wxml -->
+<view class="admin-page">
+  <!-- 顶部标题栏 -->
+  <view class="top-bar top-bar--fixed">
+    <view class="top-bar__group">
+      <view class="icon-btn" bindtap="goBack">
+        <text>←</text>
+      </view>
+      <text class="text-lg" style="margin-left: 16rpx;">管理员管理</text>
+    </view>
+    <view class="top-bar__group">
+      <view class="badge badge--info">{{administrators.length}}/5</view>
+    </view>
+  </view>
+
+  <!-- 提示信息 -->
+  <view class="section" style="margin-top: 100rpx;">
+    <view class="notice-card notice-card--info">
+      <text class="text-sm">管理员可以修改活动信息、管理白/黑名单、审核报名和查看报名信息，但不能添加或移除其他管理员。</text>
+    </view>
+  </view>
+
+  <!-- 管理员列表 -->
+  <view class="section">
+    <text class="section-title">当前管理员</text>
+
+    <view wx:if="{{administrators.length > 0}}" class="admin-list">
+      <block wx:for="{{administrators}}" wx:key="userId">
+        <view class="admin-item card shadow-card">
+          <image src="{{item.avatar}}" mode="cover" class="admin-avatar"></image>
+          <view class="admin-info">
+            <text class="admin-name">{{item.name}}</text>
+            <text class="admin-mobile">{{item.mobile}}</text>
+          </view>
+          <view class="admin-actions">
+            <view class="btn btn--danger btn--small" bindtap="removeAdmin" data-user-id="{{item.userId}}" data-name="{{item.name}}">
+              移除
+            </view>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <view wx:else class="empty-state">
+      <text class="empty-icon">👤</text>
+      <text class="empty-text">暂无管理员</text>
+      <text class="empty-hint">点击下方按钮添加管理员</text>
+    </view>
+  </view>
+
+  <!-- 底部添加按钮 -->
+  <view class="fixed-footer">
+    <view class="btn btn--primary" style="width: 100%;" bindtap="showAddAdmin">
+      添加管理员
+    </view>
+  </view>
+
+  <!-- 添加管理员对话框 -->
+  <view wx:if="{{showAddDialog}}" class="dialog-overlay" bindtap="closeAddDialog">
+    <view class="dialog-content" catchtap="{{null}}">
+      <view class="dialog-header">
+        <text class="dialog-title">选择管理员</text>
+        <view class="dialog-close" bindtap="closeAddDialog">✕</view>
+      </view>
+
+      <view class="dialog-body">
+        <scroll-view scroll-y class="user-list">
+          <block wx:for="{{availableUsers}}" wx:key="id">
+            <view
+              class="user-item {{selectedUserId === item.id ? 'user-item--selected' : ''}}"
+              bindtap="selectUser"
+              data-user-id="{{item.id}}"
+            >
+              <image src="{{item.avatar}}" mode="cover" class="user-avatar"></image>
+              <view class="user-info">
+                <text class="user-name">{{item.name}}</text>
+                <text class="user-mobile">{{item.mobile}}</text>
+              </view>
+              <view wx:if="{{selectedUserId === item.id}}" class="user-check">✓</view>
+            </view>
+          </block>
+
+          <view wx:if="{{availableUsers.length === 0}}" class="empty-state" style="min-height: 300rpx;">
+            <text class="empty-icon">👥</text>
+            <text class="empty-text">暂无可添加的用户</text>
+          </view>
+        </scroll-view>
+      </view>
+
+      <view class="dialog-footer">
+        <view class="btn btn--secondary" bindtap="closeAddDialog">取消</view>
+        <view class="btn btn--primary" bindtap="confirmAddAdmin">确定</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="bottom-space"></view>
+</view>

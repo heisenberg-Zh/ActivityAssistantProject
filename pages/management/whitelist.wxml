@@ -1,0 +1,139 @@
+<!-- pages/management/whitelist.wxml -->
+<view class="whitelist-page">
+  <!-- 顶部标题栏 -->
+  <view class="top-bar top-bar--fixed">
+    <view class="top-bar__group">
+      <view class="icon-btn" bindtap="goBack">
+        <text>←</text>
+      </view>
+      <text class="text-lg" style="margin-left: 16rpx;">白名单管理</text>
+    </view>
+    <view class="top-bar__group">
+      <view class="badge badge--ok">{{whitelist.length}} 人</view>
+    </view>
+  </view>
+
+  <!-- 提示信息 -->
+  <view class="section" style="margin-top: 100rpx;">
+    <view class="notice-card notice-card--info">
+      <text class="text-sm">白名单中的用户报名后会自动通过审核（仅对需要审核的活动有效）</text>
+    </view>
+  </view>
+
+  <!-- 白名单列表 -->
+  <view class="section">
+    <text class="section-title">当前白名单</text>
+
+    <view wx:if="{{whitelist.length > 0}}" class="list">
+      <block wx:for="{{whitelist}}" wx:key="phone">
+        <view class="list-item card shadow-card">
+          <view wx:if="{{item.avatar}}" class="list-avatar-container">
+            <image src="{{item.avatar}}" mode="cover" class="list-avatar"></image>
+          </view>
+          <view wx:else class="list-avatar-container">
+            <view class="list-avatar-placeholder">{{item.name.charAt(0)}}</view>
+          </view>
+          <view class="list-info">
+            <text class="list-name">{{item.name}}</text>
+            <text class="list-mobile">{{item.phone}}</text>
+          </view>
+          <view class="list-actions">
+            <view class="btn btn--danger btn--small" bindtap="removeItem" data-phone="{{item.phone}}" data-name="{{item.name}}">
+              移除
+            </view>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <view wx:else class="empty-state">
+      <text class="empty-icon">📋</text>
+      <text class="empty-text">暂无白名单</text>
+      <text class="empty-hint">点击下方按钮添加</text>
+    </view>
+  </view>
+
+  <!-- 底部添加按钮 -->
+  <view class="fixed-footer">
+    <view class="btn btn--primary" style="width: 100%;" bindtap="showAddDialog">
+      添加白名单
+    </view>
+  </view>
+
+  <!-- 添加白名单对话框 -->
+  <view wx:if="{{showAddDialog}}" class="dialog-overlay" bindtap="closeAddDialog">
+    <view class="dialog-content" catchtap="{{null}}">
+      <view class="dialog-header">
+        <text class="dialog-title">添加白名单</text>
+        <view class="dialog-close" bindtap="closeAddDialog">✕</view>
+      </view>
+
+      <!-- 模式切换 -->
+      <view class="mode-tabs">
+        <view
+          class="mode-tab {{addMode === 'phone' ? 'mode-tab--active' : ''}}"
+          bindtap="switchAddMode"
+          data-mode="phone"
+        >
+          批量手机号
+        </view>
+        <view
+          class="mode-tab {{addMode === 'user' ? 'mode-tab--active' : ''}}"
+          bindtap="switchAddMode"
+          data-mode="user"
+        >
+          从已报名选择
+        </view>
+      </view>
+
+      <view class="dialog-body">
+        <!-- 批量手机号模式 -->
+        <view wx:if="{{addMode === 'phone'}}" class="input-mode">
+          <view class="input-hint">
+            <text class="text-sm text-gray-600">每行一个手机号，支持批量添加</text>
+          </view>
+          <textarea
+            class="phone-textarea"
+            placeholder="请输入手机号（每行一个）&#10;例如：&#10;13800138000&#10;13900139000"
+            value="{{batchPhoneText}}"
+            bindinput="onPhoneTextInput"
+            maxlength="-1"
+          ></textarea>
+        </view>
+
+        <!-- 从已报名用户选择模式 -->
+        <view wx:if="{{addMode === 'user'}}" class="user-mode">
+          <scroll-view scroll-y class="user-scroll">
+            <block wx:for="{{registeredUsers}}" wx:key="userId">
+              <view
+                class="user-select-item {{selectedUserIds.includes(item.userId) ? 'user-select-item--selected' : ''}} {{item.inWhitelist ? 'user-select-item--disabled' : ''}}"
+                bindtap="{{item.inWhitelist ? '' : 'toggleUserSelection'}}"
+                data-user-id="{{item.userId}}"
+              >
+                <image src="{{item.avatar}}" mode="cover" class="user-select-avatar"></image>
+                <view class="user-select-info">
+                  <text class="user-select-name">{{item.name}}</text>
+                  <text class="user-select-mobile">{{item.mobile}}</text>
+                </view>
+                <view wx:if="{{item.inWhitelist}}" class="user-select-status">已添加</view>
+                <view wx:elif="{{selectedUserIds.includes(item.userId)}}" class="user-select-check">✓</view>
+              </view>
+            </block>
+
+            <view wx:if="{{registeredUsers.length === 0}}" class="empty-state" style="min-height: 300rpx;">
+              <text class="empty-icon">👥</text>
+              <text class="empty-text">暂无已报名用户</text>
+            </view>
+          </scroll-view>
+        </view>
+      </view>
+
+      <view class="dialog-footer">
+        <view class="btn btn--secondary" bindtap="closeAddDialog">取消</view>
+        <view class="btn btn--primary" bindtap="confirmAdd">确定</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="bottom-space"></view>
+</view>

@@ -1,0 +1,218 @@
+/* pages/management/administrators.wxss */
+
+.admin-page {
+  min-height: 100vh;
+  background: #f7f8fa;
+  padding-bottom: 120rpx;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1f2937;
+  display: block;
+  margin-bottom: 16rpx;
+  padding: 0 24rpx;
+}
+
+/* 管理员列表 */
+.admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  padding: 0 24rpx;
+}
+
+.admin-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx;
+  border-radius: 20rpx;
+}
+
+.admin-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 9999rpx;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+
+.admin-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.admin-name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.admin-mobile {
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.admin-actions {
+  flex-shrink: 0;
+}
+
+/* 对话框 */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dialog-content {
+  width: 600rpx;
+  max-height: 80vh;
+  background: #ffffff;
+  border-radius: 24rpx;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx;
+  border-bottom: 1rpx solid #e5e7eb;
+}
+
+.dialog-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.dialog-close {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 9999rpx;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  color: #6b7280;
+}
+
+.dialog-body {
+  flex: 1;
+  overflow: hidden;
+}
+
+.user-list {
+  max-height: 500rpx;
+  padding: 16rpx;
+}
+
+.user-item {
+  display: flex;
+  align-items: center;
+  padding: 16rpx;
+  border-radius: 16rpx;
+  margin-bottom: 12rpx;
+  transition: all 0.3s ease;
+  background: #f9fafb;
+}
+
+.user-item:active {
+  transform: scale(0.98);
+}
+
+.user-item--selected {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 2rpx solid #3b82f6;
+}
+
+.user-avatar {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 9999rpx;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+
+.user-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.user-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.user-mobile {
+  font-size: 22rpx;
+  color: #6b7280;
+}
+
+.user-check {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 9999rpx;
+  background: #3b82f6;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.dialog-footer {
+  display: flex;
+  gap: 16rpx;
+  padding: 24rpx;
+  border-top: 1rpx solid #e5e7eb;
+}
+
+.dialog-footer .btn {
+  flex: 1;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 32rpx;
+  min-height: 300rpx;
+}
+
+.empty-icon {
+  font-size: 96rpx;
+  opacity: 0.5;
+  margin-bottom: 16rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #6b7280;
+  margin-bottom: 8rpx;
+}
+
+.empty-hint {
+  font-size: 24rpx;
+  color: #9ca3af;
+}
