@@ -27,6 +27,7 @@
         <view class="row-between activity-card__header">
           <view class="row gap-12">
             <view class="badge {{ item.status === '进行中' ? 'badge--ok' : (item.status === '即将开始' ? 'badge--info' : 'badge--muted') }}">{{item.status}}</view>
+            <view wx:if="{{item.privacyTag}}" class="badge badge--warning">🔒 {{item.privacyTag}}</view>
           </view>
           <view class="badge badge--light">{{item.type}}</view>
         </view>

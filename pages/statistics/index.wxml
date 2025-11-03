@@ -18,12 +18,20 @@
   <!-- 基础统计卡片 -->
   <view class="stats-grid">
     <block wx:for="{{joinedStats}}" wx:key="label" wx:for-item="stat">
-      <view class="stat-card">
+      <view class="stat-card {{stat.value === 0 || stat.value === '0' ? 'stat-card--empty' : ''}}">
         <view class="stat-icon" style="background: {{stat.bg}}; color: {{stat.color}};">{{stat.icon}}</view>
         <text class="stat-value">{{stat.value}}</text>
         <text class="stat-label">{{stat.label}}</text>
       </view>
     </block>
+  </view>
+
+  <!-- 空状态提示 -->
+  <view wx:if="{{joinedStats[0].value === 0}}" class="section-tip">
+    <text class="tip-text">✨ 开始参加活动，记录你的精彩瞬间</text>
+  </view>
+  <view wx:elif="{{joinedStats[0].value > 0 && joinedStats[0].value < 3}}" class="section-tip">
+    <text class="tip-text">🎯 再接再厉！多参加活动，积累更多经历</text>
   </view>
 
   <!-- 操作按钮 -->
@@ -51,12 +59,20 @@
   <!-- 基础统计卡片 -->
   <view class="stats-grid">
     <block wx:for="{{createdStats}}" wx:key="label" wx:for-item="stat">
-      <view class="stat-card">
+      <view class="stat-card {{stat.value === 0 || stat.value === '0' ? 'stat-card--empty' : ''}}">
         <view class="stat-icon" style="background: {{stat.bg}}; color: {{stat.color}};">{{stat.icon}}</view>
         <text class="stat-value">{{stat.value}}</text>
         <text class="stat-label">{{stat.label}}</text>
       </view>
     </block>
+  </view>
+
+  <!-- 空状态提示 -->
+  <view wx:if="{{createdStats[0].value === 0}}" class="section-tip">
+    <text class="tip-text">🎉 创建你的第一个活动，邀请朋友一起玩</text>
+  </view>
+  <view wx:elif="{{createdStats[0].value > 0 && createdStats[0].value < 3}}" class="section-tip">
+    <text class="tip-text">💪 继续加油！创建更多精彩活动</text>
   </view>
 
   <!-- 操作按钮 -->

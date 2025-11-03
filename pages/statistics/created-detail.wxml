@@ -23,8 +23,13 @@
     <view class="section-header">
       <text class="section-title">活动类型分布</text>
     </view>
-    <view class="chart-container">
+    <view wx:if="{{totalCreated > 0}}" class="chart-container">
       <canvas canvas-id="pie-canvas" id="pie-canvas" style="width: {{canvasWidth}}px; height: {{canvasHeight}}px;"></canvas>
+    </view>
+    <view wx:else class="empty-state">
+      <text class="empty-icon">📊</text>
+      <text class="empty-text">暂无活动数据</text>
+      <text class="empty-hint">创建活动后即可查看类型分布</text>
     </view>
   </view>
 
@@ -32,9 +37,16 @@
   <view class="chart-section">
     <view class="section-header">
       <text class="section-title">每月创建活动趋势</text>
+      <text wx:if="{{totalCreated > 0 && totalCreated < 5}}" class="section-hint">继续创建更多活动，数据会更精彩</text>
     </view>
-    <view class="chart-container">
+    <view wx:if="{{totalCreated > 0}}" class="chart-container">
       <canvas canvas-id="bar-canvas" id="bar-canvas" style="width: {{canvasWidth}}px; height: {{canvasHeight}}px;"></canvas>
+    </view>
+    <view wx:else class="empty-state">
+      <text class="empty-icon">📈</text>
+      <text class="empty-text">暂无趋势数据</text>
+      <text class="empty-hint">创建活动，与更多朋友一起玩</text>
+      <navigator url="/pages/activities/create" class="empty-action">立即创建活动</navigator>
     </view>
   </view>
 
