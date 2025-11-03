@@ -1,5 +1,7 @@
 // pages/home/index.js
 const { activities, registrations } = require('../../utils/mock.js');
+const { filterActivitiesByPermission } = require('../../utils/activity-helper.js');
+const app = getApp();
 
 Page({
   data: {
@@ -16,9 +18,24 @@ Page({
   },
 
   onLoad() {
+    // 获取当前用户ID
+    const currentUserId = app.globalData.currentUserId || 'u1';
+
+    // 获取用户的报名记录（仅审核通过的）
+    const userRegistrations = registrations.filter(
+      r => r.userId === currentUserId && r.status === 'approved'
+    );
+
+    // 过滤活动：首页不显示不公开的活动（即使是自己创建的）
+    const filteredActivities = filterActivitiesByPermission(
+      activities,
+      currentUserId,
+      userRegistrations,
+      { includeOwned: false } // 首页不显示自己创建的私密活动
+    );
+
     // 为活动列表添加已报名状态
-    const currentUserId = 'u1'; // 应从登录态获取
-    const enrichedActivities = activities.map(activity => {
+    const enrichedActivities = filteredActivities.map(activity => {
       const isRegistered = registrations.some(
         r => r.activityId === activity.id && r.userId === currentUserId && r.status !== 'cancelled'
       );
@@ -45,6 +62,10 @@ Page({
 
   goMyActivities() {
     wx.navigateTo({ url: '/pages/my-activities/index' });
+  },
+
+  goCopyActivity() {
+    wx.navigateTo({ url: '/pages/activities/create?mode=copy' });
   },
 
   goDetail(e) {

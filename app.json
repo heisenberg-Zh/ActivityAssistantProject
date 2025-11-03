@@ -16,7 +16,12 @@
     "pages/messages/index",
     "pages/settings/index",
     "pages/participants/index",
-    "pages/auth/login"
+    "pages/auth/login",
+    "pages/management/index",
+    "pages/management/administrators",
+    "pages/management/whitelist",
+    "pages/management/blacklist",
+    "pages/management/registrations"
   ],
   "window": {
     "navigationBarTitleText": "ActivityAssistant",

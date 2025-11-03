@@ -2,12 +2,110 @@
 
 // ==================== 活动数据 ====================
 const activities = [
+  // ========== 测试私密活动 ==========
+  {
+    id: 'private1',
+    title: '私密网球训练营',
+    isDeleted: false,
+    isPublic: false, // 私密活动
+    desc: '仅限内部成员参加的网球训练营，专业教练指导，小班授课。',
+    date: '12月18日 14:00',
+    timeRange: '12月18日 14:00-17:00',
+    startTime: '2025-12-18 14:00',
+    endTime: '2025-12-18 17:00',
+    registerDeadline: '2025-12-17 20:00',
+    place: '朝阳网球中心',
+    address: '北京市朝阳区朝阳公园路1号',
+    latitude: 39.9280,
+    longitude: 116.4750,
+    checkinRadius: 200,
+    type: '运动',
+    status: '即将开始',
+    total: 10,
+    joined: 3,
+    minParticipants: 5,
+    banner: 'blue',
+    fee: 200,
+    feeType: 'AA',
+    needReview: false,
+    organizerId: 'u1',
+    organizerName: '张小北',
+    tags: ['运动', '网球', '训练'],
+    requirements: '需携带球拍和运动装备',
+    createdAt: '2025-12-12 09:00',
+    hasGroups: false,
+    customFields: [
+      { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
+      { id: 'mobile', label: '手机号', required: true, desc: '用于联系参与者', isCustom: false }
+    ],
+    // 管理功能相关字段
+    administrators: [
+      { userId: 'u2', addedAt: '2025-12-12 10:00', addedBy: 'u1' }
+    ],
+    whitelist: [
+      { phone: '138****1234', userId: 'u1', addedAt: '2025-12-12 09:00', addedBy: 'u1' },
+      { phone: '139****5678', userId: 'u2', addedAt: '2025-12-12 09:00', addedBy: 'u1' }
+    ],
+    blacklist: [
+      { phone: '150****9999', userId: null, expiresAt: null, isActive: true, reason: '违反活动规则', addedAt: '2025-12-13 10:00', addedBy: 'u1' }
+    ]
+  },
+  {
+    id: 'private2',
+    title: '公司团建-密室逃脱',
+    isDeleted: false,
+    isPublic: false, // 私密活动
+    desc: '公司年度团建活动，密室逃脱主题，仅限本公司员工参加。',
+    date: '12月20日 19:00',
+    timeRange: '12月20日 19:00-22:00',
+    startTime: '2025-12-20 19:00',
+    endTime: '2025-12-20 22:00',
+    registerDeadline: '2025-12-19 18:00',
+    place: '三里屯密室逃脱',
+    address: '北京市朝阳区三里屯路11号',
+    latitude: 39.9370,
+    longitude: 116.4580,
+    checkinRadius: 150,
+    type: '培训',
+    status: '即将开始',
+    total: 20,
+    joined: 12,
+    minParticipants: 10,
+    banner: 'purple',
+    fee: 0,
+    feeType: '免费',
+    needReview: true,
+    organizerId: 'u1',
+    organizerName: '张小北',
+    tags: ['团建', '娱乐', '密室'],
+    requirements: '请准时到达',
+    createdAt: '2025-12-10 14:00',
+    hasGroups: false,
+    customFields: [
+      { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
+      { id: 'mobile', label: '手机号', required: true, desc: '用于联系参与者', isCustom: false },
+      { id: 'custom_1', label: '部门', required: true, desc: '请填写您的部门', isCustom: true }
+    ],
+    // 管理功能相关字段
+    administrators: [
+      { userId: 'u3', addedAt: '2025-12-10 15:00', addedBy: 'u1' },
+      { userId: 'u4', addedAt: '2025-12-10 15:30', addedBy: 'u1' }
+    ],
+    whitelist: [
+      { phone: '136****9012', userId: 'u3', addedAt: '2025-12-10 14:00', addedBy: 'u1' },
+      { phone: '137****3456', userId: 'u4', addedAt: '2025-12-10 14:00', addedBy: 'u1' },
+      { phone: '180****1111', userId: null, addedAt: '2025-12-11 10:00', addedBy: 'u1' }
+    ],
+    blacklist: []
+  },
+
   // ========== 近期活动（未来和进行中）==========
   // 多分组活动示例 - 羽毛球活动（4个分组）
   {
     id: 'a0',
     title: '周六羽毛球联赛',
     isDeleted: false,
+    isPublic: true, // 公开活动
     desc: '专业场地，分4个级别组别，适合各个水平的羽毛球爱好者。欢迎报名参加，认识新球友，切磋球技！',
     date: '12月21日 09:00',
     timeRange: '12月21日 09:00-17:00',
@@ -366,7 +464,7 @@ const activities = [
     organizerName: '张小北',
     tags: ['运动', '羽毛球'],
     requirements: '请自带球拍',
-    createdAt: '2025-11-18 10:00',
+    createdAt: '2025-09-18 10:00',
     hasGroups: false,
     customFields: [
       { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
@@ -687,7 +785,7 @@ const activities = [
     organizerName: '张小北',
     tags: ['运动', '游泳'],
     requirements: '请自带泳衣泳帽',
-    createdAt: '2025-08-20 09:00',
+    createdAt: '2025-07-20 09:00',
     hasGroups: false,
     customFields: [
       { id: 'name', label: '昵称', required: true, desc: '', isCustom: false },
@@ -757,7 +855,7 @@ const activities = [
     organizerName: '张小北',
     tags: ['聚会', '烧烤', '户外'],
     requirements: '',
-    createdAt: '2025-08-05 14:00',
+    createdAt: '2025-10-05 14:00',
     hasGroups: false,
     customFields: [
       { id: 'name', label: '昵称', required: true, desc: '', isCustom: false },
@@ -865,7 +963,7 @@ const activities = [
     organizerName: '张小北',
     tags: ['运动', '羽毛球'],
     requirements: '请自带球拍',
-    createdAt: '2025-07-09 09:00',
+    createdAt: '2025-06-25 09:00',
     hasGroups: false,
     customFields: [
       { id: 'name', label: '昵称', required: true, desc: '', isCustom: false },
@@ -1374,10 +1472,10 @@ const registrations = [
     mobile: '138****1234',
     customData: {},
     status: 'approved',
-    registeredAt: '2025-07-16 13:00',
-    approvedAt: '2025-07-16 18:00',
+    registeredAt: '2025-10-30 13:00',
+    approvedAt: '2025-10-30 18:00',
     checkinStatus: 'checked',
-    checkinTime: '2025-07-21 14:05'
+    checkinTime: '2025-11-03 14:05'
   },
   {
     id: 'rh15',
@@ -1388,10 +1486,10 @@ const registrations = [
     mobile: '138****1234',
     customData: {},
     status: 'approved',
-    registeredAt: '2025-07-10 11:00',
-    approvedAt: '2025-07-10 11:00',
+    registeredAt: '2025-08-28 11:00',
+    approvedAt: '2025-08-28 11:00',
     checkinStatus: 'checked',
-    checkinTime: '2025-07-14 14:06'
+    checkinTime: '2025-09-01 14:06'
   },
 
   // 6月历史报名
@@ -1432,10 +1530,10 @@ const registrations = [
     mobile: '138****1234',
     customData: {},
     status: 'approved',
-    registeredAt: '2025-06-04 16:00',
-    approvedAt: '2025-06-04 16:00',
-    checkinStatus: 'pending',
-    checkinTime: null
+    registeredAt: '2025-10-28 16:00',
+    approvedAt: '2025-10-28 16:00',
+    checkinStatus: 'checked',
+    checkinTime: '2025-11-02 14:05'
   }
 ];
 
@@ -1469,8 +1567,17 @@ const checkinRecords = [
   }
 ];
 
+// 为所有活动添加默认字段（如果没有的话）
+const processedActivities = activities.map(activity => ({
+  ...activity,
+  isPublic: activity.isPublic !== undefined ? activity.isPublic : true, // 默认公开
+  administrators: activity.administrators || [], // 默认无管理员
+  whitelist: activity.whitelist || [], // 默认无白名单
+  blacklist: activity.blacklist || [] // 默认无黑名单
+}));
+
 module.exports = {
-  activities,
+  activities: processedActivities,
   participants,
   registrations,
   checkinRecords

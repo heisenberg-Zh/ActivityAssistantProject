@@ -1,4 +1,21 @@
 <!-- pages/activities/detail.wxml -->
+
+<!-- 无权限提示页面 -->
+<view wx:if="{{!hasPermission}}" class="permission-denied-page">
+  <view class="permission-denied-content">
+    <text class="permission-icon">🔒</text>
+    <text class="permission-title">无法查看此活动</text>
+    <text class="permission-message">{{permissionDeniedReason}}</text>
+    <text class="permission-hint">这是一个私密活动，仅创建者和已报名者可见</text>
+    <view class="permission-actions">
+      <navigator url="/pages/home/index" open-type="switchTab" class="btn btn--primary">返回首页</navigator>
+      <navigator url="/pages/activities/list" class="btn btn--secondary">浏览活动</navigator>
+    </view>
+  </view>
+</view>
+
+<!-- 正常活动详情页面 -->
+<view wx:else>
 <view class="detail-header">
   <text class="detail-title">{{detail.title}}</text>
 </view>
@@ -165,7 +182,10 @@
 </view>
 
 <view class="bottom-space"></view>
-<view class="fixed-footer">
+<view class="fixed-footer {{canManage ? 'fixed-footer--three-btn' : ''}}">
+  <button wx:if="{{canManage}}" class="btn btn--secondary footer-btn" bindtap="goManagement">管理</button>
   <button class="btn btn--secondary footer-btn" bindtap="onShare">分享</button>
   <button class="btn {{isRegistered ? 'btn--danger' : 'btn--primary'}} footer-btn" bindtap="{{isRegistered ? 'cancelRegistration' : 'goRegister'}}">{{isRegistered ? '取消报名' : '报名'}}</button>
 </view>
+</view>
+<!-- 结束 wx:else -->

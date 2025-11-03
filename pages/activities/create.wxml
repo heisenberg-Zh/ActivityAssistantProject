@@ -36,8 +36,17 @@
       </picker>
     </view>
 
-    <!-- 分组配置 -->
+    <!-- 是否公开 -->
     <view class="option-row" style="margin-top: 24rpx;">
+      <view class="option-label">
+        <text class="text-md text-gray-800">公开活动</text>
+        <text class="text-xs text-gray-500">关闭后仅创建者和已报名者可见，可通过分享邀请他人</text>
+      </view>
+      <switch checked="{{form.isPublic}}" bindchange="onSwitch" data-field="isPublic" color="#3b82f6" />
+    </view>
+
+    <!-- 分组配置 -->
+    <view class="option-row">
       <view class="option-label">
         <text class="text-md text-gray-800">是否启用多组报名</text>
         <text class="text-xs text-gray-500">适用于需要分组统计的活动</text>

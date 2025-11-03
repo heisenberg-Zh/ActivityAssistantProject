@@ -1,75 +1,13 @@
 // pages/my-activities/index.js
-const { activities } = require('../../utils/mock.js');
+const { activities, registrations } = require('../../utils/mock.js');
 const { isBeforeRegisterDeadline } = require('../../utils/datetime.js');
-
-const dataset = [
-  // 我创建的 - 进行中
-  Object.assign({}, activities[0], {
-    displayId: 'm1', // 用于页面显示的ID
-    // 保留原始的 id 字段，用于跳转
-    role: '我创建的',
-    status: '进行中',
-    actions: [
-      { label: '管理', action: 'manage', type: 'primary' },
-      { label: '详情', action: 'detail', type: 'secondary' }
-    ]
-  }),
-  // 我创建的 - 即将开始
-  Object.assign({}, activities[1], {
-    displayId: 'm2',
-    role: '我创建的',
-    status: '即将开始',
-    actions: [
-      { label: '编辑', action: 'edit', type: 'primary' },
-      { label: '详情', action: 'detail', type: 'secondary' }
-    ]
-  }),
-  // 我创建的 - 已结束
-  Object.assign({}, activities[2], {
-    displayId: 'm5',
-    role: '我创建的',
-    status: '已结束',
-    actions: [
-      { label: '查看统计', action: 'stats', type: 'primary' },
-      { label: '详情', action: 'detail', type: 'secondary' }
-    ]
-  }),
-  // 我参加的 - 即将开始
-  Object.assign({}, activities[1], {
-    displayId: 'm6',
-    role: '我参加的',
-    status: '即将开始',
-    actions: [
-      { label: '详情', action: 'detail', type: 'primary' },
-      { label: '取消报名', action: 'cancelRegistration', type: 'danger' }
-    ]
-  }),
-  // 我参加的 - 进行中
-  Object.assign({}, activities[2], {
-    displayId: 'm3',
-    role: '我参加的',
-    status: '进行中',
-    actions: [
-      { label: '签到', action: 'checkin', type: 'primary' },
-      { label: '详情', action: 'detail', type: 'secondary' }
-    ]
-  }),
-  // 我参加的 - 已结束
-  Object.assign({}, activities[0], {
-    displayId: 'm4',
-    role: '我参加的',
-    status: '已结束',
-    banner: 'purple',
-    actions: [
-      { label: '评价', action: 'review', type: 'primary' },
-      { label: '详情', action: 'detail', type: 'secondary' }
-    ]
-  })
-];
+const { getUserManagedActivities, checkManagementPermission } = require('../../utils/activity-management-helper.js');
+const app = getApp();
 
 const filters = [
   { key: 'all', name: '全部', active: true },
   { key: 'created', name: '我创建的', active: false },
+  { key: 'managed', name: '我管理的', active: false },
   { key: 'joined', name: '我参加的', active: false },
   { key: 'ended', name: '已结束', active: false }
 ];
@@ -78,8 +16,8 @@ Page({
   data: {
     filters,
     activeFilter: 'all',
-    list: dataset,
-    display: dataset,
+    list: [],
+    display: [],
     // 评价弹窗相关
     showReviewModal: false,
     currentActivityId: '',
@@ -87,6 +25,104 @@ Page({
     rating: 0,
     reviewText: '',
     hoverRating: 0
+  },
+
+  onLoad() {
+    this.loadActivities();
+  },
+
+  onShow() {
+    this.loadActivities();
+  },
+
+  // 加载活动数据
+  loadActivities() {
+    const currentUserId = app.globalData.currentUserId || 'u1';
+
+    // 获取我创建的活动
+    const createdActivities = activities
+      .filter(a => !a.isDeleted && a.organizerId === currentUserId)
+      .map(a => ({
+        ...a,
+        role: '我创建的',
+        actions: this.getActionsForActivity(a, 'created')
+      }));
+
+    // 获取我管理的活动（不包括我创建的）
+    const managedActivities = getUserManagedActivities(activities, currentUserId, {
+      includeCreated: false,
+      includeManaged: true
+    }).map(a => ({
+      ...a,
+      role: '我管理的',
+      actions: this.getActionsForActivity(a, 'managed')
+    }));
+
+    // 获取我参加的活动
+    const myRegistrations = registrations.filter(
+      r => r.userId === currentUserId && r.status === 'approved'
+    );
+    const joinedActivities = myRegistrations.map(reg => {
+      const activity = activities.find(a => a.id === reg.activityId);
+      if (!activity || activity.isDeleted) return null;
+      return {
+        ...activity,
+        role: '我参加的',
+        actions: this.getActionsForActivity(activity, 'joined')
+      };
+    }).filter(a => a !== null);
+
+    // 合并所有活动
+    const allActivities = [...createdActivities, ...managedActivities, ...joinedActivities];
+
+    this.setData({
+      list: allActivities,
+      display: allActivities
+    });
+
+    // 应用当前筛选
+    this.applyFilter(this.data.activeFilter);
+  },
+
+  // 根据活动和角色获取操作按钮
+  getActionsForActivity(activity, role) {
+    const actions = [];
+
+    if (role === 'created') {
+      // 我创建的活动
+      if (activity.status === '进行中') {
+        actions.push({ label: '管理', action: 'manage', type: 'primary' });
+        actions.push({ label: '详情', action: 'detail', type: 'secondary' });
+      } else if (activity.status === '即将开始') {
+        actions.push({ label: '编辑', action: 'edit', type: 'primary' });
+        actions.push({ label: '详情', action: 'detail', type: 'secondary' });
+      } else {
+        actions.push({ label: '查看统计', action: 'stats', type: 'primary' });
+        actions.push({ label: '详情', action: 'detail', type: 'secondary' });
+      }
+      // 所有创建的活动都可以复制
+      actions.push({ label: '复制', action: 'copy', type: 'secondary' });
+    } else if (role === 'managed') {
+      // 我管理的活动
+      actions.push({ label: '管理', action: 'manage', type: 'primary' });
+      actions.push({ label: '详情', action: 'detail', type: 'secondary' });
+      // 管理的活动也可以复制
+      actions.push({ label: '复制', action: 'copy', type: 'secondary' });
+    } else if (role === 'joined') {
+      // 我参加的活动
+      if (activity.status === '进行中') {
+        actions.push({ label: '签到', action: 'checkin', type: 'primary' });
+        actions.push({ label: '详情', action: 'detail', type: 'secondary' });
+      } else if (activity.status === '即将开始') {
+        actions.push({ label: '详情', action: 'detail', type: 'primary' });
+        actions.push({ label: '取消报名', action: 'cancelRegistration', type: 'danger' });
+      } else {
+        actions.push({ label: '评价', action: 'review', type: 'primary' });
+        actions.push({ label: '详情', action: 'detail', type: 'secondary' });
+      }
+    }
+
+    return actions;
   },
 
   onFilterTap(e) {
@@ -103,6 +139,7 @@ Page({
     const display = this.data.list.filter(item => {
       if (key === 'all') return true;
       if (key === 'created') return item.role === '我创建的';
+      if (key === 'managed') return item.role === '我管理的';
       if (key === 'joined') return item.role === '我参加的';
       if (key === 'ended') return item.status === '已结束';
       return true;
@@ -120,13 +157,16 @@ Page({
         wx.navigateTo({ url: '/pages/statistics/index' });
         break;
       case 'manage':
-        // 跳转到活动详情页（管理功能在详情页中）
-        // 未来可以创建专门的管理页面
-        wx.navigateTo({ url: `/pages/activities/detail?id=${id}&mode=manage` });
+        // 跳转到管理页面
+        wx.navigateTo({ url: `/pages/management/index?id=${id}` });
         break;
       case 'edit':
-        // 跳转到编辑页面（创建页面可复用为编辑页面）
-        wx.navigateTo({ url: `/pages/activities/create?id=${id}` });
+        // 跳转到编辑页面
+        wx.navigateTo({ url: `/pages/activities/create?mode=edit&id=${id}` });
+        break;
+      case 'copy':
+        // 跳转到复制页面
+        wx.navigateTo({ url: `/pages/activities/create?mode=copy&id=${id}` });
         break;
       case 'checkin':
         // 跳转到签到页面

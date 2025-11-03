@@ -40,10 +40,12 @@ Page({
    * 生命周期函数--监听页面显示
    */
   onShow() {
-    // 页面显示时初始化图表
+    // 页面显示时初始化图表（仅在有数据时）
     setTimeout(() => {
-      this.initPieChart();
-      this.initBarChart();
+      if (this.data.totalJoined > 0) {
+        this.initPieChart();
+        this.initBarChart();
+      }
     }, 300);
   },
 
@@ -110,6 +112,12 @@ Page({
 
     console.log('📊 [饼图] 图表数据:', series);
 
+    // 如果没有数据，不初始化图表
+    if (series.length === 0) {
+      console.log('📊 [饼图] 无数据，跳过初始化');
+      return;
+    }
+
     pieChart = new wxCharts({
       canvasId: 'pie-canvas',
       type: 'pie',
@@ -118,7 +126,9 @@ Page({
       height: this.data.canvasHeight,
       dataLabel: true,
       legend: true,
-      animation: true
+      animation: true,
+      // 少量数据时增加饼图半径，使其更加明显
+      radius: series.length <= 2 ? '65%' : '60%'
     });
   },
 
@@ -167,6 +177,20 @@ Page({
     const barData = monthLabels.map(label => monthData[label]);
     console.log('📊 [柱状图] 图表数据:', barData);
 
+    // 计算Y轴最大值，向上取整到合适的刻度
+    const maxValue = Math.max(...barData, 1);
+    // 对于少量数据，设置更合理的Y轴范围
+    let yMax;
+    if (maxValue <= 3) {
+      yMax = 5; // 数据很少时，固定显示0-5，使图表更美观
+    } else {
+      yMax = Math.ceil(maxValue * 1.2); // 留出20%空间
+    }
+    const splitNumber = Math.min(yMax, 5); // 最多5个刻度，避免过于密集
+
+    // 根据数据量调整柱状图宽度
+    const columnWidth = this.data.totalJoined <= 5 ? 30 : 20;
+
     barChart = new wxCharts({
       canvasId: 'bar-canvas',
       type: 'column',
@@ -180,9 +204,12 @@ Page({
       height: this.data.canvasHeight,
       yAxis: {
         format: function(val) {
-          return val.toFixed(0);
+          return Math.round(val); // 使用 Math.round 确保显示整数
         },
-        min: 0
+        min: 0,
+        max: yMax,
+        splitNumber: splitNumber,
+        gridType: 'dash'
       },
       xAxis: {
         disableGrid: false
@@ -192,7 +219,7 @@ Page({
       animation: true,
       extra: {
         column: {
-          width: 20
+          width: columnWidth
         }
       }
     });

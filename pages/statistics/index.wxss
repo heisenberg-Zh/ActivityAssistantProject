@@ -93,6 +93,13 @@
   background: #f3f4f6;
 }
 
+/* 空状态卡片 */
+.stat-card--empty {
+  opacity: 0.6;
+  border: 2rpx dashed #e5e7eb;
+  background: #fafafa;
+}
+
 .stat-icon {
   width: 72rpx;
   height: 72rpx;
@@ -200,3 +207,20 @@
 }
 
 .gap-16 { gap: 16rpx; }
+
+/* 区块提示 */
+.section-tip {
+  margin-top: 16rpx;
+  margin-bottom: 16rpx;
+  padding: 20rpx 24rpx;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-radius: 16rpx;
+  border-left: 4rpx solid #f59e0b;
+}
+
+.tip-text {
+  font-size: 26rpx;
+  color: #92400e;
+  line-height: 1.6;
+  font-weight: 500;
+}

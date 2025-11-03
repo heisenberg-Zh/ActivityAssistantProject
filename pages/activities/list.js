@@ -1,5 +1,7 @@
 // pages/activities/list.js
 const { activities, registrations } = require('../../utils/mock.js');
+const { filterActivitiesByPermission, enrichActivityWithTags } = require('../../utils/activity-helper.js');
+const app = getApp();
 
 const filters = [
   { key: 'all', name: '全部', active: true },
@@ -21,13 +23,32 @@ Page({
   },
 
   onLoad() {
-    // 为活动列表添加已报名状态
-    const currentUserId = 'u1'; // 应从登录态获取
-    const enrichedActivities = activities.map(activity => {
+    // 获取当前用户ID
+    const currentUserId = app.globalData.currentUserId || 'u1';
+
+    // 获取用户的报名记录（仅审核通过的）
+    const userRegistrations = registrations.filter(
+      r => r.userId === currentUserId && r.status === 'approved'
+    );
+
+    // 过滤活动：列表页显示自己创建的私密活动
+    const filteredActivities = filterActivitiesByPermission(
+      activities,
+      currentUserId,
+      userRegistrations,
+      { includeOwned: true } // 列表页显示自己创建的私密活动
+    );
+
+    // 为活动列表添加已报名状态和标签
+    const enrichedActivities = filteredActivities.map(activity => {
       const isRegistered = registrations.some(
         r => r.activityId === activity.id && r.userId === currentUserId && r.status !== 'cancelled'
       );
-      return { ...activity, isRegistered };
+
+      // 添加标签（如私密标签）
+      const withTags = enrichActivityWithTags(activity, currentUserId);
+
+      return { ...withTags, isRegistered };
     });
 
     this.setData({

@@ -11,6 +11,9 @@ const {
 } = require('../../utils/formatter.js');
 const { formatDateCN, getRelativeTime, isBeforeRegisterDeadline } = require('../../utils/datetime.js');
 const { openMapNavigation } = require('../../utils/location.js');
+const { checkActivityViewPermission } = require('../../utils/activity-helper.js');
+const { checkManagementPermission } = require('../../utils/activity-management-helper.js');
+const app = getApp();
 
 Page({
   data: {
@@ -25,15 +28,26 @@ Page({
     canCheckin: false,
     isRegistered: false,
     loading: true,
-    currentGroupIndex: 0 // 当前查看的分组索引
+    currentGroupIndex: 0, // 当前查看的分组索引
+    // 权限相关
+    hasPermission: true,
+    permissionDeniedReason: '',
+    fromShare: false, // 是否通过分享链接访问
+    // 管理权限
+    canManage: false,
+    managementRole: '' // 'creator' 或 'admin'
   },
 
   onLoad(query) {
     // 确保ID是字符串类型，并去除可能的空格
     const id = String(query.id || 'a1').trim();
+    const fromShare = query.from === 'share'; // 检查是否通过分享链接访问
+
     console.log('详情页接收到的原始 query:', query);
     console.log('处理后的活动 ID:', id, '类型:', typeof id);
-    this.setData({ id });
+    console.log('是否通过分享访问:', fromShare);
+
+    this.setData({ id, fromShare });
     this.loadActivityDetail(id);
   },
 
@@ -77,6 +91,34 @@ Page({
       }
 
       console.log('成功找到活动:', detail.title, '(匹配方式:', detail.id === id ? '严格' : '宽松', ')');
+
+      // ========== 权限检查 ==========
+      const currentUserId = app.globalData.currentUserId || 'u1';
+      const userRegistrations = registrations.filter(
+        r => r.userId === currentUserId && r.status === 'approved'
+      );
+
+      // 检查用户是否有权查看此活动
+      const permissionCheck = checkActivityViewPermission(
+        detail,
+        currentUserId,
+        userRegistrations,
+        this.data.fromShare
+      );
+
+      console.log('权限检查结果:', permissionCheck);
+
+      // 如果没有权限，显示无权限页面
+      if (!permissionCheck.hasPermission) {
+        wx.hideLoading();
+        this.setData({
+          hasPermission: false,
+          permissionDeniedReason: permissionCheck.reason,
+          loading: false
+        });
+        return;
+      }
+      // ========== 权限检查结束 ==========
 
       // 获取组织者信息
       const organizer = participants.find(p => p.id === detail.organizerId) || {
@@ -146,6 +188,9 @@ Page({
       // 检查当前用户是否已报名
       const isRegistered = activityRegs.some(r => r.userId === 'u1'); // 应从登录态获取
 
+      // 检查管理权限
+      const managementPermission = checkManagementPermission(detail, currentUserId);
+
       // 组装 extra 额外信息对象
       const extra = {
         organizer: organizerInfo.name,
@@ -167,6 +212,8 @@ Page({
         canRegister,
         canCheckin,
         isRegistered,
+        canManage: managementPermission.hasPermission,
+        managementRole: managementPermission.role || '',
         loading: false
       });
 
@@ -395,6 +442,18 @@ Page({
     wx.showShareMenu({ withShareTicket: true });
   },
 
+  // 跳转到管理页面
+  goManagement() {
+    const { id, canManage } = this.data;
+
+    if (!canManage) {
+      wx.showToast({ title: '无管理权限', icon: 'none' });
+      return;
+    }
+
+    wx.navigateTo({ url: `/pages/management/index?id=${id}` });
+  },
+
   // 返回
   goBack() {
     if (getCurrentPages().length > 1) {
@@ -407,9 +466,16 @@ Page({
   // 分享给好友
   onShareAppMessage() {
     const { detail, id } = this.data;
+
+    // 构建分享标题，包含关键信息
+    let shareTitle = detail.title || '活动详情';
+    if (detail.date) {
+      shareTitle = `${detail.title} | ${detail.date}`;
+    }
+
     return {
-      title: detail.title || '活动详情',
-      path: `/pages/activities/detail?id=${id}`,
+      title: shareTitle,
+      path: `/pages/activities/detail?id=${id}&from=share`, // 添加 from=share 参数
       imageUrl: detail.poster || ''
     };
   },

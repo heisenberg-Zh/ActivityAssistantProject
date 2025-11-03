@@ -1,0 +1,167 @@
+<!-- pages/management/registrations.wxml -->
+<view class="registrations-page">
+  <!-- 顶部标题栏 -->
+  <view class="top-bar top-bar--fixed">
+    <view class="top-bar__group">
+      <view class="icon-btn" bindtap="goBack">
+        <text>←</text>
+      </view>
+      <text class="text-lg" style="margin-left: 16rpx;">报名管理</text>
+    </view>
+    <view class="top-bar__group">
+      <view class="badge badge--primary">{{allRegistrations.length}} 人</view>
+    </view>
+  </view>
+
+  <!-- 状态筛选标签 -->
+  <view class="filter-tabs" style="margin-top: 100rpx;">
+    <view
+      class="filter-tab {{statusFilter === 'all' ? 'filter-tab--active' : ''}}"
+      bindtap="switchFilter"
+      data-filter="all"
+    >
+      全部
+    </view>
+    <view
+      class="filter-tab {{statusFilter === 'pending' ? 'filter-tab--active' : ''}}"
+      bindtap="switchFilter"
+      data-filter="pending"
+    >
+      待审核
+    </view>
+    <view
+      class="filter-tab {{statusFilter === 'approved' ? 'filter-tab--active' : ''}}"
+      bindtap="switchFilter"
+      data-filter="approved"
+    >
+      已通过
+    </view>
+    <view
+      class="filter-tab {{statusFilter === 'rejected' ? 'filter-tab--active' : ''}}"
+      bindtap="switchFilter"
+      data-filter="rejected"
+    >
+      已拒绝
+    </view>
+  </view>
+
+  <!-- 报名列表 -->
+  <view class="section">
+    <view wx:if="{{displayRegistrations.length > 0}}" class="list">
+      <block wx:for="{{displayRegistrations}}" wx:key="userId">
+        <view class="list-item card shadow-card">
+          <view wx:if="{{item.userAvatar}}" class="list-avatar-container">
+            <image src="{{item.userAvatar}}" mode="cover" class="list-avatar"></image>
+          </view>
+          <view wx:else class="list-avatar-container">
+            <view class="list-avatar-placeholder">{{item.userName.charAt(0)}}</view>
+          </view>
+          <view class="list-info">
+            <text class="list-name">{{item.userName}}</text>
+            <text class="list-mobile">{{item.mobile}}</text>
+            <text class="list-time">报名时间：{{item.registeredAt}}</text>
+          </view>
+          <view class="list-status">
+            <view class="status-badge status-badge--{{item.statusColor}}">
+              {{item.statusText}}
+            </view>
+          </view>
+          <view class="list-actions">
+            <!-- 待审核状态显示审核按钮 -->
+            <block wx:if="{{item.status === 'pending'}}">
+              <view
+                class="btn btn--success btn--small"
+                bindtap="approveRegistration"
+                data-user-id="{{item.userId}}"
+                data-name="{{item.userName}}"
+              >
+                通过
+              </view>
+              <view
+                class="btn btn--danger btn--small"
+                bindtap="rejectRegistration"
+                data-user-id="{{item.userId}}"
+                data-name="{{item.userName}}"
+                style="margin-left: 8rpx;"
+              >
+                拒绝
+              </view>
+            </block>
+            <!-- 所有状态都显示移除按钮 -->
+            <view
+              class="btn btn--secondary btn--small"
+              bindtap="showRemoveDialog"
+              data-user-id="{{item.userId}}"
+              data-name="{{item.userName}}"
+              data-mobile="{{item.mobile}}"
+              style="margin-left: 8rpx;"
+            >
+              移除
+            </view>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <view wx:else class="empty-state">
+      <text class="empty-icon">📋</text>
+      <text class="empty-text">暂无报名记录</text>
+      <text class="empty-hint">当前筛选条件下没有数据</text>
+    </view>
+  </view>
+
+  <!-- 移除报名对话框 -->
+  <view wx:if="{{showRemoveDialog}}" class="dialog-overlay" bindtap="closeRemoveDialog">
+    <view class="dialog-content" catchtap="{{null}}">
+      <view class="dialog-header">
+        <text class="dialog-title">移除报名</text>
+        <view class="dialog-close" bindtap="closeRemoveDialog">✕</view>
+      </view>
+
+      <view class="dialog-body">
+        <view class="remove-mode">
+          <!-- 提示信息 -->
+          <view class="remove-hint">
+            <text class="text-base">确定要移除以下用户的报名吗？</text>
+            <view class="user-info-card">
+              <text class="text-sm text-gray-600">姓名：{{removeTarget.name}}</text>
+              <text class="text-sm text-gray-600">手机：{{removeTarget.mobile}}</text>
+            </view>
+          </view>
+
+          <!-- 加入黑名单选项 -->
+          <view class="toggle-group">
+            <view class="toggle-label">
+              <text class="text-base">同时加入黑名单</text>
+              <text class="text-sm text-gray-500">该用户将无法再次报名</text>
+            </view>
+            <switch
+              checked="{{addToBlacklist}}"
+              bindchange="toggleBlacklist"
+              color="#3b82f6"
+            />
+          </view>
+
+          <!-- 原因输入（加入黑名单时必填）-->
+          <view wx:if="{{addToBlacklist}}" class="input-group">
+            <text class="input-label">原因（必填，至少2个字）</text>
+            <textarea
+              class="reason-textarea"
+              placeholder="请输入移除原因"
+              value="{{removeReason}}"
+              bindinput="onReasonInput"
+              maxlength="200"
+            ></textarea>
+          </view>
+        </view>
+      </view>
+
+      <view class="dialog-footer">
+        <view class="btn btn--secondary" bindtap="closeRemoveDialog">取消</view>
+        <view class="btn btn--danger" bindtap="confirmRemove">确定移除</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="bottom-space"></view>
+</view>
