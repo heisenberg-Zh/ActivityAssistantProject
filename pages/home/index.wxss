@@ -48,6 +48,7 @@
 
 .quick-icon--blue { background: linear-gradient(135deg, #eef2ff 0%, #dbeafe 100%); }
 .quick-icon--green { background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); }
+.quick-icon--purple { background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); }
 
 .quick-icon-plus {
   position: absolute;
@@ -70,6 +71,29 @@
 }
 
 .quick-icon-list-bar:last-child { margin-bottom: 0; }
+
+.quick-icon-copy { position: relative; width: 72rpx; height: 72rpx; }
+
+.quick-icon-copy-rect {
+  position: absolute;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 12rpx;
+  border: 4rpx solid #8b5cf6;
+}
+
+.quick-icon-copy-rect--back {
+  top: 0;
+  left: 0;
+  background: rgba(139, 92, 246, 0.1);
+}
+
+.quick-icon-copy-rect--front {
+  top: 18rpx;
+  left: 18rpx;
+  background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%);
+  box-shadow: 0 4rpx 12rpx rgba(139, 92, 246, 0.3);
+}
 
 .home-hero {
   padding: 48rpx 32rpx 40rpx 32rpx;

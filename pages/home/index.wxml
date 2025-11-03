@@ -50,6 +50,16 @@
       <text class="quick-title">我的活动</text>
       <text class="quick-desc">管理日程计划</text>
     </view>
+    <view class="quick-card" bindtap="goCopyActivity">
+      <view class="quick-icon quick-icon--purple">
+        <view class="quick-icon-copy">
+          <view class="quick-icon-copy-rect quick-icon-copy-rect--back"></view>
+          <view class="quick-icon-copy-rect quick-icon-copy-rect--front"></view>
+        </view>
+      </view>
+      <text class="quick-title">复制活动</text>
+      <text class="quick-desc">复用已有活动</text>
+    </view>
   </view>
 </view>
 
