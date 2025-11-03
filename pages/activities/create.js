@@ -3,11 +3,28 @@ const { activityAPI } = require('../../utils/api.js');
 const { validateActivityForm } = require('../../utils/validator.js');
 const { formatDateTime } = require('../../utils/datetime.js');
 const { parseDate } = require('../../utils/date-helper.js');
+const { activities, registrations } = require('../../utils/mock.js');
+const {
+  checkManagementPermission,
+  checkFieldEditability,
+  getUserManagedActivities
+} = require('../../utils/activity-management-helper.js');
+const app = getApp();
 
 const TYPE_OPTIONS = ['聚会', '培训', '户外', '运动', '会议'];
 
 Page({
   data: {
+    mode: 'create', // 'create', 'edit', 'copy'
+    activityId: '', // 编辑或复制的活动ID
+    originalActivity: null, // 原始活动数据（编辑模式）
+    currentRegistrations: 0, // 当前报名数量
+    fieldEditability: {}, // 字段可编辑性映射
+    showCopyDialog: false, // 显示复制来源选择对话框
+    copySourceMode: 'list', // 'list' or 'manual'
+    manualActivityId: '', // 手动输入的活动ID
+    availableActivities: [], // 可复制的活动列表
+    selectedCopyId: '', // 选中的复制源活动ID
     types: TYPE_OPTIONS,
     currentStep: 1,
     todayDate: '', // 今天的日期，用于限制选择范围
@@ -26,6 +43,7 @@ Page({
       desc: '',
       type: '',
       typeIndex: 0,
+      isPublic: false, // 是否公开（默认不公开）
       hasGroups: false, // 是否启用分组
       groupCount: 2, // 分组数量（2-5）
       startDate: '',
@@ -927,7 +945,7 @@ Page({
 
   // 发布活动
   async publish() {
-    const { form, groups, defaultCustomFields, canPublish } = this.data;
+    const { mode, activityId, form, groups, defaultCustomFields, canPublish, copiedWhitelist, copiedBlacklist } = this.data;
 
     // 检查是否可以发布
     if (!canPublish) {
@@ -964,6 +982,7 @@ Page({
       title: form.title,
       desc: form.desc,
       type: form.type,
+      isPublic: form.isPublic, // 是否公开
       startTime: `${form.startDate} ${form.startTime}`,
       endTime: `${form.endDate} ${form.endTime}`,
       registerDeadline: form.registerDeadlineDate
@@ -996,31 +1015,54 @@ Page({
       activityData.customFields = defaultCustomFields;
     }
 
-    wx.showLoading({ title: '发布中...' });
+    // 复制模式下添加白名单和黑名单
+    if (mode === 'copy') {
+      if (copiedWhitelist && copiedWhitelist.length > 0) {
+        activityData.whitelist = copiedWhitelist;
+      }
+      if (copiedBlacklist && copiedBlacklist.length > 0) {
+        activityData.blacklist = copiedBlacklist;
+      }
+    }
+
+    const isEdit = mode === 'edit';
+    const loadingText = isEdit ? '保存中...' : '发布中...';
+    const successText = isEdit ? '保存成功' : '发布成功';
+
+    wx.showLoading({ title: loadingText });
 
     try {
-      const result = await activityAPI.create(activityData);
+      let result;
+      if (isEdit) {
+        // 编辑模式 - 调用更新API
+        result = await activityAPI.update(activityId, activityData);
+      } else {
+        // 创建或复制模式 - 调用创建API
+        result = await activityAPI.create(activityData);
+      }
+
       wx.hideLoading();
 
       if (result.code === 0) {
-        wx.showToast({ title: '发布成功', icon: 'success' });
+        wx.showToast({ title: successText, icon: 'success' });
 
         // 清除草稿
         wx.removeStorageSync('activity_draft');
 
         // 跳转到详情页
         setTimeout(() => {
+          const targetId = isEdit ? activityId : result.data.id;
           wx.redirectTo({
-            url: `/pages/activities/detail?id=${result.data.id}`
+            url: `/pages/activities/detail?id=${targetId}`
           });
         }, 1500);
       } else {
-        wx.showToast({ title: result.message || '发布失败', icon: 'none' });
+        wx.showToast({ title: result.message || '操作失败', icon: 'none' });
       }
     } catch (err) {
       wx.hideLoading();
-      console.error('发布失败:', err);
-      wx.showToast({ title: '发布失败，请重试', icon: 'none' });
+      console.error('操作失败:', err);
+      wx.showToast({ title: '操作失败，请重试', icon: 'none' });
     }
   },
 
@@ -1040,17 +1082,292 @@ Page({
     const todayDate = formatDateTime(today.toISOString(), 'YYYY-MM-DD');
     this.setData({ todayDate });
 
-    // 尝试加载草稿
-    try {
-      const draft = wx.getStorageSync('activity_draft');
-      if (draft && options.loadDraft === '1') {
-        this.setData({ form: draft });
+    // 检测模式
+    const mode = options.mode || 'create'; // 'create', 'edit', 'copy'
+    const activityId = options.id || '';
+
+    this.setData({ mode, activityId });
+
+    if (mode === 'edit') {
+      // 编辑模式
+      this.loadActivityForEdit(activityId);
+    } else if (mode === 'copy') {
+      // 复制模式
+      if (activityId) {
+        // 直接复制指定活动
+        this.loadActivityForCopy(activityId);
+      } else {
+        // 显示选择对话框
+        this.showCopySourceDialog();
       }
-    } catch (err) {
-      console.error('加载草稿失败:', err);
+    } else {
+      // 创建模式 - 尝试加载草稿
+      try {
+        const draft = wx.getStorageSync('activity_draft');
+        if (draft && options.loadDraft === '1') {
+          this.setData({ form: draft });
+        }
+      } catch (err) {
+        console.error('加载草稿失败:', err);
+      }
     }
 
     // 初始检查是否可以发布
     this.checkCanPublish();
+  },
+
+  // 加载活动数据用于编辑
+  loadActivityForEdit(activityId) {
+    const currentUserId = app.globalData.currentUserId || 'u1';
+
+    // 查找活动
+    const activity = activities.find(a => a.id === activityId);
+
+    if (!activity) {
+      wx.showModal({
+        title: '活动不存在',
+        content: '未找到要编辑的活动',
+        showCancel: false,
+        success: () => wx.navigateBack()
+      });
+      return;
+    }
+
+    // 检查管理权限
+    const permission = checkManagementPermission(activity, currentUserId);
+
+    if (!permission.hasPermission) {
+      wx.showModal({
+        title: '无编辑权限',
+        content: '您不是此活动的创建者或管理员',
+        showCancel: false,
+        success: () => wx.navigateBack()
+      });
+      return;
+    }
+
+    // 获取当前报名数量
+    const currentRegs = registrations.filter(r => r.activityId === activityId && r.status === 'approved');
+    const currentRegistrations = currentRegs.length;
+
+    // 计算字段可编辑性
+    const fieldEditability = {
+      title: checkFieldEditability(activity, 'title', currentRegistrations),
+      desc: checkFieldEditability(activity, 'desc', currentRegistrations),
+      type: checkFieldEditability(activity, 'type', currentRegistrations),
+      startTime: checkFieldEditability(activity, 'startTime', currentRegistrations),
+      endTime: checkFieldEditability(activity, 'endTime', currentRegistrations),
+      place: checkFieldEditability(activity, 'place', currentRegistrations),
+      address: checkFieldEditability(activity, 'address', currentRegistrations),
+      total: checkFieldEditability(activity, 'total', currentRegistrations),
+      fee: checkFieldEditability(activity, 'fee', currentRegistrations),
+      needReview: checkFieldEditability(activity, 'needReview', currentRegistrations),
+      hasGroups: checkFieldEditability(activity, 'hasGroups', currentRegistrations),
+      isPublic: checkFieldEditability(activity, 'isPublic', currentRegistrations)
+    };
+
+    // 解析活动数据到表单
+    const startDateTime = activity.startTime.split(' ');
+    const endDateTime = activity.endTime.split(' ');
+    const registerDeadline = activity.registerDeadline ? activity.registerDeadline.split(' ') : startDateTime;
+
+    const form = {
+      title: activity.title,
+      desc: activity.desc || '',
+      type: activity.type,
+      typeIndex: TYPE_OPTIONS.indexOf(activity.type),
+      isPublic: activity.isPublic !== undefined ? activity.isPublic : true,
+      hasGroups: activity.hasGroups || false,
+      groupCount: activity.groups ? activity.groups.length : 2,
+      startDate: startDateTime[0],
+      startTime: startDateTime[1] || '09:00',
+      endDate: endDateTime[0],
+      endTime: endDateTime[1] || '18:00',
+      registerDeadlineDate: registerDeadline[0],
+      registerDeadlineTime: registerDeadline[1] || '09:00',
+      place: activity.place,
+      address: activity.address,
+      latitude: activity.latitude,
+      longitude: activity.longitude,
+      checkinRadius: activity.checkinRadius || 500,
+      total: activity.total,
+      minParticipants: activity.minParticipants || 0,
+      needReview: activity.needReview || false,
+      fee: activity.fee || 0,
+      feeType: activity.feeType || '免费',
+      requirements: activity.requirements || '',
+      description: activity.description || ''
+    };
+
+    // 如果有分组，加载分组数据
+    let groups = [];
+    if (activity.hasGroups && activity.groups) {
+      groups = activity.groups.map(g => ({ ...g }));
+    }
+
+    this.setData({
+      form,
+      groups,
+      originalActivity: activity,
+      currentRegistrations,
+      fieldEditability
+    });
+
+    // 标记所有步骤为已完成（因为是编辑现有活动）
+    const steps = this.data.steps.map(s => ({ ...s, completed: true }));
+    this.setData({ steps });
+
+    this.checkCanPublish();
+  },
+
+  // 加载活动数据用于复制
+  loadActivityForCopy(activityId) {
+    // 查找活动
+    const activity = activities.find(a => a.id === activityId);
+
+    if (!activity) {
+      wx.showToast({ title: '活动不存在', icon: 'none' });
+      setTimeout(() => {
+        this.showCopySourceDialog();
+      }, 1500);
+      return;
+    }
+
+    // 复制活动数据（但不包括ID和状态）
+    const startDateTime = activity.startTime.split(' ');
+    const endDateTime = activity.endTime.split(' ');
+    const registerDeadline = activity.registerDeadline ? activity.registerDeadline.split(' ') : startDateTime;
+
+    const form = {
+      title: `${activity.title} (副本)`,
+      desc: activity.desc || '',
+      type: activity.type,
+      typeIndex: TYPE_OPTIONS.indexOf(activity.type),
+      isPublic: activity.isPublic !== undefined ? activity.isPublic : true,
+      hasGroups: activity.hasGroups || false,
+      groupCount: activity.groups ? activity.groups.length : 2,
+      startDate: startDateTime[0],
+      startTime: startDateTime[1] || '09:00',
+      endDate: endDateTime[0],
+      endTime: endDateTime[1] || '18:00',
+      registerDeadlineDate: registerDeadline[0],
+      registerDeadlineTime: registerDeadline[1] || '09:00',
+      place: activity.place,
+      address: activity.address,
+      latitude: activity.latitude,
+      longitude: activity.longitude,
+      checkinRadius: activity.checkinRadius || 500,
+      total: activity.total,
+      minParticipants: activity.minParticipants || 0,
+      needReview: activity.needReview || false,
+      fee: activity.fee || 0,
+      feeType: activity.feeType || '免费',
+      requirements: activity.requirements || '',
+      description: activity.description || ''
+    };
+
+    // 如果有分组，复制分组数据
+    let groups = [];
+    if (activity.hasGroups && activity.groups) {
+      groups = activity.groups.map(g => ({ ...g }));
+    }
+
+    // 复制白名单和黑名单
+    const copiedWhitelist = activity.whitelist ? [...activity.whitelist] : [];
+    const copiedBlacklist = activity.blacklist ? [...activity.blacklist] : [];
+
+    this.setData({
+      form,
+      groups,
+      copiedWhitelist,
+      copiedBlacklist
+    });
+
+    // 标记所有步骤为已完成
+    const steps = this.data.steps.map(s => ({ ...s, completed: true }));
+    this.setData({ steps });
+
+    this.checkCanPublish();
+
+    wx.showToast({ title: '已加载活动数据', icon: 'success' });
+  },
+
+  // 显示复制来源选择对话框
+  showCopySourceDialog() {
+    const currentUserId = app.globalData.currentUserId || 'u1';
+
+    // 获取用户创建的和管理的活动
+    const createdActivities = activities.filter(a => !a.isDeleted && a.organizerId === currentUserId);
+    const managedActivities = getUserManagedActivities(activities, currentUserId, {
+      includeCreated: false,
+      includeManaged: true
+    });
+
+    const availableActivities = [...createdActivities, ...managedActivities].map(a => ({
+      id: a.id,
+      title: a.title,
+      type: a.type,
+      startTime: a.startTime
+    }));
+
+    this.setData({
+      showCopyDialog: true,
+      availableActivities,
+      copySourceMode: 'list'
+    });
+  },
+
+  // 关闭复制对话框
+  closeCopyDialog() {
+    this.setData({ showCopyDialog: false });
+    // 如果没有选择，返回上一页
+    if (!this.data.activityId) {
+      wx.navigateBack();
+    }
+  },
+
+  // 切换复制来源模式
+  switchCopyMode(e) {
+    const mode = e.currentTarget.dataset.mode;
+    this.setData({ copySourceMode: mode });
+  },
+
+  // 选择活动
+  selectActivity(e) {
+    const id = e.currentTarget.dataset.id;
+    this.setData({ selectedCopyId: id });
+  },
+
+  // 手动输入活动ID
+  onManualIdInput(e) {
+    this.setData({ manualActivityId: e.detail.value });
+  },
+
+  // 确认复制来源
+  confirmCopySource() {
+    const { copySourceMode, selectedCopyId, manualActivityId } = this.data;
+
+    let activityId = '';
+
+    if (copySourceMode === 'list') {
+      if (!selectedCopyId) {
+        wx.showToast({ title: '请选择要复制的活动', icon: 'none' });
+        return;
+      }
+      activityId = selectedCopyId;
+    } else {
+      if (!manualActivityId.trim()) {
+        wx.showToast({ title: '请输入活动ID', icon: 'none' });
+        return;
+      }
+      activityId = manualActivityId.trim();
+    }
+
+    this.setData({
+      showCopyDialog: false,
+      activityId
+    });
+
+    this.loadActivityForCopy(activityId);
   }
 });

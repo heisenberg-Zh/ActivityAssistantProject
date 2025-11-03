@@ -1,5 +1,70 @@
 /* pages/activities/detail.wxss */
 
+/* 无权限提示页面 */
+.permission-denied-page {
+  min-height: 100vh;
+  background: #f7f8fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48rpx;
+}
+
+.permission-denied-content {
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 80rpx 48rpx;
+  text-align: center;
+  box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.06);
+  max-width: 600rpx;
+}
+
+.permission-icon {
+  font-size: 120rpx;
+  display: block;
+  margin-bottom: 32rpx;
+  opacity: 0.6;
+}
+
+.permission-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #111827;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.permission-message {
+  font-size: 28rpx;
+  color: #ef4444;
+  display: block;
+  margin-bottom: 12rpx;
+  font-weight: 500;
+}
+
+.permission-hint {
+  font-size: 26rpx;
+  color: #6b7280;
+  display: block;
+  margin-bottom: 48rpx;
+  line-height: 1.6;
+}
+
+.permission-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.permission-actions .btn {
+  width: 100%;
+  padding: 24rpx;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  text-align: center;
+}
+
 /* 顶部标题栏 */
 .detail-header {
   background: #ffffff;
@@ -139,6 +204,7 @@
 
 .fixed-footer { position: fixed; left: 0; right: 0; bottom: 0; background: #ffffff; border-top: 1px solid #e5e7eb; padding: 16rpx 24rpx; display: flex; gap: 16rpx; }
 .footer-btn { flex: 1; }
+.fixed-footer--three-btn .footer-btn { flex: 0 0 calc((100% - 32rpx) / 3); min-width: 0; }
 
 .icon-text { font-size: 28rpx; color: #4b5563; }
 
