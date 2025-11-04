@@ -6,6 +6,7 @@ const app = getApp();
 
 const filters = [
   { key: 'all', name: '全部', active: true },
+  { key: 'drafts', name: '我的草稿', active: false },
   { key: 'created', name: '我创建的', active: false },
   { key: 'managed', name: '我管理的', active: false },
   { key: 'joined', name: '我参加的', active: false },
@@ -38,6 +39,27 @@ Page({
   // 加载活动数据
   loadActivities() {
     const currentUserId = app.globalData.currentUserId || 'u1';
+
+    // 获取草稿列表
+    const drafts = wx.getStorageSync('activity_drafts') || [];
+    const draftActivities = drafts.map(draft => ({
+      id: draft.draftId,
+      displayId: draft.draftId,
+      title: draft.form.title,
+      type: draft.form.type || '未分类',
+      status: '草稿',
+      role: '我的草稿',
+      timeRange: draft.form.startDate ? `${draft.form.startDate} ${draft.form.startTime || ''}` : '待设置',
+      place: draft.form.place || '待设置',
+      joined: 0,
+      total: draft.form.total || 0,
+      createdAt: draft.createdAt,
+      updatedAt: draft.updatedAt,
+      actions: [
+        { label: '继续编辑', action: 'editDraft', type: 'primary' },
+        { label: '删除', action: 'deleteDraft', type: 'danger' }
+      ]
+    }));
 
     // 获取我创建的活动
     const createdActivities = activities
@@ -72,8 +94,8 @@ Page({
       };
     }).filter(a => a !== null);
 
-    // 合并所有活动
-    const allActivities = [...createdActivities, ...managedActivities, ...joinedActivities];
+    // 合并所有活动（草稿放在最前面）
+    const allActivities = [...draftActivities, ...createdActivities, ...managedActivities, ...joinedActivities];
 
     this.setData({
       list: allActivities,
@@ -138,6 +160,7 @@ Page({
   applyFilter(key) {
     const display = this.data.list.filter(item => {
       if (key === 'all') return true;
+      if (key === 'drafts') return item.role === '我的草稿';
       if (key === 'created') return item.role === '我创建的';
       if (key === 'managed') return item.role === '我管理的';
       if (key === 'joined') return item.role === '我参加的';
@@ -152,6 +175,14 @@ Page({
     const id = e.currentTarget.dataset.id;
 
     switch (action) {
+      case 'editDraft':
+        // 继续编辑草稿
+        this.editDraft(id);
+        break;
+      case 'deleteDraft':
+        // 删除草稿
+        this.deleteDraft(id);
+        break;
       case 'stats':
         // 跳转到统计页面
         wx.navigateTo({ url: '/pages/statistics/index' });
@@ -187,6 +218,43 @@ Page({
       default:
         wx.showToast({ title: '功能开发中', icon: 'none' });
     }
+  },
+
+  // 继续编辑草稿
+  editDraft(draftId) {
+    wx.navigateTo({ url: `/pages/activities/create?mode=draft&draftId=${draftId}` });
+  },
+
+  // 删除草稿
+  deleteDraft(draftId) {
+    wx.showModal({
+      title: '确认删除',
+      content: '确定要删除这个草稿吗？',
+      confirmText: '删除',
+      confirmColor: '#ef4444',
+      success: (res) => {
+        if (res.confirm) {
+          try {
+            // 获取草稿列表
+            let drafts = wx.getStorageSync('activity_drafts') || [];
+            // 删除指定草稿
+            drafts = drafts.filter(d => d.draftId !== draftId);
+            // 保存回本地存储
+            wx.setStorageSync('activity_drafts', drafts);
+
+            wx.showToast({ title: '已删除', icon: 'success' });
+
+            // 重新加载活动列表
+            setTimeout(() => {
+              this.loadActivities();
+            }, 500);
+          } catch (err) {
+            console.error('删除草稿失败:', err);
+            wx.showToast({ title: '删除失败', icon: 'none' });
+          }
+        }
+      }
+    });
   },
 
   // 取消报名
