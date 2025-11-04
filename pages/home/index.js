@@ -64,10 +64,6 @@ Page({
     wx.navigateTo({ url: '/pages/my-activities/index' });
   },
 
-  goCopyActivity() {
-    wx.navigateTo({ url: '/pages/activities/create?mode=copy' });
-  },
-
   goDetail(e) {
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({ url: `/pages/activities/detail?id=${id}` });
