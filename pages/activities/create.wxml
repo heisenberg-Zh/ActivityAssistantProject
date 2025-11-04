@@ -1,10 +1,12 @@
 <!-- pages/activities/create.wxml -->
 <view class="top-bar top-bar--fixed">
-  <view class="row gap-16"></view>
   <view class="row gap-16">
-    <view class="ghost-btn" bindtap="saveDraft">保存草稿</view>
-    <view class="ghost-btn ghost-btn--accent" bindtap="copyActivity">复制活动</view>
-    <view class="btn btn--small {{canPublish ? 'btn--primary' : 'btn--disabled'}}" bindtap="publish">发布</view>
+    <text class="text-lg">{{pageTitle}}</text>
+  </view>
+  <view class="row gap-16">
+    <view wx:if="{{showDraftButtons}}" class="ghost-btn" bindtap="saveDraft">保存草稿</view>
+    <view wx:if="{{showDraftButtons}}" class="ghost-btn ghost-btn--accent" bindtap="copyActivity">复制活动</view>
+    <view class="btn btn--small {{canPublish ? 'btn--primary' : 'btn--disabled'}}" bindtap="publish">{{publishButtonText}}</view>
   </view>
 </view>
 
@@ -468,6 +470,108 @@
     {{currentStep === 1 ? '返回' : '上一步'}}
   </view>
   <view class="btn btn--primary footer-btn" bindtap="next">
-    {{currentStep === 7 ? '发布' : '下一步'}}
+    {{currentStep === 7 ? publishButtonText : '下一步'}}
+  </view>
+</view>
+
+<!-- 复制活动弹框 -->
+<view class="copy-modal {{showCopyModal ? 'copy-modal--show' : ''}}" catchtap="closeCopyModal">
+  <view class="copy-modal__content" catchtap>
+    <!-- 弹框头部 -->
+    <view class="copy-modal__header">
+      <text class="copy-modal__title">选择要复制的活动</text>
+      <view class="copy-modal__close" catchtap="closeCopyModal">
+        <text class="copy-modal__close-icon">✕</text>
+      </view>
+    </view>
+
+    <!-- 筛选区域 -->
+    <view class="copy-modal__filter">
+      <view class="filter-label">筛选条件</view>
+      <view class="filter-type-tabs">
+        <view
+          class="filter-type-tab {{copyFilterType === 'title' ? 'filter-type-tab--active' : ''}}"
+          catchtap="selectFilterType"
+          data-type="title"
+        >活动名称</view>
+        <view
+          class="filter-type-tab {{copyFilterType === 'id' ? 'filter-type-tab--active' : ''}}"
+          catchtap="selectFilterType"
+          data-type="id"
+        >活动编号</view>
+        <view
+          class="filter-type-tab {{copyFilterType === 'time' ? 'filter-type-tab--active' : ''}}"
+          catchtap="selectFilterType"
+          data-type="time"
+        >活动时间</view>
+      </view>
+      <view class="filter-input-container">
+        <input
+          class="filter-input"
+          placeholder="{{copyFilterType === 'title' ? '输入活动名称' : (copyFilterType === 'id' ? '输入活动编号' : '输入活动时间')}}"
+          value="{{copyFilterKeyword}}"
+          bindinput="onCopyFilterInput"
+        />
+        <view wx:if="{{copyFilterKeyword}}" class="filter-clear" catchtap="clearFilter">
+          <text class="filter-clear-icon">✕</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 活动列表 -->
+    <view class="copy-modal__list-container">
+      <view wx:if="{{copySourceListFiltered.length > 0}}" class="copy-list-header">
+        <text class="copy-list-count">共 {{copySourceListFiltered.length}} 个活动</text>
+      </view>
+      <scroll-view class="copy-modal__list" scroll-y enhanced show-scrollbar="{{false}}">
+        <block wx:for="{{copySourceListFiltered}}" wx:key="id">
+          <view
+            class="copy-item {{selectedCopySourceId === item.id ? 'copy-item--selected' : ''}}"
+            catchtap="selectCopySource"
+            data-id="{{item.id}}"
+          >
+            <view class="copy-item__main">
+              <view class="copy-item__header">
+                <text class="copy-item__title">{{item.title}}</text>
+                <view class="copy-item__badges">
+                  <view class="mini-badge mini-badge--type">{{item.type}}</view>
+                  <view wx:if="{{item.isDraft}}" class="mini-badge mini-badge--draft">草稿</view>
+                </view>
+              </view>
+              <view class="copy-item__meta">
+                <view class="copy-meta-item">
+                  <text class="copy-meta-icon">📅</text>
+                  <text class="copy-meta-text">{{item.time}}</text>
+                </view>
+                <view class="copy-meta-item">
+                  <text class="copy-meta-icon">#</text>
+                  <text class="copy-meta-text">{{item.activityId}}</text>
+                </view>
+              </view>
+            </view>
+            <view class="copy-item__check">
+              <view class="radio-btn {{selectedCopySourceId === item.id ? 'radio-btn--checked' : ''}}">
+                <view wx:if="{{selectedCopySourceId === item.id}}" class="radio-btn-dot"></view>
+              </view>
+            </view>
+          </view>
+        </block>
+        <view wx:if="{{copySourceListFiltered.length === 0}}" class="copy-empty">
+          <text class="copy-empty__icon">🔍</text>
+          <text class="copy-empty__text">暂无符合条件的活动</text>
+          <text class="copy-empty__hint">请尝试其他搜索条件</text>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 底部按钮 -->
+    <view class="copy-modal__footer">
+      <view class="copy-footer-btn copy-footer-btn--cancel" catchtap="closeCopyModal">
+        <text class="copy-footer-btn-text">取消</text>
+      </view>
+      <view class="copy-footer-btn copy-footer-btn--confirm" catchtap="confirmCopyActivity">
+        <text class="copy-footer-btn-text">确定复制</text>
+      </view>
+    </view>
   </view>
 </view>
