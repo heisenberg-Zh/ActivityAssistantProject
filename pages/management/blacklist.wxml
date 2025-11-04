@@ -1,10 +1,10 @@
 <!-- pages/management/blacklist.wxml -->
 <view class="blacklist-page">
   <!-- 顶部标题栏 -->
-  <view class="top-bar top-bar--fixed">
+  <view class="top-bar top-bar--fixed" style="padding-top: {{statusBarHeight}}px;">
     <view class="top-bar__group">
-      <view class="icon-btn" bindtap="goBack">
-        <text>←</text>
+      <view class="icon-btn icon-btn--back" bindtap="goBack">
+        <text class="back-icon">‹</text>
       </view>
       <text class="text-lg" style="margin-left: 16rpx;">黑名单管理</text>
     </view>
@@ -14,38 +14,42 @@
   </view>
 
   <!-- 提示信息 -->
-  <view class="section" style="margin-top: 100rpx;">
-    <view class="notice-card notice-card--warning">
-      <text class="text-sm">黑名单中的用户将无法报名此活动,支持设置过期时间和手动启用/禁用</text>
+  <view class="info-banner" style="margin-top: {{navBarHeight + 8}}px;">
+    <view class="info-banner-icon">⚠</view>
+    <view class="info-banner-content">
+      <text class="info-banner-title">禁止报名</text>
+      <text class="info-banner-desc">黑名单用户将无法报名此活动，支持设置过期时间和手动启用/禁用</text>
     </view>
   </view>
 
   <!-- 黑名单列表 -->
-  <view class="section">
-    <text class="section-title">当前黑名单</text>
-
-    <view wx:if="{{blacklist.length > 0}}" class="list">
+  <view class="list-container">
+    <view wx:if="{{blacklist.length > 0}}" class="user-list">
       <block wx:for="{{blacklist}}" wx:key="phone">
-        <view class="list-item card shadow-card">
-          <view wx:if="{{item.avatar}}" class="list-avatar-container">
-            <image src="{{item.avatar}}" mode="cover" class="list-avatar"></image>
+        <view class="user-card user-card--blocked">
+          <view class="user-card-main">
+            <view wx:if="{{item.avatar}}" class="user-avatar-wrapper">
+              <image src="{{item.avatar}}" mode="cover" class="user-avatar user-avatar--blocked"></image>
+              <view class="user-badge user-badge--danger">×</view>
+            </view>
+            <view wx:else class="user-avatar-wrapper">
+              <view class="user-avatar-placeholder user-avatar-placeholder--blocked">{{item.name.charAt(0)}}</view>
+              <view class="user-badge user-badge--danger">×</view>
+            </view>
+            <view class="user-card-info">
+              <text class="user-card-name">{{item.name}}</text>
+              <text class="user-card-mobile">{{item.phone}}</text>
+              <text wx:if="{{item.reason}}" class="user-card-reason">{{item.reason}}</text>
+            </view>
           </view>
-          <view wx:else class="list-avatar-container">
-            <view class="list-avatar-placeholder">{{item.name.charAt(0)}}</view>
-          </view>
-          <view class="list-info">
-            <text class="list-name">{{item.name}}</text>
-            <text class="list-mobile">{{item.phone}}</text>
-            <text wx:if="{{item.reason}}" class="list-reason">原因：{{item.reason}}</text>
-          </view>
-          <view class="list-status">
-            <view class="status-badge status-badge--{{item.isExpired ? 'expired' : (item.isActive ? 'active' : 'disabled')}}">
+          <view class="user-card-status">
+            <view class="status-chip status-chip--{{item.isExpired ? 'expired' : (item.isActive ? 'active' : 'disabled')}}">
               {{item.statusText}}
             </view>
           </view>
-          <view class="list-actions">
+          <view class="user-card-actions">
             <view
-              class="btn btn--small {{item.isActive ? 'btn--warning' : 'btn--secondary'}}"
+              class="action-btn action-btn--{{item.isActive ? 'toggle' : 'enable'}}"
               bindtap="toggleActive"
               data-phone="{{item.phone}}"
               data-name="{{item.name}}"
@@ -54,97 +58,183 @@
               {{item.isActive ? '禁用' : '启用'}}
             </view>
             <view
-              class="btn btn--danger btn--small"
+              class="action-icon-btn action-icon-btn--danger"
               bindtap="removeItem"
               data-phone="{{item.phone}}"
               data-name="{{item.name}}"
-              style="margin-left: 8rpx;"
             >
-              移除
+              <text class="action-icon">×</text>
             </view>
           </view>
         </view>
       </block>
     </view>
 
-    <view wx:else class="empty-state">
-      <text class="empty-icon">🚫</text>
-      <text class="empty-text">暂无黑名单</text>
-      <text class="empty-hint">点击下方按钮添加</text>
+    <view wx:else class="empty-placeholder">
+      <view class="empty-placeholder-icon">🚫</view>
+      <text class="empty-placeholder-title">暂无黑名单用户</text>
+      <text class="empty-placeholder-desc">点击下方悬浮按钮添加黑名单</text>
     </view>
   </view>
 
-  <!-- 底部添加按钮 -->
-  <view class="fixed-footer">
-    <view class="btn btn--primary" style="width: 100%;" bindtap="showAddDialog">
-      添加黑名单
+  <!-- 悬浮添加按钮 -->
+  <view class="fab-container">
+    <view class="fab-button fab-button--danger" bindtap="showAddDialog">
+      <text class="fab-icon">+</text>
+      <text class="fab-text">添加黑名单</text>
     </view>
   </view>
 
   <!-- 添加黑名单对话框 -->
-  <view wx:if="{{showAddDialog}}" class="dialog-overlay" bindtap="closeAddDialog">
-    <view class="dialog-content" catchtap="{{null}}">
-      <view class="dialog-header">
+  <view wx:if="{{showAddDialog}}" class="dialog-overlay">
+    <view class="dialog-content" catchtap="stopPropagation">
+      <view class="dialog-header" catchtap="stopPropagation">
         <text class="dialog-title">添加黑名单</text>
-        <view class="dialog-close" bindtap="closeAddDialog">✕</view>
+        <view class="dialog-close" catchtap="closeAddDialog">✕</view>
       </view>
 
-      <view class="dialog-body">
-        <view class="input-mode">
-          <!-- 批量手机号输入 -->
-          <view class="input-hint">
-            <text class="text-sm text-gray-600">每行一个手机号，支持批量添加</text>
-          </view>
-          <textarea
-            class="phone-textarea"
-            placeholder="请输入手机号（每行一个）&#10;例如：&#10;13800138000&#10;13900139000"
-            value="{{batchPhoneText}}"
-            bindinput="onPhoneTextInput"
-            maxlength="-1"
-          ></textarea>
-
-          <!-- 原因输入（可选）-->
-          <view class="input-group" style="margin-top: 16rpx;">
-            <text class="input-label">原因（可选）</text>
-            <input
-              class="input-field"
-              placeholder="请输入拉黑原因（至少2个字）"
-              value="{{blockReason}}"
-              bindinput="onReasonInput"
-              maxlength="100"
-            />
-          </view>
-
-          <!-- 永久/临时切换 -->
-          <view class="toggle-group">
-            <view class="toggle-label">
-              <text class="text-base">永久拉黑</text>
-              <text class="text-sm text-gray-500">关闭后可设置过期时间</text>
+      <view class="dialog-body" catchtap="stopPropagation">
+        <view class="input-mode" catchtap="stopPropagation">
+          <!-- 输入和预览区域 -->
+          <view class="phone-input-container">
+            <!-- 左侧：输入区 -->
+            <view class="phone-input-section">
+              <view class="section-header">
+                <text class="section-title">输入手机号</text>
+                <text class="section-hint">每行一个</text>
+              </view>
+              <textarea
+                class="phone-textarea"
+                placeholder="请输入手机号（每行一个）&#10;例如：&#10;13800138000&#10;13900139000&#10;支持粘贴批量导入"
+                value="{{batchPhoneText}}"
+                bindinput="onPhoneTextInput"
+                catchtap="stopPropagation"
+                catchlongpress="stopPropagation"
+                maxlength="-1"
+              ></textarea>
             </view>
-            <switch
-              checked="{{isPermanent}}"
-              bindchange="togglePermanent"
-              color="#3b82f6"
-            />
+
+            <!-- 右侧：实时预览 -->
+            <view class="phone-preview-section">
+              <view class="section-header">
+                <text class="section-title">识别结果</text>
+                <text wx:if="{{phoneValidation.duplicates.length > 0}}" class="remove-duplicates-btn" catchtap="removeDuplicates">去重</text>
+              </view>
+              <scroll-view scroll-y class="preview-list">
+                <!-- 有效手机号 -->
+                <view wx:if="{{phoneValidation.valid.length > 0}}" class="preview-group">
+                  <view class="preview-group-title">
+                    <view class="status-dot status-dot--danger"></view>
+                    <text>有效 ({{phoneValidation.valid.length}})</text>
+                  </view>
+                  <view wx:for="{{phoneValidation.valid}}" wx:key="*this" class="preview-item preview-item--danger">
+                    <text class="preview-phone">{{item}}</text>
+                    <view wx:if="{{phoneValidation.existing.includes(item)}}" class="preview-tag preview-tag--warning">已存在</view>
+                  </view>
+                </view>
+
+                <!-- 重复手机号 -->
+                <view wx:if="{{phoneValidation.duplicates.length > 0}}" class="preview-group">
+                  <view class="preview-group-title">
+                    <view class="status-dot status-dot--warning"></view>
+                    <text>重复 ({{phoneValidation.duplicates.length}})</text>
+                  </view>
+                  <view wx:for="{{phoneValidation.duplicates}}" wx:key="*this" class="preview-item preview-item--duplicate">
+                    <text class="preview-phone">{{item}}</text>
+                    <view class="preview-tag preview-tag--duplicate">重复</view>
+                  </view>
+                </view>
+
+                <!-- 无效手机号 -->
+                <view wx:if="{{phoneValidation.invalid.length > 0}}" class="preview-group">
+                  <view class="preview-group-title">
+                    <view class="status-dot status-dot--error"></view>
+                    <text>无效 ({{phoneValidation.invalid.length}})</text>
+                  </view>
+                  <view wx:for="{{phoneValidation.invalid}}" wx:key="*this" class="preview-item preview-item--invalid">
+                    <text class="preview-phone">{{item}}</text>
+                    <view class="preview-tag preview-tag--error">格式错误</view>
+                  </view>
+                </view>
+
+                <!-- 空状态 -->
+                <view wx:if="{{phoneValidation.valid.length === 0 && phoneValidation.invalid.length === 0 && phoneValidation.duplicates.length === 0}}" class="preview-empty">
+                  <text class="preview-empty-icon">📱</text>
+                  <text class="preview-empty-text">输入后实时预览</text>
+                </view>
+              </scroll-view>
+            </view>
           </view>
 
-          <!-- 过期天数（非永久时显示）-->
-          <view wx:if="{{!isPermanent}}" class="input-group">
-            <text class="input-label">过期天数（最少1天）</text>
-            <input
-              class="input-field"
-              type="number"
-              placeholder="请输入过期天数"
-              value="{{expiryDays}}"
-              bindinput="onExpiryDaysInput"
-            />
+          <!-- 底部统计 -->
+          <view class="phone-stats">
+            <view class="stat-item">
+              <text class="stat-label">可添加</text>
+              <text class="stat-value stat-value--danger">{{phoneValidation.validCount}}</text>
+            </view>
+            <view class="stat-divider"></view>
+            <view class="stat-item">
+              <text class="stat-label">重复</text>
+              <text class="stat-value stat-value--warning">{{phoneValidation.duplicates.length}}</text>
+            </view>
+            <view class="stat-divider"></view>
+            <view class="stat-item">
+              <text class="stat-label">无效</text>
+              <text class="stat-value stat-value--error">{{phoneValidation.invalid.length}}</text>
+            </view>
+          </view>
+
+          <!-- 原因和期限设置 -->
+          <view class="settings-section">
+            <!-- 原因输入 -->
+            <view class="setting-item">
+              <view class="setting-header">
+                <text class="setting-label">拉黑原因</text>
+                <text class="setting-hint">选填</text>
+              </view>
+              <textarea
+                class="reason-textarea"
+                placeholder="请输入拉黑原因（至少2个字）&#10;例如：违反活动规则、恶意刷单等"
+                value="{{blockReason}}"
+                bindinput="onReasonInput"
+                catchtap="stopPropagation"
+                maxlength="100"
+                auto-height
+              ></textarea>
+            </view>
+
+            <!-- 期限设置 -->
+            <view class="setting-item">
+              <view class="setting-header">
+                <text class="setting-label">拉黑期限</text>
+                <view class="duration-tabs">
+                  <view class="duration-tab {{isPermanent ? 'duration-tab--active' : ''}}" catchtap="selectPermanent">
+                    永久
+                  </view>
+                  <view class="duration-tab {{!isPermanent ? 'duration-tab--active' : ''}}" catchtap="selectTemporary">
+                    临时
+                  </view>
+                </view>
+              </view>
+              <view wx:if="{{!isPermanent}}" class="duration-input-wrapper">
+                <input
+                  class="duration-input"
+                  type="number"
+                  placeholder="输入天数"
+                  value="{{expiryDays}}"
+                  bindinput="onExpiryDaysInput"
+                  catchtap="stopPropagation"
+                />
+                <text class="duration-unit">天后自动解除</text>
+              </view>
+            </view>
           </view>
         </view>
       </view>
 
-      <view class="dialog-footer">
-        <view class="btn btn--secondary" bindtap="closeAddDialog">取消</view>
-        <view class="btn btn--primary" bindtap="confirmAdd">确定</view>
+      <view class="dialog-footer" catchtap="stopPropagation">
+        <view class="btn btn--secondary" catchtap="closeAddDialog">取消</view>
+        <view class="btn btn--danger" catchtap="confirmAdd">确定</view>
       </view>
     </view>
   </view>

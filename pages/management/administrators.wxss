@@ -3,7 +3,14 @@
 .admin-page {
   min-height: 100vh;
   background: #f7f8fa;
-  padding-bottom: 120rpx;
+  padding-bottom: 40rpx;
+}
+
+/* 提示信息区域 */
+.notice-section {
+  padding-left: 24rpx;
+  padding-right: 24rpx;
+  padding-bottom: 16rpx;
 }
 
 .section-title {
@@ -215,4 +222,48 @@
 .empty-hint {
   font-size: 24rpx;
   color: #9ca3af;
+}
+
+/* 悬浮添加按钮容器 */
+.fab-container {
+  position: fixed;
+  bottom: 40rpx;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.fab-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  padding: 24rpx 48rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 60rpx;
+  box-shadow: 0 8rpx 24rpx rgba(102, 126, 234, 0.4);
+  pointer-events: auto;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fab-button:active {
+  transform: scale(0.95);
+  box-shadow: 0 4rpx 16rpx rgba(102, 126, 234, 0.4);
+}
+
+.fab-icon {
+  font-size: 44rpx;
+  font-weight: 300;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.fab-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 1rpx;
 }

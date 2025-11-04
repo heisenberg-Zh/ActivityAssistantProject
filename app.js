@@ -9,17 +9,36 @@ App({
     currentUser: null,
     apiBase: API_CONFIG.baseUrl,
     useMock: API_CONFIG.useMock,
-    appId: WX_CONFIG.appId
+    appId: WX_CONFIG.appId,
+    // 系统信息
+    statusBarHeight: 0,
+    navigationBarHeight: 44,
+    systemInfo: null
   },
 
   onLaunch() {
     console.log('ActivityAssistant app launched');
+
+    // 获取系统信息
+    this.getSystemInfo();
 
     // 检查更新
     this.checkForUpdate();
 
     // 初始化用户信息
     this.initUserInfo();
+  },
+
+  // 获取系统信息
+  getSystemInfo() {
+    try {
+      const systemInfo = wx.getSystemInfoSync();
+      this.globalData.systemInfo = systemInfo;
+      this.globalData.statusBarHeight = systemInfo.statusBarHeight || 0;
+      console.log('系统状态栏高度:', this.globalData.statusBarHeight);
+    } catch (err) {
+      console.error('获取系统信息失败:', err);
+    }
   },
 
   // 检查小程序更新

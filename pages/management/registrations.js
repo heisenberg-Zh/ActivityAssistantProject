@@ -15,10 +15,21 @@ Page({
     showRemoveDialog: false,
     removeTarget: null,
     addToBlacklist: false,
-    removeReason: ''
+    removeReason: '',
+    // 系统信息
+    statusBarHeight: 0,
+    navBarHeight: 0
   },
 
   onLoad(query) {
+    // 获取状态栏高度
+    const statusBarHeight = app.globalData.statusBarHeight || 0;
+    const navBarHeight = statusBarHeight + 44;
+    this.setData({
+      statusBarHeight,
+      navBarHeight
+    });
+
     const activityId = query.id;
     if (!activityId) {
       wx.showToast({ title: '活动ID不能为空', icon: 'none' });
@@ -154,7 +165,8 @@ Page({
 
   // 确认移除
   confirmRemove() {
-    const { removeTarget, addToBlacklist, removeReason } = this.data;
+    const { removeTarget, addToBlacklist, removeReason, activityId, activity } = this.data;
+    const currentUserId = app.globalData.currentUserId || 'u1';
 
     if (!removeTarget) return;
 
@@ -172,8 +184,44 @@ Page({
 
     wx.showLoading({ title: '处理中...' });
 
-    // 模拟API调用
+    // 模拟API调用 - 实际修改mock数据
     setTimeout(() => {
+      // 从 registrations 数组中移除该报名记录
+      const regIndex = registrations.findIndex(
+        r => r.activityId === activityId && r.userId === removeTarget.userId
+      );
+
+      if (regIndex > -1) {
+        registrations.splice(regIndex, 1);
+      }
+
+      // 如果选择加入黑名单，添加到活动的黑名单
+      if (addToBlacklist && activity) {
+        if (!activity.blacklist) {
+          activity.blacklist = [];
+        }
+
+        // 检查是否已在黑名单
+        const existsInBlacklist = activity.blacklist.some(
+          b => b.userId === removeTarget.userId || b.phone === removeTarget.mobile
+        );
+
+        if (!existsInBlacklist) {
+          const now = new Date();
+          const addedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+          activity.blacklist.push({
+            phone: removeTarget.mobile,
+            userId: removeTarget.userId,
+            expiresAt: null, // 永久
+            isActive: true,
+            reason: removeReason.trim() || '从报名管理移除',
+            addedAt: addedAt,
+            addedBy: currentUserId
+          });
+        }
+      }
+
       wx.hideLoading();
 
       let message = '已移除报名';
@@ -183,19 +231,21 @@ Page({
 
       wx.showToast({
         title: message,
-        icon: 'success'
+        icon: 'success',
+        duration: 2000
       });
 
       this.closeRemoveDialog();
       setTimeout(() => {
         this.loadData();
-      }, 1500);
-    }, 1000);
+      }, 800);
+    }, 800);
   },
 
   // 审核通过
   approveRegistration(e) {
     const { userId, name } = e.currentTarget.dataset;
+    const { activityId } = this.data;
 
     wx.showModal({
       title: '通过审核',
@@ -205,15 +255,26 @@ Page({
         if (res.confirm) {
           wx.showLoading({ title: '处理中...' });
 
-          // 模拟API调用
+          // 模拟API调用 - 实际修改mock数据
           setTimeout(() => {
+            // 找到对应的报名记录并修改状态
+            const reg = registrations.find(
+              r => r.activityId === activityId && r.userId === userId
+            );
+
+            if (reg) {
+              reg.status = 'approved';
+              const now = new Date();
+              reg.approvedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            }
+
             wx.hideLoading();
-            wx.showToast({ title: '已通过', icon: 'success' });
+            wx.showToast({ title: '已通过', icon: 'success', duration: 2000 });
 
             setTimeout(() => {
               this.loadData();
-            }, 1500);
-          }, 1000);
+            }, 800);
+          }, 800);
         }
       }
     });
@@ -222,6 +283,7 @@ Page({
   // 审核拒绝
   rejectRegistration(e) {
     const { userId, name } = e.currentTarget.dataset;
+    const { activityId } = this.data;
 
     wx.showModal({
       title: '拒绝审核',
@@ -232,15 +294,26 @@ Page({
         if (res.confirm) {
           wx.showLoading({ title: '处理中...' });
 
-          // 模拟API调用
+          // 模拟API调用 - 实际修改mock数据
           setTimeout(() => {
+            // 找到对应的报名记录并修改状态
+            const reg = registrations.find(
+              r => r.activityId === activityId && r.userId === userId
+            );
+
+            if (reg) {
+              reg.status = 'rejected';
+              const now = new Date();
+              reg.rejectedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            }
+
             wx.hideLoading();
-            wx.showToast({ title: '已拒绝', icon: 'success' });
+            wx.showToast({ title: '已拒绝', icon: 'success', duration: 2000 });
 
             setTimeout(() => {
               this.loadData();
-            }, 1500);
-          }, 1000);
+            }, 800);
+          }, 800);
         }
       }
     });

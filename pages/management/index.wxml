@@ -1,79 +1,113 @@
 <!-- pages/management/index.wxml -->
 <view class="management-page">
   <!-- 顶部标题栏 -->
-  <view class="top-bar top-bar--fixed">
+  <view class="top-bar top-bar--fixed" style="padding-top: {{statusBarHeight}}px;">
     <view class="top-bar__group">
-      <view class="icon-btn" bindtap="goBack">
-        <text>←</text>
+      <view class="icon-btn icon-btn--back" bindtap="goBack">
+        <text class="back-icon">‹</text>
       </view>
       <text class="text-lg" style="margin-left: 16rpx;">活动管理</text>
     </view>
   </view>
 
-  <!-- 活动信息卡片 -->
-  <view class="section" style="margin-top: 100rpx;">
-    <view class="card shadow-card p-24">
-      <view class="row-between mb-16">
-        <text class="title">{{activity.title}}</text>
-        <view class="badge {{activity.status === '进行中' ? 'badge--ok' : (activity.status === '即将开始' ? 'badge--info' : 'badge--muted')}}">
-          {{activity.status}}
+  <!-- 滚动容器 -->
+  <scroll-view
+    class="page-scroll"
+    scroll-y
+    scroll-top="0"
+    upper-threshold="0"
+    enable-back-to-top
+    enhanced
+    show-scrollbar="{{false}}"
+    style="top: {{navBarHeight}}px; height: {{scrollHeight}}px;"
+  >
+    <!-- 活动概览卡片 - 全新设计 -->
+    <view class="activity-overview">
+    <view class="overview-card">
+      <!-- 顶部信息栏 -->
+      <view class="overview-header">
+        <view class="overview-title-row">
+          <text class="overview-title">{{activity.title}}</text>
+          <view class="status-badge status-badge--{{activity.status === '进行中' ? 'active' : (activity.status === '即将开始' ? 'upcoming' : 'ended')}}">
+            {{activity.status}}
+          </view>
+        </view>
+        <view class="overview-role">
+          <text class="role-icon">{{role === 'creator' ? '👑' : '⭐'}}</text>
+          <text class="role-label">{{role === 'creator' ? '创建者' : '管理员'}}</text>
         </view>
       </view>
 
-      <text class="text-sm text-gray-500 mb-16">{{activity.desc}}</text>
+      <!-- 数据统计卡片组 -->
+      <view class="stats-cards">
+        <view class="stat-card stat-card--primary">
+          <view class="stat-card-icon">👥</view>
+          <view class="stat-card-info">
+            <text class="stat-card-value">{{totalRegistrations}}</text>
+            <text class="stat-card-label">总报名</text>
+          </view>
+        </view>
 
-      <!-- 管理身份标识 -->
-      <view class="role-badge">
-        <text class="role-text">{{role === 'creator' ? '创建者' : '管理员'}}</text>
-      </view>
+        <view class="stat-card stat-card--success">
+          <view class="stat-card-icon">✓</view>
+          <view class="stat-card-info">
+            <text class="stat-card-value">{{approvedCount}}</text>
+            <text class="stat-card-label">已通过</text>
+          </view>
+        </view>
 
-      <!-- 统计信息 -->
-      <view class="stats-row">
-        <view class="stat-item">
-          <text class="stat-value">{{totalRegistrations}}</text>
-          <text class="stat-label">总报名</text>
+        <view class="stat-card stat-card--warning">
+          <view class="stat-card-icon">⏳</view>
+          <view class="stat-card-info">
+            <text class="stat-card-value">{{pendingCount}}</text>
+            <text class="stat-card-label">待审核</text>
+          </view>
+          <!-- 待审核角标 -->
+          <view wx:if="{{pendingCount > 0}}" class="stat-badge">{{pendingCount}}</view>
         </view>
-        <view class="stat-item">
-          <text class="stat-value">{{approvedCount}}</text>
-          <text class="stat-label">已通过</text>
-        </view>
-        <view class="stat-item">
-          <text class="stat-value">{{pendingCount}}</text>
-          <text class="stat-label">待审核</text>
-        </view>
-        <view class="stat-item">
-          <text class="stat-value">{{administrators.length}}</text>
-          <text class="stat-label">管理员</text>
+
+        <view class="stat-card stat-card--info">
+          <view class="stat-card-icon">🛡️</view>
+          <view class="stat-card-info">
+            <text class="stat-card-value">{{administrators.length}}</text>
+            <text class="stat-card-label">管理员</text>
+          </view>
         </view>
       </view>
     </view>
   </view>
 
-  <!-- 管理功能菜单 -->
-  <view class="section">
-    <text class="section-title">管理功能</text>
+  <!-- 管理功能网格 - 全新设计 -->
+  <view class="management-grid">
+    <view class="grid-header">
+      <text class="grid-title">管理功能</text>
+      <text class="grid-subtitle">快速访问管理工具</text>
+    </view>
 
-    <view class="menu-list">
+    <view class="function-grid">
       <block wx:for="{{menuItems}}" wx:key="id">
         <!-- 如果是仅创建者功能且当前用户不是创建者，则不显示 -->
         <view
           wx:if="{{!item.creatorOnly || role === 'creator'}}"
-          class="menu-item card shadow-card"
+          class="function-item"
           bindtap="onMenuItemTap"
           data-id="{{item.id}}"
           data-path="{{item.path}}"
           data-creator-only="{{item.creatorOnly}}"
         >
-          <view class="menu-icon">{{item.icon}}</view>
-          <view class="menu-content">
-            <text class="menu-title">{{item.title}}</text>
-            <text class="menu-desc">{{item.desc}}</text>
+          <view class="function-icon-wrapper">
+            <text class="function-icon">{{item.icon}}</text>
           </view>
-          <view class="menu-arrow">→</view>
+          <text class="function-name">{{item.title}}</text>
+          <!-- 仅创建者可见的标识 -->
+          <view wx:if="{{item.creatorOnly}}" class="creator-only-badge">
+            <text class="creator-badge-text">创建者</text>
+          </view>
         </view>
       </block>
     </view>
   </view>
 
-  <view class="bottom-space"></view>
+    <view class="bottom-space"></view>
+  </scroll-view>
 </view>
