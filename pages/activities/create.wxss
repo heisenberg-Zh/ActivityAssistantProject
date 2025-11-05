@@ -1,4 +1,14 @@
 /* pages/activities/create.wxss */
+
+/* 优化表单页面的 section 间距 */
+.section {
+  margin: 20rpx 24rpx !important;
+}
+
+.section:first-of-type {
+  margin-top: 16rpx !important;
+}
+
 .form-section { padding: 24rpx; }
 .section-title { display: block; font-size: 32rpx; font-weight: 600; color: #111827; margin-bottom: 20rpx; }
 .form-field { margin-bottom: 24rpx; }
@@ -116,10 +126,10 @@
 .fixed-footer { position: fixed; left: 0; right: 0; bottom: 0; background: #ffffff; border-top: 1px solid #e5e7eb; padding: 16rpx 24rpx; display: flex; gap: 16rpx; }
 .footer-btn { flex: 1; }
 
-.step-strip { background: #ffffff; padding: 24rpx; display: flex; justify-content: space-between; border-bottom: 1px solid #e5e7eb; margin-top: 96rpx; }
-.step { display: flex; flex-direction: column; align-items: center; gap: 8rpx; flex: 1; cursor: pointer; transition: all 0.3s; }
-.step__index { width: 56rpx; height: 56rpx; border-radius: 9999rpx; background: #e5e7eb; color: #6b7280; display: flex; align-items: center; justify-content: center; font-size: 24rpx; font-weight: 600; margin-bottom: 4rpx; transition: all 0.3s; }
-.step__label { font-size: 22rpx; color: #6b7280; text-align: center; }
+.step-strip { background: #ffffff; padding: 16rpx 20rpx; display: flex; justify-content: space-between; border-bottom: 1px solid #e5e7eb; margin-top: 68rpx; }
+.step { display: flex; flex-direction: column; align-items: center; gap: 6rpx; flex: 1; cursor: pointer; transition: all 0.3s; }
+.step__index { width: 52rpx; height: 52rpx; border-radius: 9999rpx; background: #e5e7eb; color: #6b7280; display: flex; align-items: center; justify-content: center; font-size: 24rpx; font-weight: 600; transition: all 0.3s; }
+.step__label { font-size: 22rpx; color: #6b7280; text-align: center; line-height: 1.2; }
 .step--active .step__index { background: #3b82f6; color: #ffffff; }
 .step--active .step__label { color: #1d4ed8; font-weight: 600; }
 .step--completed .step__index { background: #10b981; color: #ffffff; }

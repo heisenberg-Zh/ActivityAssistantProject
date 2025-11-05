@@ -1,6 +1,7 @@
 /* Quick action modules */
 .quick-actions { margin-bottom: 32rpx; }
 .quick-grid { display: flex; gap: 24rpx; }
+.quick-grid--two { justify-content: center; }
 
 .quick-card {
   flex: 1;

@@ -15,10 +15,21 @@ Page({
     availableUsers: [], // 可添加的用户列表
     showAddDialog: false,
     selectedUserId: '',
-    isCreator: false
+    isCreator: false,
+    // 系统信息
+    statusBarHeight: 0,
+    navBarHeight: 0
   },
 
   onLoad(query) {
+    // 获取状态栏高度
+    const statusBarHeight = app.globalData.statusBarHeight || 0;
+    const navBarHeight = statusBarHeight + 44; // 导航栏总高度 = 状态栏高度 + 44px
+    this.setData({
+      statusBarHeight,
+      navBarHeight
+    });
+
     const activityId = query.id;
     if (!activityId) {
       wx.showToast({ title: '活动ID不能为空', icon: 'none' });
@@ -61,7 +72,7 @@ Page({
     const administrators = getAdministratorsWithDetails(activity, participants);
 
     // 获取可添加的用户列表（排除创建者和已有管理员）
-    const adminUserIds = administrators.map(admin => admin.userId);
+    const adminUserIds = (activity.administrators || []).map(admin => admin.userId);
     const availableUsers = participants.filter(p => {
       return p.id !== activity.organizerId && !adminUserIds.includes(p.id);
     });
@@ -104,7 +115,7 @@ Page({
 
   // 确认添加管理员
   confirmAddAdmin() {
-    const { selectedUserId, activityId } = this.data;
+    const { selectedUserId, activityId, activity, availableUsers } = this.data;
 
     if (!selectedUserId) {
       wx.showToast({ title: '请选择用户', icon: 'none' });
@@ -115,20 +126,53 @@ Page({
 
     // 模拟API调用
     setTimeout(() => {
+      // 找到选中的用户
+      const selectedUser = availableUsers.find(u => u.id === selectedUserId);
+
+      if (!selectedUser) {
+        wx.hideLoading();
+        wx.showToast({ title: '用户不存在', icon: 'none' });
+        return;
+      }
+
+      // 模拟后端添加管理员：更新activity的administrators数组
+      if (!activity.administrators) {
+        activity.administrators = [];
+      }
+
+      // 检查是否已经是管理员
+      const isAlreadyAdmin = activity.administrators.some(admin => admin.userId === selectedUserId);
+
+      if (!isAlreadyAdmin) {
+        // 添加到管理员列表（实际应该调用API）
+        const currentUserId = app.globalData.currentUserId || 'u1';
+        const now = new Date();
+        const addedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+        activity.administrators.push({
+          userId: selectedUserId,
+          addedAt: addedAt,
+          addedBy: currentUserId
+        });
+      }
+
       wx.hideLoading();
       wx.showToast({ title: '添加成功', icon: 'success' });
 
       // 关闭对话框并刷新数据
       this.closeAddDialog();
+
+      // 立即刷新显示
       setTimeout(() => {
         this.loadData();
-      }, 1500);
-    }, 1000);
+      }, 800);
+    }, 800);
   },
 
   // 移除管理员
   removeAdmin(e) {
     const { userId, name } = e.currentTarget.dataset;
+    const { activity } = this.data;
 
     wx.showModal({
       title: '移除管理员',
@@ -141,14 +185,22 @@ Page({
 
           // 模拟API调用
           setTimeout(() => {
+            // 从管理员列表中移除
+            if (activity.administrators) {
+              const index = activity.administrators.findIndex(admin => admin.userId === userId);
+              if (index > -1) {
+                activity.administrators.splice(index, 1);
+              }
+            }
+
             wx.hideLoading();
             wx.showToast({ title: '已移除', icon: 'success' });
 
             // 刷新数据
             setTimeout(() => {
               this.loadData();
-            }, 1500);
-          }, 1000);
+            }, 800);
+          }, 800);
         }
       }
     });

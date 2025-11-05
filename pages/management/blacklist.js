@@ -15,10 +15,29 @@ Page({
     batchPhoneText: '',
     blockReason: '',
     expiryDays: '', // 过期天数，空表示永久
-    isPermanent: true // 是否永久
+    isPermanent: true, // 是否永久
+    // 手机号验证结果
+    phoneValidation: {
+      valid: [],
+      invalid: [],
+      duplicates: [],
+      existing: [],
+      validCount: 0
+    },
+    // 系统信息
+    statusBarHeight: 0,
+    navBarHeight: 0
   },
 
   onLoad(query) {
+    // 获取状态栏高度
+    const statusBarHeight = app.globalData.statusBarHeight || 0;
+    const navBarHeight = statusBarHeight + 44;
+    this.setData({
+      statusBarHeight,
+      navBarHeight
+    });
+
     const activityId = query.id;
     if (!activityId) {
       wx.showToast({ title: '活动ID不能为空', icon: 'none' });
@@ -111,7 +130,14 @@ Page({
       batchPhoneText: '',
       blockReason: '',
       expiryDays: '',
-      isPermanent: true
+      isPermanent: true,
+      phoneValidation: {
+        valid: [],
+        invalid: [],
+        duplicates: [],
+        existing: [],
+        validCount: 0
+      }
     });
   },
 
@@ -122,13 +148,123 @@ Page({
       batchPhoneText: '',
       blockReason: '',
       expiryDays: '',
-      isPermanent: true
+      isPermanent: true,
+      phoneValidation: {
+        valid: [],
+        invalid: [],
+        duplicates: [],
+        existing: [],
+        validCount: 0
+      }
     });
+  },
+
+  // 阻止事件冒泡（空方法）
+  stopPropagation() {
+    // 仅用于阻止事件冒泡，不做任何处理
   },
 
   // 输入批量手机号
   onPhoneTextInput(e) {
-    this.setData({ batchPhoneText: e.detail.value });
+    const text = e.detail.value;
+    this.setData({ batchPhoneText: text });
+    this.validatePhoneNumbers(text);
+  },
+
+  // 实时验证手机号
+  validatePhoneNumbers(text) {
+    if (!text.trim()) {
+      this.setData({
+        phoneValidation: {
+          valid: [],
+          invalid: [],
+          duplicates: [],
+          existing: [],
+          validCount: 0
+        }
+      });
+      return;
+    }
+
+    const { blacklist } = this.data;
+    const lines = text.split('\n');
+    const phoneRegex = /^1[3-9]\d{9}$/;
+
+    const valid = [];
+    const invalid = [];
+    const seen = new Set();
+    const duplicates = [];
+    const existing = [];
+
+    lines.forEach(line => {
+      const phone = line.trim();
+      if (!phone) return;
+
+      // 检查格式
+      if (!phoneRegex.test(phone)) {
+        if (!invalid.includes(phone)) {
+          invalid.push(phone);
+        }
+        return;
+      }
+
+      // 检查是否重复
+      if (seen.has(phone)) {
+        if (!duplicates.includes(phone)) {
+          duplicates.push(phone);
+        }
+        return;
+      }
+
+      seen.add(phone);
+
+      // 检查是否已在黑名单
+      const isExisting = blacklist.some(b => b.phone === phone);
+      if (isExisting) {
+        existing.push(phone);
+      }
+
+      valid.push(phone);
+    });
+
+    // 计算可添加数量（有效且不在黑名单中）
+    const validCount = valid.filter(p => !existing.includes(p)).length;
+
+    this.setData({
+      phoneValidation: {
+        valid,
+        invalid,
+        duplicates,
+        existing,
+        validCount
+      }
+    });
+  },
+
+  // 去除重复手机号
+  removeDuplicates() {
+    const { batchPhoneText } = this.data;
+    const phoneSet = new Set();
+    const lines = batchPhoneText.split('\n');
+    const uniqueLines = [];
+
+    lines.forEach(line => {
+      const phone = line.trim();
+      if (phone && !phoneSet.has(phone)) {
+        phoneSet.add(phone);
+        uniqueLines.push(phone);
+      }
+    });
+
+    const newText = uniqueLines.join('\n');
+    this.setData({ batchPhoneText: newText });
+    this.validatePhoneNumbers(newText);
+
+    wx.showToast({
+      title: '已去除重复',
+      icon: 'success',
+      duration: 1500
+    });
   },
 
   // 输入原因
@@ -151,32 +287,34 @@ Page({
     });
   },
 
+  // 选择永久
+  selectPermanent() {
+    this.setData({
+      isPermanent: true,
+      expiryDays: ''
+    });
+  },
+
+  // 选择临时
+  selectTemporary() {
+    this.setData({
+      isPermanent: false,
+      expiryDays: '30' // 默认30天
+    });
+  },
+
   // 确认添加
   confirmAdd() {
-    const { batchPhoneText, blockReason, isPermanent, expiryDays } = this.data;
+    const { phoneValidation, blockReason, isPermanent, expiryDays } = this.data;
 
     // 验证手机号
-    if (!batchPhoneText.trim()) {
-      wx.showToast({ title: '请输入手机号', icon: 'none' });
+    if (phoneValidation.validCount === 0) {
+      wx.showToast({ title: '没有可添加的手机号', icon: 'none' });
       return;
     }
 
-    const result = parseBatchPhoneNumbers(batchPhoneText);
-
-    if (result.errors.length > 0) {
-      const errorMsg = result.errors.slice(0, 3).map(e => `第${e.line}行: ${e.reason}`).join('\n');
-      wx.showModal({
-        title: '手机号格式错误',
-        content: errorMsg + (result.errors.length > 3 ? `\n...还有${result.errors.length - 3}个错误` : ''),
-        showCancel: false
-      });
-      return;
-    }
-
-    if (result.phones.length === 0) {
-      wx.showToast({ title: '没有有效的手机号', icon: 'none' });
-      return;
-    }
+    // 使用验证后的有效手机号（排除已存在的）
+    const phonesToAdd = phoneValidation.valid.filter(p => !phoneValidation.existing.includes(p));
 
     // 验证过期天数
     if (!isPermanent) {
@@ -199,7 +337,7 @@ Page({
     setTimeout(() => {
       wx.hideLoading();
       wx.showToast({
-        title: `成功添加${result.phones.length}个黑名单`,
+        title: `成功添加${phonesToAdd.length}个黑名单`,
         icon: 'success'
       });
 

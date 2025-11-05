@@ -229,6 +229,23 @@ page {
   transform: scale(0.94);
 }
 
+/* 返回按钮特殊样式 - 类似系统原生风格 */
+.icon-btn--back {
+  background: #f3f4f6;
+  border: 1rpx solid #e5e7eb;
+}
+
+.icon-btn--back:active {
+  background: #e5e7eb;
+}
+
+.back-icon {
+  color: #1f2937;
+  font-size: 36rpx;
+  font-weight: 300;
+  line-height: 1;
+}
+
 .icon-dot {
   position: absolute;
   right: -6rpx;
@@ -273,6 +290,7 @@ page {
 .section { margin: 24rpx; }
 .section--flush { margin: 24rpx 24rpx 0 24rpx; }
 .section--narrow { margin: 0 24rpx; }
+.section--compact { margin: 0 24rpx 24rpx 24rpx !important; }
 .section + .section { margin-top: 0; }
 
 .list-divider { height: 1px; background: #f3f4f6; margin: 12rpx 0; }

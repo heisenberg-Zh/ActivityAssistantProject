@@ -1,0 +1,96 @@
+<!-- pages/activities/copy-activity.wxml -->
+<view class="copy-page">
+  <!-- 页面头部 -->
+  <view class="copy-header">
+    <text class="copy-title">选择要复制的活动</text>
+  </view>
+
+  <!-- 筛选区域 -->
+  <view class="copy-filter">
+    <view class="filter-label">筛选条件</view>
+    <view class="filter-type-tabs">
+      <view
+        class="filter-type-tab {{filterType === 'title' ? 'filter-type-tab--active' : ''}}"
+        bindtap="selectFilterType"
+        data-type="title"
+      >活动名称</view>
+      <view
+        class="filter-type-tab {{filterType === 'id' ? 'filter-type-tab--active' : ''}}"
+        bindtap="selectFilterType"
+        data-type="id"
+      >活动编号</view>
+      <view
+        class="filter-type-tab {{filterType === 'time' ? 'filter-type-tab--active' : ''}}"
+        bindtap="selectFilterType"
+        data-type="time"
+      >活动时间</view>
+    </view>
+    <view class="filter-input-container">
+      <input
+        class="filter-input"
+        placeholder="{{filterType === 'title' ? '输入活动名称' : (filterType === 'id' ? '输入活动编号' : '输入活动时间')}}"
+        value="{{filterKeyword}}"
+        bindinput="onFilterInput"
+      />
+      <view wx:if="{{filterKeyword}}" class="filter-clear" bindtap="clearFilter">
+        <text class="filter-clear-icon">✕</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 活动列表容器 -->
+  <view class="copy-list-container">
+    <view wx:if="{{activitiesFiltered.length > 0}}" class="copy-list-header">
+      <text class="copy-list-count">共 {{activitiesFiltered.length}} 个活动</text>
+    </view>
+    <scroll-view class="copy-list" scroll-y enhanced show-scrollbar="{{false}}">
+      <block wx:for="{{activitiesFiltered}}" wx:key="id">
+        <view
+          class="copy-item {{selectedActivityId === item.id ? 'copy-item--selected' : ''}}"
+          bindtap="selectActivity"
+          data-id="{{item.id}}"
+        >
+          <view class="copy-item__main">
+            <view class="copy-item__header">
+              <text class="copy-item__title">{{item.title}}</text>
+              <view class="copy-item__badges">
+                <view class="mini-badge mini-badge--type">{{item.type}}</view>
+                <view wx:if="{{item.isDraft}}" class="mini-badge mini-badge--draft">草稿</view>
+              </view>
+            </view>
+            <view class="copy-item__meta">
+              <view class="copy-meta-item">
+                <text class="copy-meta-icon">📅</text>
+                <text class="copy-meta-text">{{item.time}}</text>
+              </view>
+              <view class="copy-meta-item">
+                <text class="copy-meta-icon">#</text>
+                <text class="copy-meta-text">{{item.activityId}}</text>
+              </view>
+            </view>
+          </view>
+          <view class="copy-item__check">
+            <view class="radio-btn {{selectedActivityId === item.id ? 'radio-btn--checked' : ''}}">
+              <view wx:if="{{selectedActivityId === item.id}}" class="radio-btn-dot"></view>
+            </view>
+          </view>
+        </view>
+      </block>
+      <view wx:if="{{activitiesFiltered.length === 0}}" class="copy-empty">
+        <text class="copy-empty__icon">🔍</text>
+        <text class="copy-empty__text">暂无符合条件的活动</text>
+        <text class="copy-empty__hint">请尝试其他搜索条件</text>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 底部按钮 -->
+  <view class="copy-footer">
+    <view class="copy-footer-btn copy-footer-btn--cancel" bindtap="goBack">
+      <text class="copy-footer-btn-text">取消</text>
+    </view>
+    <view class="copy-footer-btn copy-footer-btn--confirm" bindtap="confirmCopy">
+      <text class="copy-footer-btn-text">确定复制</text>
+    </view>
+  </view>
+</view>

@@ -1,10 +1,10 @@
 <!-- pages/management/administrators.wxml -->
 <view class="admin-page">
   <!-- 顶部标题栏 -->
-  <view class="top-bar top-bar--fixed">
+  <view class="top-bar top-bar--fixed" style="padding-top: {{statusBarHeight}}px;">
     <view class="top-bar__group">
-      <view class="icon-btn" bindtap="goBack">
-        <text>←</text>
+      <view class="icon-btn icon-btn--back" bindtap="goBack">
+        <text class="back-icon">‹</text>
       </view>
       <text class="text-lg" style="margin-left: 16rpx;">管理员管理</text>
     </view>
@@ -14,7 +14,7 @@
   </view>
 
   <!-- 提示信息 -->
-  <view class="section" style="margin-top: 100rpx;">
+  <view class="notice-section" style="padding-top: {{navBarHeight + 8}}px;">
     <view class="notice-card notice-card--info">
       <text class="text-sm">管理员可以修改活动信息、管理白/黑名单、审核报名和查看报名信息，但不能添加或移除其他管理员。</text>
     </view>
@@ -48,10 +48,11 @@
     </view>
   </view>
 
-  <!-- 底部添加按钮 -->
-  <view class="fixed-footer">
-    <view class="btn btn--primary" style="width: 100%;" bindtap="showAddAdmin">
-      添加管理员
+  <!-- 悬浮添加按钮 -->
+  <view class="fab-container">
+    <view class="fab-button" bindtap="showAddAdmin">
+      <text class="fab-icon">+</text>
+      <text class="fab-text">添加管理员</text>
     </view>
   </view>
 
@@ -68,7 +69,7 @@
           <block wx:for="{{availableUsers}}" wx:key="id">
             <view
               class="user-item {{selectedUserId === item.id ? 'user-item--selected' : ''}}"
-              bindtap="selectUser"
+              catchtap="selectUser"
               data-user-id="{{item.id}}"
             >
               <image src="{{item.avatar}}" mode="cover" class="user-avatar"></image>

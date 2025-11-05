@@ -1,10 +1,10 @@
 <!-- pages/management/registrations.wxml -->
 <view class="registrations-page">
   <!-- 顶部标题栏 -->
-  <view class="top-bar top-bar--fixed">
+  <view class="top-bar top-bar--fixed" style="padding-top: {{statusBarHeight}}px;">
     <view class="top-bar__group">
-      <view class="icon-btn" bindtap="goBack">
-        <text>←</text>
+      <view class="icon-btn icon-btn--back" bindtap="goBack">
+        <text class="back-icon">‹</text>
       </view>
       <text class="text-lg" style="margin-left: 16rpx;">报名管理</text>
     </view>
@@ -14,7 +14,7 @@
   </view>
 
   <!-- 状态筛选标签 -->
-  <view class="filter-tabs" style="margin-top: 100rpx;">
+  <view class="filter-tabs" style="padding-top: {{navBarHeight + 8}}px;">
     <view
       class="filter-tab {{statusFilter === 'all' ? 'filter-tab--active' : ''}}"
       bindtap="switchFilter"

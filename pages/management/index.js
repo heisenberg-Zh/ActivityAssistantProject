@@ -11,6 +11,10 @@ Page({
     role: '', // 'creator' 或 'admin'
     administrators: [],
     loading: true,
+    // 系统信息
+    statusBarHeight: 0,
+    navBarHeight: 0,
+    scrollHeight: 0,
 
     // 功能菜单
     menuItems: [
@@ -54,6 +58,20 @@ Page({
   },
 
   onLoad(query) {
+    // 获取状态栏高度和系统信息
+    const statusBarHeight = app.globalData.statusBarHeight || 0;
+    const navBarHeight = statusBarHeight + 44;
+
+    // 计算滚动区域高度 = 窗口高度 - 导航栏高度
+    const systemInfo = wx.getSystemInfoSync();
+    const scrollHeight = systemInfo.windowHeight - navBarHeight;
+
+    this.setData({
+      statusBarHeight,
+      navBarHeight,
+      scrollHeight
+    });
+
     const activityId = query.id;
     if (!activityId) {
       wx.showToast({ title: '活动ID不能为空', icon: 'none' });

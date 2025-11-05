@@ -20,15 +20,14 @@ Page({
     originalActivity: null, // 原始活动数据（编辑模式）
     currentRegistrations: 0, // 当前报名数量
     fieldEditability: {}, // 字段可编辑性映射
-    showCopyDialog: false, // 显示复制来源选择对话框
-    copySourceMode: 'list', // 'list' or 'manual'
-    manualActivityId: '', // 手动输入的活动ID
-    availableActivities: [], // 可复制的活动列表
-    selectedCopyId: '', // 选中的复制源活动ID
     types: TYPE_OPTIONS,
     currentStep: 1,
     todayDate: '', // 今天的日期，用于限制选择范围
     canPublish: false, // 是否可以发布（所有必填步骤已完成）
+    // 页面显示控制
+    pageTitle: '创建活动', // 页面标题
+    showDraftButtons: true, // 是否显示草稿和复制按钮
+    publishButtonText: '发布', // 发布按钮文本
     steps: [
       { index: 1, label: '基本信息', active: true, completed: false },
       { index: 2, label: '时间设置', active: false, completed: false },
@@ -919,7 +918,39 @@ Page({
   // 保存草稿
   saveDraft() {
     try {
-      wx.setStorageSync('activity_draft', this.data.form);
+      const { form, groups, defaultCustomFields, descriptionFields } = this.data;
+
+      // 验证必填项
+      if (!form.title || form.title.trim().length < 2) {
+        wx.showToast({ title: '请至少输入活动标题', icon: 'none' });
+        return;
+      }
+
+      // 获取现有草稿列表
+      let drafts = wx.getStorageSync('activity_drafts') || [];
+
+      // 创建草稿对象
+      const draft = {
+        draftId: `draft_${Date.now()}`,
+        form: { ...form },
+        groups: groups.map(g => ({ ...g })),
+        defaultCustomFields: JSON.parse(JSON.stringify(defaultCustomFields)),
+        descriptionFields: JSON.parse(JSON.stringify(descriptionFields)),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      // 添加到草稿列表
+      drafts.unshift(draft); // 最新的放在最前面
+
+      // 最多保存10个草稿
+      if (drafts.length > 10) {
+        drafts = drafts.slice(0, 10);
+      }
+
+      // 保存到本地存储
+      wx.setStorageSync('activity_drafts', drafts);
+
       wx.showToast({ title: '草稿已保存', icon: 'success' });
     } catch (err) {
       console.error('保存草稿失败:', err);
@@ -927,19 +958,27 @@ Page({
     }
   },
 
-  // 复制活动
+  // 复制活动 - 跳转到选择页面
   copyActivity() {
-    try {
-      const draft = wx.getStorageSync('activity_draft');
-      if (draft) {
-        this.setData({ form: draft });
-        wx.showToast({ title: '已加载草稿', icon: 'success' });
-      } else {
-        wx.showToast({ title: '暂无草稿', icon: 'none' });
-      }
-    } catch (err) {
-      console.error('加载草稿失败:', err);
-      wx.showToast({ title: '加载失败', icon: 'none' });
+    wx.navigateTo({
+      url: '/pages/activities/copy-activity'
+    });
+  },
+
+  // 从复制页面返回后加载选中的活动/草稿
+  loadCopiedActivity(selectedId) {
+    const { activities } = this.data;
+
+    // 查找选中的项
+    const drafts = wx.getStorageSync('activity_drafts') || [];
+    const draft = drafts.find(d => d.draftId === selectedId);
+
+    if (draft) {
+      // 加载草稿
+      this.loadDraftData(selectedId);
+    } else {
+      // 加载活动
+      this.loadActivityData(selectedId);
     }
   },
 
@@ -1083,8 +1122,9 @@ Page({
     this.setData({ todayDate });
 
     // 检测模式
-    const mode = options.mode || 'create'; // 'create', 'edit', 'copy'
+    const mode = options.mode || 'create'; // 'create', 'edit', 'copy', 'draft'
     const activityId = options.id || '';
+    const draftId = options.draftId || '';
 
     this.setData({ mode, activityId });
 
@@ -1100,16 +1140,12 @@ Page({
         // 显示选择对话框
         this.showCopySourceDialog();
       }
+    } else if (mode === 'draft') {
+      // 草稿模式
+      this.loadDraft(draftId);
     } else {
-      // 创建模式 - 尝试加载草稿
-      try {
-        const draft = wx.getStorageSync('activity_draft');
-        if (draft && options.loadDraft === '1') {
-          this.setData({ form: draft });
-        }
-      } catch (err) {
-        console.error('加载草稿失败:', err);
-      }
+      // 创建模式
+      // 不自动加载草稿，用户可以通过"复制活动"功能选择草稿
     }
 
     // 初始检查是否可以发布
@@ -1205,12 +1241,19 @@ Page({
       groups = activity.groups.map(g => ({ ...g }));
     }
 
+    // 判断活动状态，已发布的活动不显示草稿和复制按钮
+    const isPublished = activity.status && activity.status !== '草稿';
+
     this.setData({
       form,
       groups,
       originalActivity: activity,
       currentRegistrations,
-      fieldEditability
+      fieldEditability,
+      // 编辑模式的显示控制
+      pageTitle: '活动编辑',
+      showDraftButtons: !isPublished, // 已发布活动不显示草稿和复制按钮
+      publishButtonText: '重新发布'
     });
 
     // 标记所有步骤为已完成（因为是编辑现有活动）
@@ -1292,82 +1335,154 @@ Page({
     wx.showToast({ title: '已加载活动数据', icon: 'success' });
   },
 
-  // 显示复制来源选择对话框
-  showCopySourceDialog() {
-    const currentUserId = app.globalData.currentUserId || 'u1';
 
-    // 获取用户创建的和管理的活动
-    const createdActivities = activities.filter(a => !a.isDeleted && a.organizerId === currentUserId);
-    const managedActivities = getUserManagedActivities(activities, currentUserId, {
-      includeCreated: false,
-      includeManaged: true
-    });
+  // 加载草稿
+  loadDraft(draftId) {
+    try {
+      // 获取草稿列表
+      const drafts = wx.getStorageSync('activity_drafts') || [];
+      const draft = drafts.find(d => d.draftId === draftId);
 
-    const availableActivities = [...createdActivities, ...managedActivities].map(a => ({
-      id: a.id,
-      title: a.title,
-      type: a.type,
-      startTime: a.startTime
-    }));
+      if (!draft) {
+        wx.showToast({ title: '草稿不存在', icon: 'none' });
+        setTimeout(() => {
+          wx.navigateBack();
+        }, 1500);
+        return;
+      }
 
-    this.setData({
-      showCopyDialog: true,
-      availableActivities,
-      copySourceMode: 'list'
-    });
-  },
+      // 恢复草稿数据
+      this.setData({
+        form: draft.form,
+        groups: draft.groups || [],
+        defaultCustomFields: draft.defaultCustomFields || [
+          { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
+          { id: 'mobile', label: '手机号', required: false, desc: '用于联系参与者', isCustom: false }
+        ],
+        descriptionFields: draft.descriptionFields || [],
+        pageTitle: '编辑草稿',
+        publishButtonText: '发布'
+      });
 
-  // 关闭复制对话框
-  closeCopyDialog() {
-    this.setData({ showCopyDialog: false });
-    // 如果没有选择，返回上一页
-    if (!this.data.activityId) {
-      wx.navigateBack();
+      // 标记已完成的步骤
+      const steps = this.data.steps.map((s, index) => {
+        let completed = false;
+        if (index === 0 && draft.form.title && draft.form.type) completed = true;
+        if (index === 1 && draft.form.startDate && draft.form.endDate) completed = true;
+        if (index === 2 && draft.form.place && draft.form.address) completed = true;
+        if (index === 3 && draft.form.total) completed = true;
+        return { ...s, completed };
+      });
+
+      this.setData({ steps });
+      this.checkCanPublish();
+
+      wx.showToast({ title: '已加载草稿', icon: 'success' });
+    } catch (err) {
+      console.error('加载草稿失败:', err);
+      wx.showToast({ title: '加载失败', icon: 'none' });
     }
   },
 
-  // 切换复制来源模式
-  switchCopyMode(e) {
-    const mode = e.currentTarget.dataset.mode;
-    this.setData({ copySourceMode: mode });
-  },
 
-  // 选择活动
-  selectActivity(e) {
-    const id = e.currentTarget.dataset.id;
-    this.setData({ selectedCopyId: id });
-  },
+  // 加载草稿数据（不跳转，直接加载到当前表单）
+  loadDraftData(draftId) {
+    try {
+      const drafts = wx.getStorageSync('activity_drafts') || [];
+      const draft = drafts.find(d => d.draftId === draftId);
 
-  // 手动输入活动ID
-  onManualIdInput(e) {
-    this.setData({ manualActivityId: e.detail.value });
-  },
-
-  // 确认复制来源
-  confirmCopySource() {
-    const { copySourceMode, selectedCopyId, manualActivityId } = this.data;
-
-    let activityId = '';
-
-    if (copySourceMode === 'list') {
-      if (!selectedCopyId) {
-        wx.showToast({ title: '请选择要复制的活动', icon: 'none' });
+      if (!draft) {
+        wx.showToast({ title: '草稿不存在', icon: 'none' });
         return;
       }
-      activityId = selectedCopyId;
-    } else {
-      if (!manualActivityId.trim()) {
-        wx.showToast({ title: '请输入活动ID', icon: 'none' });
-        return;
-      }
-      activityId = manualActivityId.trim();
+
+      // 将草稿数据复制到当前表单
+      this.setData({
+        form: { ...draft.form },
+        groups: draft.groups.map(g => ({ ...g })),
+        defaultCustomFields: JSON.parse(JSON.stringify(draft.defaultCustomFields)),
+        descriptionFields: JSON.parse(JSON.stringify(draft.descriptionFields))
+      });
+
+      // 标记已完成的步骤
+      const steps = this.data.steps.map((s, index) => {
+        let completed = false;
+        if (index === 0 && draft.form.title && draft.form.type) completed = true;
+        if (index === 1 && draft.form.startDate && draft.form.endDate) completed = true;
+        if (index === 2 && draft.form.place && draft.form.address) completed = true;
+        if (index === 3 && draft.form.total) completed = true;
+        return { ...s, completed };
+      });
+
+      this.setData({ steps });
+      this.checkCanPublish();
+
+      wx.showToast({ title: '已复制草稿内容', icon: 'success' });
+    } catch (err) {
+      console.error('加载草稿失败:', err);
+      wx.showToast({ title: '加载失败', icon: 'none' });
+    }
+  },
+
+  // 加载活动数据（不跳转，直接加载到当前表单）
+  loadActivityData(activityId) {
+    const activity = activities.find(a => a.id === activityId);
+
+    if (!activity) {
+      wx.showToast({ title: '活动不存在', icon: 'none' });
+      return;
+    }
+
+    // 解析活动数据到表单
+    const startDateTime = activity.startTime.split(' ');
+    const endDateTime = activity.endTime.split(' ');
+    const registerDeadline = activity.registerDeadline ? activity.registerDeadline.split(' ') : startDateTime;
+
+    const form = {
+      title: activity.title,
+      desc: activity.desc || '',
+      type: activity.type,
+      typeIndex: TYPE_OPTIONS.indexOf(activity.type),
+      isPublic: activity.isPublic !== undefined ? activity.isPublic : true,
+      hasGroups: activity.hasGroups || false,
+      groupCount: activity.groups ? activity.groups.length : 2,
+      startDate: startDateTime[0],
+      startTime: startDateTime[1] || '09:00',
+      endDate: endDateTime[0],
+      endTime: endDateTime[1] || '18:00',
+      registerDeadlineDate: registerDeadline[0],
+      registerDeadlineTime: registerDeadline[1] || '09:00',
+      place: activity.place,
+      address: activity.address,
+      latitude: activity.latitude,
+      longitude: activity.longitude,
+      checkinRadius: activity.checkinRadius || 500,
+      total: activity.total,
+      minParticipants: activity.minParticipants || 0,
+      needReview: activity.needReview || false,
+      fee: activity.fee || 0,
+      feeType: activity.feeType || '免费',
+      requirements: activity.requirements || '',
+      description: activity.description || ''
+    };
+
+    // 如果有分组，加载分组数据
+    let groups = [];
+    if (activity.hasGroups && activity.groups) {
+      groups = activity.groups.map(g => ({ ...g }));
     }
 
     this.setData({
-      showCopyDialog: false,
-      activityId
+      form,
+      groups
     });
 
-    this.loadActivityForCopy(activityId);
+    // 标记所有步骤为已完成
+    const steps = this.data.steps.map(s => ({ ...s, completed: true }));
+    this.setData({ steps });
+
+    this.checkCanPublish();
+
+    wx.showToast({ title: '已复制活动内容', icon: 'success' });
   }
 });

@@ -1,10 +1,12 @@
 <!-- pages/activities/create.wxml -->
 <view class="top-bar top-bar--fixed">
-  <view class="row gap-16"></view>
   <view class="row gap-16">
-    <view class="ghost-btn" bindtap="saveDraft">保存草稿</view>
-    <view class="ghost-btn ghost-btn--accent" bindtap="copyActivity">复制活动</view>
-    <view class="btn btn--small {{canPublish ? 'btn--primary' : 'btn--disabled'}}" bindtap="publish">发布</view>
+    <text class="text-lg">{{pageTitle}}</text>
+  </view>
+  <view class="row gap-16">
+    <view wx:if="{{showDraftButtons}}" class="ghost-btn" bindtap="saveDraft">保存草稿</view>
+    <view wx:if="{{showDraftButtons}}" class="ghost-btn ghost-btn--accent" bindtap="copyActivity">复制活动</view>
+    <view class="btn btn--small {{canPublish ? 'btn--primary' : 'btn--disabled'}}" bindtap="publish">{{publishButtonText}}</view>
   </view>
 </view>
 
@@ -468,6 +470,7 @@
     {{currentStep === 1 ? '返回' : '上一步'}}
   </view>
   <view class="btn btn--primary footer-btn" bindtap="next">
-    {{currentStep === 7 ? '发布' : '下一步'}}
+    {{currentStep === 7 ? publishButtonText : '下一步'}}
   </view>
 </view>
+

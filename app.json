@@ -4,6 +4,7 @@
     "pages/activities/list",
     "pages/activities/detail",
     "pages/activities/create",
+    "pages/activities/copy-activity",
     "pages/registration/index",
     "pages/checkin/index",
     "pages/statistics/index",
