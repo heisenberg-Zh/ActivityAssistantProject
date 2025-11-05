@@ -20,18 +20,6 @@ Page({
     originalActivity: null, // 原始活动数据（编辑模式）
     currentRegistrations: 0, // 当前报名数量
     fieldEditability: {}, // 字段可编辑性映射
-    showCopyDialog: false, // 显示复制来源选择对话框
-    copySourceMode: 'list', // 'list' or 'manual'
-    manualActivityId: '', // 手动输入的活动ID
-    availableActivities: [], // 可复制的活动列表
-    selectedCopyId: '', // 选中的复制源活动ID
-    // 新的复制活动弹框相关数据
-    showCopyModal: false, // 显示复制活动弹框
-    copySourceList: [], // 所有可复制的活动和草稿
-    copySourceListFiltered: [], // 筛选后的列表
-    selectedCopySourceId: '', // 选中的活动/草稿ID
-    copyFilterKeyword: '', // 筛选关键词
-    copyFilterType: 'title', // 筛选类型：'title', 'id', 'time'
     types: TYPE_OPTIONS,
     currentStep: 1,
     todayDate: '', // 今天的日期，用于限制选择范围
@@ -970,43 +958,28 @@ Page({
     }
   },
 
-  // 复制活动 - 显示选择弹框
+  // 复制活动 - 跳转到选择页面
   copyActivity() {
-    const currentUserId = app.globalData.currentUserId || 'u1';
-
-    // 获取草稿列表
-    const drafts = wx.getStorageSync('activity_drafts') || [];
-    const draftList = drafts.map(draft => ({
-      id: draft.draftId,
-      title: draft.form.title,
-      type: draft.form.type || '未分类',
-      time: draft.form.startDate || '待设置',
-      activityId: draft.draftId,
-      isDraft: true
-    }));
-
-    // 获取用户创建的活动
-    const createdActivities = activities.filter(a => !a.isDeleted && a.organizerId === currentUserId);
-    const activityList = createdActivities.map(a => ({
-      id: a.id,
-      title: a.title,
-      type: a.type,
-      time: a.startTime.split(' ')[0],
-      activityId: a.id,
-      isDraft: false
-    }));
-
-    // 合并列表（草稿在前）
-    const allItems = [...draftList, ...activityList];
-
-    this.setData({
-      showCopyModal: true,
-      copySourceList: allItems,
-      copySourceListFiltered: allItems,
-      selectedCopySourceId: '',
-      copyFilterKeyword: '',
-      copyFilterType: 'title' // 'title', 'id', 'time'
+    wx.navigateTo({
+      url: '/pages/activities/copy-activity'
     });
+  },
+
+  // 从复制页面返回后加载选中的活动/草稿
+  loadCopiedActivity(selectedId) {
+    const { activities } = this.data;
+
+    // 查找选中的项
+    const drafts = wx.getStorageSync('activity_drafts') || [];
+    const draft = drafts.find(d => d.draftId === selectedId);
+
+    if (draft) {
+      // 加载草稿
+      this.loadDraftData(selectedId);
+    } else {
+      // 加载活动
+      this.loadActivityData(selectedId);
+    }
   },
 
   // 发布活动
@@ -1362,84 +1335,6 @@ Page({
     wx.showToast({ title: '已加载活动数据', icon: 'success' });
   },
 
-  // 显示复制来源选择对话框
-  showCopySourceDialog() {
-    const currentUserId = app.globalData.currentUserId || 'u1';
-
-    // 获取用户创建的和管理的活动
-    const createdActivities = activities.filter(a => !a.isDeleted && a.organizerId === currentUserId);
-    const managedActivities = getUserManagedActivities(activities, currentUserId, {
-      includeCreated: false,
-      includeManaged: true
-    });
-
-    const availableActivities = [...createdActivities, ...managedActivities].map(a => ({
-      id: a.id,
-      title: a.title,
-      type: a.type,
-      startTime: a.startTime
-    }));
-
-    this.setData({
-      showCopyDialog: true,
-      availableActivities,
-      copySourceMode: 'list'
-    });
-  },
-
-  // 关闭复制对话框
-  closeCopyDialog() {
-    this.setData({ showCopyDialog: false });
-    // 如果没有选择，返回上一页
-    if (!this.data.activityId) {
-      wx.navigateBack();
-    }
-  },
-
-  // 切换复制来源模式
-  switchCopyMode(e) {
-    const mode = e.currentTarget.dataset.mode;
-    this.setData({ copySourceMode: mode });
-  },
-
-  // 选择活动
-  selectActivity(e) {
-    const id = e.currentTarget.dataset.id;
-    this.setData({ selectedCopyId: id });
-  },
-
-  // 手动输入活动ID
-  onManualIdInput(e) {
-    this.setData({ manualActivityId: e.detail.value });
-  },
-
-  // 确认复制来源
-  confirmCopySource() {
-    const { copySourceMode, selectedCopyId, manualActivityId } = this.data;
-
-    let activityId = '';
-
-    if (copySourceMode === 'list') {
-      if (!selectedCopyId) {
-        wx.showToast({ title: '请选择要复制的活动', icon: 'none' });
-        return;
-      }
-      activityId = selectedCopyId;
-    } else {
-      if (!manualActivityId.trim()) {
-        wx.showToast({ title: '请输入活动ID', icon: 'none' });
-        return;
-      }
-      activityId = manualActivityId.trim();
-    }
-
-    this.setData({
-      showCopyDialog: false,
-      activityId
-    });
-
-    this.loadActivityForCopy(activityId);
-  },
 
   // 加载草稿
   loadDraft(draftId) {
@@ -1489,97 +1384,6 @@ Page({
     }
   },
 
-  // 关闭复制活动弹框
-  closeCopyModal() {
-    this.setData({
-      showCopyModal: false,
-      selectedCopySourceId: '',
-      copyFilterKeyword: ''
-    });
-  },
-
-  // 选择活动/草稿
-  selectCopySource(e) {
-    const id = e.currentTarget.dataset.id;
-    this.setData({ selectedCopySourceId: id });
-  },
-
-  // 筛选关键词输入
-  onCopyFilterInput(e) {
-    const keyword = e.detail.value;
-    this.setData({ copyFilterKeyword: keyword });
-    this.filterCopySourceList();
-  },
-
-  // 切换筛选类型（新方法，使用Tab点击）
-  selectFilterType(e) {
-    const type = e.currentTarget.dataset.type;
-    this.setData({ copyFilterType: type });
-    this.filterCopySourceList();
-  },
-
-  // 清空筛选
-  clearFilter() {
-    this.setData({
-      copyFilterKeyword: '',
-      copySourceListFiltered: this.data.copySourceList
-    });
-  },
-
-  // 执行筛选
-  filterCopySourceList() {
-    const { copySourceList, copyFilterKeyword, copyFilterType } = this.data;
-
-    if (!copyFilterKeyword || !copyFilterKeyword.trim()) {
-      // 无关键词时，显示所有项
-      this.setData({ copySourceListFiltered: copySourceList });
-      return;
-    }
-
-    const keyword = copyFilterKeyword.toLowerCase().trim();
-    const filtered = copySourceList.filter(item => {
-      if (copyFilterType === 'title') {
-        return item.title.toLowerCase().includes(keyword);
-      } else if (copyFilterType === 'id') {
-        return item.activityId.toLowerCase().includes(keyword);
-      } else if (copyFilterType === 'time') {
-        return item.time.includes(keyword);
-      }
-      return false;
-    });
-
-    this.setData({ copySourceListFiltered: filtered });
-  },
-
-  // 确认复制
-  confirmCopyActivity() {
-    const { selectedCopySourceId, copySourceList } = this.data;
-
-    if (!selectedCopySourceId) {
-      wx.showToast({ title: '请选择要复制的活动', icon: 'none' });
-      return;
-    }
-
-    // 查找选中的项
-    const selectedItem = copySourceList.find(item => item.id === selectedCopySourceId);
-
-    if (!selectedItem) {
-      wx.showToast({ title: '未找到选中的活动', icon: 'none' });
-      return;
-    }
-
-    // 关闭弹框
-    this.closeCopyModal();
-
-    // 根据是草稿还是活动，加载对应的数据
-    if (selectedItem.isDraft) {
-      // 加载草稿
-      this.loadDraftData(selectedCopySourceId);
-    } else {
-      // 加载活动
-      this.loadActivityData(selectedCopySourceId);
-    }
-  },
 
   // 加载草稿数据（不跳转，直接加载到当前表单）
   loadDraftData(draftId) {
