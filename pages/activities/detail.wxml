@@ -35,6 +35,28 @@
         <text class="text-md text-gray-800">{{extra.organizer}}</text>
         <text class="text-xs text-gray-500">活动组织者</text>
       </view>
+
+      <!-- 联系按钮 -->
+      <view class="contact-buttons" wx:if="{{canViewContact}}">
+        <!-- 电话按钮 -->
+        <view wx:if="{{detail.organizerPhone}}" class="contact-btn" bindtap="callOrganizer">
+          <view class="contact-icon contact-icon--phone"></view>
+          <text class="contact-btn__text">电话</text>
+        </view>
+        <!-- 微信按钮 -->
+        <view wx:if="{{detail.organizerWechat}}" class="contact-btn" bindtap="copyWechat">
+          <view class="contact-icon contact-icon--wechat"></view>
+          <text class="contact-btn__text">微信</text>
+        </view>
+      </view>
+
+      <!-- 未报名提示 -->
+      <view class="contact-buttons-locked" wx:if="{{!canViewContact}}">
+        <view class="contact-btn-locked">
+          <view class="contact-icon contact-icon--lock"></view>
+          <text class="contact-btn__text-gray">报名后可查看联系方式</text>
+        </view>
+      </view>
     </view>
 
     <view class="info-list">

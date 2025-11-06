@@ -118,6 +118,107 @@
 .organizer { display: flex; align-items: center; gap: 16rpx; margin-bottom: 24rpx; }
 .organizer-avatar { width: 80rpx; height: 80rpx; border-radius: 9999rpx; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 32rpx; font-weight: 600; }
 
+/* 联系按钮样式 */
+.contact-buttons {
+  display: flex;
+  gap: 12rpx;
+  margin-left: auto;
+}
+
+.contact-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  padding: 16rpx 20rpx;
+  background: #EEF2FF;
+  border-radius: 16rpx;
+  min-width: 88rpx;
+  transition: all 0.2s ease;
+}
+
+.contact-btn:active {
+  background: #DBEAFE;
+  transform: scale(0.95);
+}
+
+.contact-btn__text {
+  font-size: 22rpx;
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+/* 联系图标基础样式 */
+.contact-icon {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  font-weight: 600;
+  position: relative;
+}
+
+/* 电话图标 */
+.contact-icon--phone {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #ffffff;
+}
+
+.contact-icon--phone::before {
+  content: '☎';
+  font-size: 24rpx;
+}
+
+/* 微信图标 */
+.contact-icon--wechat {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  font-size: 20rpx;
+}
+
+.contact-icon--wechat::before {
+  content: '微信';
+  font-size: 18rpx;
+  font-weight: 500;
+}
+
+/* 未报名用户看到的锁定状态 */
+.contact-buttons-locked {
+  margin-left: auto;
+}
+
+.contact-btn-locked {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  padding: 14rpx 18rpx;
+  background: #F3F4F6;
+  border-radius: 16rpx;
+}
+
+.contact-btn__text-gray {
+  font-size: 22rpx;
+  color: #9CA3AF;
+  font-weight: 400;
+}
+
+/* 锁图标 */
+.contact-icon--lock {
+  width: 36rpx;
+  height: 36rpx;
+  background: #D1D5DB;
+  color: #ffffff;
+  font-size: 20rpx;
+}
+
+.contact-icon--lock::before {
+  content: '🔒';
+  font-size: 18rpx;
+}
+
 .info-list { display: flex; flex-direction: column; gap: 24rpx; }
 .info-item { display: flex; align-items: flex-start; padding: 20rpx; background: #F9FAFB; border-radius: 16rpx; }
 .info-item__icon { width: 80rpx; height: 80rpx; border-radius: 20rpx; display: flex; align-items: center; justify-content: center; font-size: 36rpx; margin-right: 16rpx; flex-shrink: 0; }

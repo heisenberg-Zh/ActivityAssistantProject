@@ -38,6 +38,18 @@
       </picker>
     </view>
 
+    <!-- 联系方式 -->
+    <view class="form-field">
+      <text class="field-label">联系人电话</text>
+      <input class="field-input" type="number" placeholder="请输入联系电话" bindinput="onInput" data-field="organizerPhone" value="{{form.organizerPhone}}" maxlength="11" />
+      <text class="field-hint">选填，建议填写11位手机号，便于参与者联系您</text>
+    </view>
+    <view class="form-field">
+      <text class="field-label">联系人微信号</text>
+      <input class="field-input" placeholder="请输入您的微信号/微信绑定手机号" bindinput="onInput" data-field="organizerWechat" value="{{form.organizerWechat}}" />
+      <text class="field-hint">便于参与者联系您咨询活动相关问题</text>
+    </view>
+
     <!-- 是否公开 -->
     <view class="option-row" style="margin-top: 24rpx;">
       <view class="option-label">
@@ -425,6 +437,37 @@
 
 <!-- 步骤7: 活动海报与预览 -->
 <view class="section" wx:if="{{currentStep === 7}}">
+  <!-- 定时发布设置 -->
+  <view class="card shadow-card form-section">
+    <text class="section-title">发布设置</text>
+
+    <!-- 定时发布开关 -->
+    <view class="option-row">
+      <view class="option-label">
+        <text class="text-md text-gray-800">定时发布</text>
+        <text class="text-xs text-gray-500">设置在未来某个时间自动发布活动</text>
+      </view>
+      <switch checked="{{enableScheduledPublish}}" bindchange="onSwitch" data-field="enableScheduledPublish" color="#3b82f6" />
+    </view>
+
+    <!-- 定时发布时间选择 -->
+    <view wx:if="{{enableScheduledPublish}}" class="scheduled-publish-config">
+      <view class="form-field">
+        <text class="field-label">发布日期 *</text>
+        <picker mode="date" value="{{scheduledPublishDate}}" bindchange="onScheduledPublishDateChange" start="{{todayDate}}">
+          <view class="picker-field">{{scheduledPublishDate || '请选择发布日期'}}</view>
+        </picker>
+      </view>
+      <view class="form-field">
+        <text class="field-label">发布时间 *</text>
+        <picker mode="time" value="{{scheduledPublishTime}}" bindchange="onScheduledPublishTimeChange">
+          <view class="picker-field">{{scheduledPublishTime}}</view>
+        </picker>
+        <text class="field-hint">活动将在 {{scheduledPublishDate}} {{scheduledPublishTime}} 自动发布</text>
+      </view>
+    </view>
+  </view>
+
   <view class="card shadow-card form-section">
     <text class="section-title">活动海报</text>
     <view class="upload-box" bindtap="uploadPoster">

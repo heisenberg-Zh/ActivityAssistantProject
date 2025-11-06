@@ -6,6 +6,7 @@ const app = getApp();
 
 const filters = [
   { key: 'all', name: '全部', active: true },
+  { key: 'scheduled', name: '预发布', active: false },
   { key: 'drafts', name: '我的草稿', active: false },
   { key: 'created', name: '我创建的', active: false },
   { key: 'managed', name: '我管理的', active: false },
@@ -112,7 +113,12 @@ Page({
 
     if (role === 'created') {
       // 我创建的活动
-      if (activity.status === '进行中') {
+      if (activity.status === 'scheduled' || activity.status === '预发布') {
+        // 预发布状态的活动
+        actions.push({ label: '手动发布', action: 'publishNow', type: 'primary' });
+        actions.push({ label: '编辑', action: 'edit', type: 'secondary' });
+        actions.push({ label: '取消定时', action: 'cancelScheduled', type: 'danger' });
+      } else if (activity.status === '进行中') {
         actions.push({ label: '管理', action: 'manage', type: 'primary' });
         actions.push({ label: '详情', action: 'detail', type: 'secondary' });
       } else if (activity.status === '即将开始') {
@@ -160,6 +166,7 @@ Page({
   applyFilter(key) {
     const display = this.data.list.filter(item => {
       if (key === 'all') return true;
+      if (key === 'scheduled') return item.status === 'scheduled' || item.status === '预发布';
       if (key === 'drafts') return item.role === '我的草稿';
       if (key === 'created') return item.role === '我创建的';
       if (key === 'managed') return item.role === '我管理的';
@@ -215,9 +222,83 @@ Page({
         // 跳转到活动详情页
         wx.navigateTo({ url: `/pages/activities/detail?id=${id}` });
         break;
+      case 'publishNow':
+        // 手动发布预发布活动
+        this.publishScheduledActivity(id);
+        break;
+      case 'cancelScheduled':
+        // 取消定时发布
+        this.cancelScheduledPublish(id);
+        break;
       default:
         wx.showToast({ title: '功能开发中', icon: 'none' });
     }
+  },
+
+  // 手动发布预发布活动
+  publishScheduledActivity(activityId) {
+    const scheduler = require('../../utils/scheduler.js');
+    const notification = require('../../utils/notification.js');
+
+    wx.showModal({
+      title: '确认发布',
+      content: '确定要立即发布这个活动吗？',
+      confirmText: '发布',
+      success: (res) => {
+        if (res.confirm) {
+          wx.showLoading({ title: '发布中...' });
+
+          // 模拟发布过程（实际应调用后端API）
+          setTimeout(() => {
+            // 取消定时任务
+            scheduler.cancelTask(activityId);
+
+            // 发送发布成功通知
+            const activity = activities.find(a => a.id === activityId);
+            if (activity) {
+              notification.sendPublishSuccessNotification(activityId, activity.title);
+            }
+
+            wx.hideLoading();
+            wx.showToast({ title: '发布成功', icon: 'success' });
+
+            // 刷新页面
+            setTimeout(() => {
+              this.loadActivities();
+            }, 1500);
+          }, 1000);
+        }
+      }
+    });
+  },
+
+  // 取消定时发布
+  cancelScheduledPublish(activityId) {
+    const scheduler = require('../../utils/scheduler.js');
+
+    wx.showModal({
+      title: '取消定时发布',
+      content: '确定要取消这个活动的定时发布吗？活动将变为草稿状态。',
+      confirmText: '确定',
+      confirmColor: '#ef4444',
+      success: (res) => {
+        if (res.confirm) {
+          // 取消定时任务
+          const canceled = scheduler.cancelTask(activityId);
+
+          if (canceled) {
+            wx.showToast({ title: '已取消定时发布', icon: 'success' });
+
+            // 刷新页面
+            setTimeout(() => {
+              this.loadActivities();
+            }, 1500);
+          } else {
+            wx.showToast({ title: '取消失败', icon: 'none' });
+          }
+        }
+      }
+    });
   },
 
   // 继续编辑草稿

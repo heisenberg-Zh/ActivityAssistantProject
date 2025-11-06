@@ -1,5 +1,7 @@
 // app.js
 const { API_CONFIG, WX_CONFIG } = require('./utils/config.js');
+const scheduler = require('./utils/scheduler.js');
+const notification = require('./utils/notification.js');
 
 App({
   globalData: {
@@ -27,6 +29,15 @@ App({
 
     // 初始化用户信息
     this.initUserInfo();
+
+    // 检查定时任务
+    this.checkScheduledTasks();
+  },
+
+  onShow() {
+    console.log('App onShow - 检查定时任务');
+    // 每次小程序显示时检查定时任务
+    this.checkScheduledTasks();
   },
 
   // 获取系统信息
@@ -139,6 +150,78 @@ App({
       wx.removeStorageSync('user_token');
     } catch (err) {
       console.error('清除用户信息失败:', err);
+    }
+  },
+
+  // 检查定时任务
+  checkScheduledTasks() {
+    console.log('[定时任务] 开始检查定时任务...');
+
+    // 检查并执行到期的任务
+    const executedTasks = scheduler.checkAndExecuteTasks((activityId) => {
+      console.log('[定时任务] 执行任务:', activityId);
+      this.publishScheduledActivity(activityId);
+    });
+
+    if (executedTasks.length > 0) {
+      console.log('[定时任务] 已执行', executedTasks.length, '个任务');
+    } else {
+      console.log('[定时任务] 当前无到期任务');
+    }
+
+    // 清理旧任务（保留最近7天的记录）
+    scheduler.cleanupOldTasks(7);
+  },
+
+  // 模拟发布预发布活动
+  publishScheduledActivity(activityId) {
+    console.log('[定时发布] 开始发布活动:', activityId);
+
+    try {
+      // 模拟API调用发布活动（实际应调用后端API）
+      // 这里只是模拟，真实环境需要调用 activityAPI.publish(activityId)
+
+      const { activities } = require('./utils/mock.js');
+      const activity = activities.find(a => a.id === activityId);
+
+      if (!activity) {
+        console.error('[定时发布] 活动不存在:', activityId);
+        scheduler.updateTaskStatus(activityId, 'failed', '活动不存在');
+        notification.sendPublishFailedNotification(activityId, '未知活动', '活动不存在');
+        return;
+      }
+
+      // 模拟发布过程
+      setTimeout(() => {
+        // 随机模拟成功或失败（90%成功率）
+        const success = Math.random() > 0.1;
+
+        if (success) {
+          console.log('[定时发布] 发布成功:', activity.title);
+
+          // 更新任务状态
+          scheduler.updateTaskStatus(activityId, 'published');
+
+          // 发送成功通知
+          notification.sendPublishSuccessNotification(activityId, activity.title);
+
+          // 实际环境中，这里应该更新活动状态为 'published'
+          // activity.status = 'published';
+          // activity.actualPublishTime = new Date().toISOString();
+        } else {
+          console.error('[定时发布] 发布失败:', activity.title);
+
+          // 更新任务状态为失败
+          scheduler.updateTaskStatus(activityId, 'failed', '网络错误');
+
+          // 发送失败通知
+          notification.sendPublishFailedNotification(activityId, activity.title, '网络错误');
+        }
+      }, 500); // 模拟网络延迟
+    } catch (err) {
+      console.error('[定时发布] 发布异常:', err);
+      scheduler.updateTaskStatus(activityId, 'failed', err.message || '未知错误');
+      notification.sendPublishFailedNotification(activityId, '未知活动', err.message || '未知错误');
     }
   }
 });

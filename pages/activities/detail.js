@@ -185,11 +185,22 @@ Page({
       const canCheckin = detail.status === '进行中' ||
         (Math.abs(now.getTime() - startTime.getTime()) <= 30 * 60 * 1000);
 
-      // 检查当前用户是否已报名
-      const isRegistered = activityRegs.some(r => r.userId === 'u1'); // 应从登录态获取
+      // 检查当前用户是否已报名（必须是审核通过的报名）
+      // 注意：这里要检查该活动的所有报名记录，不能只检查 activityRegs（它可能只包含当前分组）
+      const isRegistered = registrations.some(r =>
+        r.activityId === id &&
+        r.userId === currentUserId &&
+        r.status === 'approved'
+      );
 
       // 检查管理权限
       const managementPermission = checkManagementPermission(detail, currentUserId);
+
+      // 判断是否可以查看联系方式
+      // 规则：已报名且审核通过的用户、管理员、组织者都可以查看
+      const isOrganizer = currentUserId === detail.organizerId;
+      const isAdministrator = detail.administrators && detail.administrators.some(admin => admin.userId === currentUserId);
+      const canViewContact = isRegistered || isOrganizer || isAdministrator || managementPermission.hasPermission;
 
       // 组装 extra 额外信息对象
       const extra = {
@@ -214,6 +225,7 @@ Page({
         isRegistered,
         canManage: managementPermission.hasPermission,
         managementRole: managementPermission.role || '',
+        canViewContact, // 是否可以查看联系方式
         loading: false
       });
 
@@ -487,5 +499,92 @@ Page({
       title: detail.title || '活动详情',
       imageUrl: detail.poster || ''
     };
+  },
+
+  // 拨打组织者电话
+  callOrganizer() {
+    const { detail } = this.data;
+    const phone = detail.organizerPhone;
+
+    if (!phone || phone.trim().length === 0) {
+      wx.showToast({
+        title: '组织者未提供电话',
+        icon: 'none',
+        duration: 2000
+      });
+      return;
+    }
+
+    // 去除脱敏符号，获取真实号码
+    const realPhone = phone.replace(/\*/g, '');
+
+    // 检查号码是否有效
+    if (realPhone.length < 7) {
+      wx.showToast({
+        title: '电话号码无效',
+        icon: 'none',
+        duration: 2000
+      });
+      return;
+    }
+
+    wx.makePhoneCall({
+      phoneNumber: realPhone,
+      success: () => {
+        console.log('拨打电话成功');
+      },
+      fail: (err) => {
+        console.error('拨打电话失败:', err);
+        wx.showToast({
+          title: '拨打失败',
+          icon: 'none'
+        });
+      }
+    });
+  },
+
+  // 复制组织者微信号
+  copyWechat() {
+    const { detail } = this.data;
+    const wechat = detail.organizerWechat;
+
+    if (!wechat || wechat.trim().length === 0) {
+      wx.showToast({
+        title: '组织者未提供微信号',
+        icon: 'none',
+        duration: 2000
+      });
+      return;
+    }
+
+    // 去除脱敏符号，获取真实微信号
+    const realWechat = wechat.replace(/\*/g, '');
+
+    wx.setClipboardData({
+      data: realWechat,
+      success: () => {
+        wx.showToast({
+          title: '微信号已复制',
+          icon: 'success',
+          duration: 2000
+        });
+        // 可选：显示提示引导用户添加微信
+        setTimeout(() => {
+          wx.showModal({
+            title: '添加微信',
+            content: `微信号「${realWechat}」已复制到剪贴板，请前往微信添加好友`,
+            showCancel: false,
+            confirmText: '知道了'
+          });
+        }, 2000);
+      },
+      fail: (err) => {
+        console.error('复制微信号失败:', err);
+        wx.showToast({
+          title: '复制失败',
+          icon: 'none'
+        });
+      }
+    });
   }
 });

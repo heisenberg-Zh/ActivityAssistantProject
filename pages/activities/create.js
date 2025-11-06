@@ -9,6 +9,8 @@ const {
   checkFieldEditability,
   getUserManagedActivities
 } = require('../../utils/activity-management-helper.js');
+const scheduler = require('../../utils/scheduler.js');
+const notification = require('../../utils/notification.js');
 const app = getApp();
 
 const TYPE_OPTIONS = ['聚会', '培训', '户外', '运动', '会议'];
@@ -43,6 +45,8 @@ Page({
       type: '',
       typeIndex: 0,
       isPublic: false, // 是否公开（默认不公开）
+      organizerPhone: '', // 联系人电话
+      organizerWechat: '', // 联系人微信号
       hasGroups: false, // 是否启用分组
       groupCount: 2, // 分组数量（2-5）
       startDate: '',
@@ -72,7 +76,18 @@ Page({
     nextFieldId: 1, // 用于生成自定义字段的唯一ID
     // 第6步活动说明页的自定义字段（无分组时使用）
     descriptionFields: [],
-    nextDescFieldId: 1 // 用于生成活动说明自定义字段的唯一ID
+    nextDescFieldId: 1, // 用于生成活动说明自定义字段的唯一ID
+    // 定时发布相关字段
+    enableScheduledPublish: false, // 是否启用定时发布
+    scheduledPublishDate: '', // 定时发布日期
+    scheduledPublishTime: '09:00', // 定时发布时间
+    // 周期性活动相关字段
+    enableRecurring: false, // 是否启用周期性活动
+    recurringFrequency: 'weekly', // 重复频率：weekly
+    recurringWeekdays: [], // 周几：[1, 3] 表示周一和周三
+    recurringWeeks: 4, // 持续几周
+    publishTiming: 'advance', // 发布时机：'advance'(提前发布) 或 'immediate'(立即发布所有)
+    advanceHours: 24 // 提前多少小时发布
   },
 
   // 步骤切换
@@ -298,9 +313,187 @@ Page({
         // 关闭分组时，清空分组数据
         this.setData({ groups: [] });
       }
+    } else if (field === 'enableScheduledPublish') {
+      // 特殊处理定时发布切换
+      const enabled = e.detail.value;
+      this.setData({
+        enableScheduledPublish: enabled,
+        publishButtonText: enabled ? '预发布' : '发布'
+      });
+
+      // 如果启用定时发布，设置默认日期为明天
+      if (enabled && !this.data.scheduledPublishDate) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowDate = formatDateTime(tomorrow.toISOString(), 'YYYY-MM-DD');
+        this.setData({ scheduledPublishDate: tomorrowDate });
+      }
+    } else if (field === 'enableRecurring') {
+      // 特殊处理周期性活动切换
+      const enabled = e.detail.value;
+      this.setData({ enableRecurring: enabled });
     } else {
       this.setData({ [`form.${field}`]: e.detail.value });
     }
+  },
+
+  // 定时发布日期改变
+  onScheduledPublishDateChange(e) {
+    const date = e.detail.value;
+    this.setData({ scheduledPublishDate: date });
+    // 延迟校验，等待时间也设置完成
+    setTimeout(() => {
+      this.validateScheduledPublishTime();
+    }, 100);
+  },
+
+  // 定时发布时间改变
+  onScheduledPublishTimeChange(e) {
+    const time = e.detail.value;
+    this.setData({ scheduledPublishTime: time });
+    // 延迟校验，等待日期也设置完成
+    setTimeout(() => {
+      this.validateScheduledPublishTime();
+    }, 100);
+  },
+
+  // 校验定时发布时间
+  validateScheduledPublishTime() {
+    const { scheduledPublishDate, scheduledPublishTime, form } = this.data;
+
+    if (!scheduledPublishDate || !scheduledPublishTime) {
+      return { isValid: false, error: '请选择定时发布时间' };
+    }
+
+    const scheduledDateTime = `${scheduledPublishDate} ${scheduledPublishTime}`;
+    const scheduledTime = new Date(scheduledDateTime);
+    const now = new Date();
+
+    // 1. 不能早于当前时间
+    if (scheduledTime <= now) {
+      wx.showModal({
+        title: '时间无效',
+        content: '定时发布时间不能早于或等于当前时间，请重新选择。',
+        showCancel: false,
+        success: () => {
+          this.setData({
+            scheduledPublishDate: '',
+            scheduledPublishTime: '09:00'
+          });
+        }
+      });
+      return { isValid: false, error: '定时发布时间不能早于当前时间' };
+    }
+
+    // 2. 不能晚于活动开始时间
+    if (form.startDate && form.startTime) {
+      const activityStartTime = new Date(`${form.startDate} ${form.startTime}`);
+      if (scheduledTime >= activityStartTime) {
+        wx.showModal({
+          title: '时间无效',
+          content: '定时发布时间不能晚于或等于活动开始时间，请重新选择。',
+          showCancel: false,
+          success: () => {
+            this.setData({
+              scheduledPublishDate: '',
+              scheduledPublishTime: '09:00'
+            });
+          }
+        });
+        return { isValid: false, error: '定时发布时间不能晚于活动开始时间' };
+      }
+    }
+
+    // 3. 不能晚于报名截止时间（如有）
+    if (form.registerDeadlineDate && form.registerDeadlineTime) {
+      const registerDeadline = new Date(`${form.registerDeadlineDate} ${form.registerDeadlineTime}`);
+      if (scheduledTime >= registerDeadline) {
+        wx.showModal({
+          title: '时间无效',
+          content: '定时发布时间不能晚于或等于报名截止时间，请重新选择。',
+          showCancel: false,
+          success: () => {
+            this.setData({
+              scheduledPublishDate: '',
+              scheduledPublishTime: '09:00'
+            });
+          }
+        });
+        return { isValid: false, error: '定时发布时间不能晚于报名截止时间' };
+      }
+    }
+
+    // 4. 使用 scheduler 的通用校验（不能超过1年）
+    const result = scheduler.validateScheduledTime(scheduledDateTime);
+    if (!result.isValid) {
+      wx.showModal({
+        title: '时间无效',
+        content: result.error,
+        showCancel: false,
+        success: () => {
+          this.setData({
+            scheduledPublishDate: '',
+            scheduledPublishTime: '09:00'
+          });
+        }
+      });
+    }
+
+    return result;
+  },
+
+  // 周期性活动 - 周几选择
+  toggleWeekday(e) {
+    const weekday = parseInt(e.currentTarget.dataset.weekday);
+    const { recurringWeekdays } = this.data;
+
+    const index = recurringWeekdays.indexOf(weekday);
+    if (index > -1) {
+      // 已选中，取消选择
+      recurringWeekdays.splice(index, 1);
+    } else {
+      // 未选中，添加选择
+      recurringWeekdays.push(weekday);
+    }
+
+    // 排序
+    recurringWeekdays.sort((a, b) => a - b);
+
+    this.setData({ recurringWeekdays });
+  },
+
+  // 周期性活动 - 持续周数改变
+  onRecurringWeeksChange(e) {
+    let weeks = parseInt(e.detail.value || '4');
+
+    // 限制范围 1-52周
+    if (isNaN(weeks) || weeks < 1) {
+      weeks = 1;
+    } else if (weeks > 52) {
+      weeks = 52;
+    }
+
+    this.setData({ recurringWeeks: weeks });
+  },
+
+  // 周期性活动 - 发布时机改变
+  onPublishTimingChange(e) {
+    const value = e.detail.value;
+    this.setData({ publishTiming: value === 'advance' ? 'advance' : 'immediate' });
+  },
+
+  // 周期性活动 - 提前小时数改变
+  onAdvanceHoursChange(e) {
+    let hours = parseInt(e.detail.value || '24');
+
+    // 限制范围 1-168小时（7天）
+    if (isNaN(hours) || hours < 1) {
+      hours = 1;
+    } else if (hours > 168) {
+      hours = 168;
+    }
+
+    this.setData({ advanceHours: hours });
   },
 
   // 分组数量改变
@@ -998,6 +1191,28 @@ Page({
       return;
     }
 
+    // 检查联系方式（友好提示，但不强制）
+    const hasPhone = form.organizerPhone && form.organizerPhone.trim().length > 0;
+    const hasWechat = form.organizerWechat && form.organizerWechat.trim().length > 0;
+
+    if (!hasPhone && !hasWechat) {
+      const confirmResult = await new Promise(resolve => {
+        wx.showModal({
+          title: '建议填写联系方式',
+          content: '建议至少填写一种联系方式，便于参与者联系您。是否继续发布？',
+          confirmText: '继续发布',
+          cancelText: '返回填写',
+          success: res => resolve(res.confirm)
+        });
+      });
+
+      if (!confirmResult) {
+        // 用户选择返回填写，切换到步骤1
+        this.setCurrentStep(1);
+        return;
+      }
+    }
+
     // 如果有分组，验证分组信息完整性
     if (form.hasGroups) {
       if (groups.length === 0) {
@@ -1022,6 +1237,8 @@ Page({
       desc: form.desc,
       type: form.type,
       isPublic: form.isPublic, // 是否公开
+      organizerPhone: form.organizerPhone || '', // 联系人电话
+      organizerWechat: form.organizerWechat || '', // 联系人微信号
       startTime: `${form.startDate} ${form.startTime}`,
       endTime: `${form.endDate} ${form.endTime}`,
       registerDeadline: form.registerDeadlineDate
@@ -1064,9 +1281,40 @@ Page({
       }
     }
 
+    // 定时发布处理
+    const { enableScheduledPublish, scheduledPublishDate, scheduledPublishTime } = this.data;
+
+    if (enableScheduledPublish) {
+      // 检查定时发布时间是否已设置
+      if (!scheduledPublishDate || !scheduledPublishTime) {
+        wx.showModal({
+          title: '无法预发布',
+          content: '请先设置定时发布的日期和时间后再预发布。',
+          showCancel: false
+        });
+        return;
+      }
+
+      // 校验定时发布时间
+      const validation = this.validateScheduledPublishTime();
+      if (!validation.isValid) {
+        return;
+      }
+
+      // 设置为预发布状态
+      activityData.status = '预发布';
+      activityData.scheduledPublishTime = `${scheduledPublishDate} ${scheduledPublishTime}`;
+      activityData.actualPublishTime = null;
+    } else {
+      // 立即发布
+      activityData.status = 'published';
+      activityData.scheduledPublishTime = null;
+      activityData.actualPublishTime = new Date().toISOString();
+    }
+
     const isEdit = mode === 'edit';
-    const loadingText = isEdit ? '保存中...' : '发布中...';
-    const successText = isEdit ? '保存成功' : '发布成功';
+    const loadingText = enableScheduledPublish ? '设置定时发布中...' : (isEdit ? '保存中...' : '发布中...');
+    const successText = enableScheduledPublish ? '定时发布设置成功' : (isEdit ? '保存成功' : '发布成功');
 
     wx.showLoading({ title: loadingText });
 
@@ -1083,17 +1331,40 @@ Page({
       wx.hideLoading();
 
       if (result.code === 0) {
-        wx.showToast({ title: successText, icon: 'success' });
+        const targetId = isEdit ? activityId : result.data.id;
+
+        // 如果启用了定时发布，添加定时任务
+        if (enableScheduledPublish) {
+          const scheduledDateTime = `${scheduledPublishDate} ${scheduledPublishTime}`;
+          const added = scheduler.addTask(targetId, scheduledDateTime);
+
+          if (added) {
+            console.log('定时任务添加成功:', targetId, scheduledDateTime);
+            wx.showToast({ title: successText, icon: 'success' });
+          } else {
+            console.error('定时任务添加失败');
+            wx.showToast({ title: '定时发布设置失败', icon: 'none' });
+          }
+        } else {
+          wx.showToast({ title: successText, icon: 'success' });
+        }
 
         // 清除草稿
         wx.removeStorageSync('activity_draft');
 
-        // 跳转到详情页
+        // 跳转到我的活动页面
         setTimeout(() => {
-          const targetId = isEdit ? activityId : result.data.id;
-          wx.redirectTo({
-            url: `/pages/activities/detail?id=${targetId}`
-          });
+          if (enableScheduledPublish) {
+            // 定时发布的活动跳转到我的活动-预发布页面
+            wx.redirectTo({
+              url: `/pages/my-activities/index?tab=scheduled`
+            });
+          } else {
+            // 立即发布的活动跳转到详情页
+            wx.redirectTo({
+              url: `/pages/activities/detail?id=${targetId}`
+            });
+          }
         }, 1500);
       } else {
         wx.showToast({ title: result.message || '操作失败', icon: 'none' });
@@ -1213,6 +1484,8 @@ Page({
       type: activity.type,
       typeIndex: TYPE_OPTIONS.indexOf(activity.type),
       isPublic: activity.isPublic !== undefined ? activity.isPublic : true,
+      organizerPhone: activity.organizerPhone || '',
+      organizerWechat: activity.organizerWechat || '',
       hasGroups: activity.hasGroups || false,
       groupCount: activity.groups ? activity.groups.length : 2,
       startDate: startDateTime[0],
@@ -1444,6 +1717,8 @@ Page({
       type: activity.type,
       typeIndex: TYPE_OPTIONS.indexOf(activity.type),
       isPublic: activity.isPublic !== undefined ? activity.isPublic : true,
+      organizerPhone: activity.organizerPhone || '',
+      organizerWechat: activity.organizerWechat || '',
       hasGroups: activity.hasGroups || false,
       groupCount: activity.groups ? activity.groups.length : 2,
       startDate: startDateTime[0],
