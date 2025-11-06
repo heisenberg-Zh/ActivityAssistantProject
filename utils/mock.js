@@ -20,7 +20,7 @@ const activities = [
     longitude: 116.3972,
     checkinRadius: 500,
     type: '运动',
-    status: 'scheduled', // 预发布状态
+    status: '预发布', // 预发布状态
     total: 16,
     joined: 0,
     minParticipants: 8,
@@ -66,7 +66,7 @@ const activities = [
     longitude: 116.3972,
     checkinRadius: 500,
     type: '运动',
-    status: 'scheduled', // 预发布状态
+    status: '预发布', // 预发布状态
     total: 16,
     joined: 0,
     minParticipants: 8,
@@ -112,7 +112,7 @@ const activities = [
     longitude: 116.4579,
     checkinRadius: 300,
     type: '聚会',
-    status: 'scheduled',
+    status: '预发布',
     total: 200,
     joined: 0,
     minParticipants: 50,
@@ -1705,13 +1705,24 @@ const checkinRecords = [
 ];
 
 // 为所有活动添加默认字段（如果没有的话）
-const processedActivities = activities.map(activity => ({
-  ...activity,
-  isPublic: activity.isPublic !== undefined ? activity.isPublic : true, // 默认公开
-  administrators: activity.administrators || [], // 默认无管理员
-  whitelist: activity.whitelist || [], // 默认无白名单
-  blacklist: activity.blacklist || [] // 默认无黑名单
-}));
+const processedActivities = activities.map(activity => {
+  // 根据 organizerId 查找组织者信息，获取联系方式
+  const organizer = participants.find(p => p.id === activity.organizerId);
+  const defaultPhone = organizer ? organizer.mobile : '';
+  // 微信号默认值：使用手机号（去掉脱敏符号）或者组织者名字拼音
+  const defaultWechat = organizer ? organizer.mobile.replace(/\*/g, '') : '';
+
+  return {
+    ...activity,
+    isPublic: activity.isPublic !== undefined ? activity.isPublic : true, // 默认公开
+    administrators: activity.administrators || [], // 默认无管理员
+    whitelist: activity.whitelist || [], // 默认无白名单
+    blacklist: activity.blacklist || [], // 默认无黑名单
+    // 组织者联系方式（优先使用活动中设置的值，否则使用默认值）
+    organizerPhone: activity.organizerPhone !== undefined ? activity.organizerPhone : defaultPhone,
+    organizerWechat: activity.organizerWechat !== undefined ? activity.organizerWechat : defaultWechat
+  };
+});
 
 module.exports = {
   activities: processedActivities,

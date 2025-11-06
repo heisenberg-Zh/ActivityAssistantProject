@@ -45,6 +45,8 @@ Page({
       type: '',
       typeIndex: 0,
       isPublic: false, // 是否公开（默认不公开）
+      organizerPhone: '', // 联系人电话
+      organizerWechat: '', // 联系人微信号
       hasGroups: false, // 是否启用分组
       groupCount: 2, // 分组数量（2-5）
       startDate: '',
@@ -1189,6 +1191,28 @@ Page({
       return;
     }
 
+    // 检查联系方式（友好提示，但不强制）
+    const hasPhone = form.organizerPhone && form.organizerPhone.trim().length > 0;
+    const hasWechat = form.organizerWechat && form.organizerWechat.trim().length > 0;
+
+    if (!hasPhone && !hasWechat) {
+      const confirmResult = await new Promise(resolve => {
+        wx.showModal({
+          title: '建议填写联系方式',
+          content: '建议至少填写一种联系方式，便于参与者联系您。是否继续发布？',
+          confirmText: '继续发布',
+          cancelText: '返回填写',
+          success: res => resolve(res.confirm)
+        });
+      });
+
+      if (!confirmResult) {
+        // 用户选择返回填写，切换到步骤1
+        this.setCurrentStep(1);
+        return;
+      }
+    }
+
     // 如果有分组，验证分组信息完整性
     if (form.hasGroups) {
       if (groups.length === 0) {
@@ -1213,6 +1237,8 @@ Page({
       desc: form.desc,
       type: form.type,
       isPublic: form.isPublic, // 是否公开
+      organizerPhone: form.organizerPhone || '', // 联系人电话
+      organizerWechat: form.organizerWechat || '', // 联系人微信号
       startTime: `${form.startDate} ${form.startTime}`,
       endTime: `${form.endDate} ${form.endTime}`,
       registerDeadline: form.registerDeadlineDate
@@ -1276,7 +1302,7 @@ Page({
       }
 
       // 设置为预发布状态
-      activityData.status = 'scheduled';
+      activityData.status = '预发布';
       activityData.scheduledPublishTime = `${scheduledPublishDate} ${scheduledPublishTime}`;
       activityData.actualPublishTime = null;
     } else {
@@ -1458,6 +1484,8 @@ Page({
       type: activity.type,
       typeIndex: TYPE_OPTIONS.indexOf(activity.type),
       isPublic: activity.isPublic !== undefined ? activity.isPublic : true,
+      organizerPhone: activity.organizerPhone || '',
+      organizerWechat: activity.organizerWechat || '',
       hasGroups: activity.hasGroups || false,
       groupCount: activity.groups ? activity.groups.length : 2,
       startDate: startDateTime[0],
@@ -1689,6 +1717,8 @@ Page({
       type: activity.type,
       typeIndex: TYPE_OPTIONS.indexOf(activity.type),
       isPublic: activity.isPublic !== undefined ? activity.isPublic : true,
+      organizerPhone: activity.organizerPhone || '',
+      organizerWechat: activity.organizerWechat || '',
       hasGroups: activity.hasGroups || false,
       groupCount: activity.groups ? activity.groups.length : 2,
       startDate: startDateTime[0],

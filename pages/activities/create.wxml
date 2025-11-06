@@ -38,6 +38,18 @@
       </picker>
     </view>
 
+    <!-- 联系方式 -->
+    <view class="form-field">
+      <text class="field-label">联系人电话</text>
+      <input class="field-input" type="number" placeholder="请输入联系电话" bindinput="onInput" data-field="organizerPhone" value="{{form.organizerPhone}}" maxlength="11" />
+      <text class="field-hint">选填，建议填写11位手机号，便于参与者联系您</text>
+    </view>
+    <view class="form-field">
+      <text class="field-label">联系人微信号</text>
+      <input class="field-input" placeholder="请输入您的微信号/微信绑定手机号" bindinput="onInput" data-field="organizerWechat" value="{{form.organizerWechat}}" />
+      <text class="field-hint">便于参与者联系您咨询活动相关问题</text>
+    </view>
+
     <!-- 是否公开 -->
     <view class="option-row" style="margin-top: 24rpx;">
       <view class="option-label">
