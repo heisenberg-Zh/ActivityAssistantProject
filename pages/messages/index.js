@@ -1,4 +1,7 @@
 // pages/messages/index.js
+const notification = require('../../utils/notification.js');
+
+// 示例假数据（当本地没有消息时显示）
 const messageData = [
   {
     id: 'm1',
@@ -104,17 +107,115 @@ Page({
   data: {
     filters: [
       { key: 'all', name: '全部', active: true },
+      { key: 'publish', name: '发布通知', active: false },
       { key: 'system', name: '系统通知', active: false },
       { key: 'activity', name: '活动通知', active: false },
       { key: 'signup', name: '报名通知', active: false }
     ],
     activeFilter: 'all',
-    allMessages: messageData,
+    allMessages: [],
     messages: []
   },
 
   onLoad() {
-    this.updateMessages('all');
+    this.loadMessages();
+  },
+
+  onShow() {
+    this.loadMessages();
+  },
+
+  // 加载消息列表
+  loadMessages() {
+    const notifications = notification.getAllNotifications();
+
+    // 转换为页面所需的格式
+    const formattedMessages = notifications.map(notif => {
+      let category = 'system';
+      let iconText = '消';
+      let iconBg = '#DBEAFE';
+      let iconColor = '#2563eb';
+      let tags = [];
+
+      // 根据消息类型设置样式
+      if (notif.type === 'publish_success') {
+        category = 'publish';
+        iconText = '发';
+        iconBg = '#DCFCE7';
+        iconColor = '#047857';
+        tags.push({ name: '发布成功', bg: 'rgba(16,185,129,0.15)', color: '#047857' });
+      } else if (notif.type === 'publish_failed') {
+        category = 'publish';
+        iconText = '失';
+        iconBg = '#FEE2E2';
+        iconColor: '#B91C1C';
+        tags.push({ name: '发布失败', bg: 'rgba(239,68,68,0.15)', color: '#B91C1C' });
+      } else if (notif.type === 'activity_reminder') {
+        category = 'activity';
+        iconText = '约';
+        iconBg = '#DCFCE7';
+        iconColor = '#047857';
+        tags.push({ name: '活动提醒', bg: 'rgba(16,185,129,0.15)', color: '#047857' });
+      } else if (notif.type === 'system') {
+        category = 'system';
+        iconText = '铃';
+        iconBg = '#DBEAFE';
+        iconColor = '#2563eb';
+        tags.push({ name: '系统通知', bg: 'rgba(59,130,246,0.15)', color: '#1d4ed8' });
+      }
+
+      // 添加已读/未读标签
+      if (notif.isRead) {
+        tags.push({ name: '已读', bg: '#e5e7eb', color: '#4b5563' });
+      } else {
+        tags.push({ name: '未读', bg: '#ef4444', color: '#ffffff' });
+      }
+
+      return {
+        id: notif.id,
+        title: notif.title,
+        time: this.formatTime(notif.createdAt),
+        content: notif.content,
+        category,
+        iconText,
+        iconBg,
+        iconColor,
+        tags,
+        activityId: notif.activityId
+      };
+    });
+
+    // 如果没有消息，使用示例数据
+    const messagesToDisplay = formattedMessages.length > 0 ? formattedMessages : messageData;
+
+    this.setData({
+      allMessages: messagesToDisplay,
+      messages: messagesToDisplay
+    });
+
+    this.updateMessages(this.data.activeFilter);
+  },
+
+  // 格式化时间
+  formatTime(isoString) {
+    const now = new Date();
+    const date = new Date(isoString);
+    const diff = now - date;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return '刚刚';
+    if (minutes < 60) return `${minutes}分钟前`;
+    if (hours < 24) return `${hours}小时前`;
+    if (days < 1) return '今天';
+    if (days < 2) return '昨天';
+    if (days < 7) return `${days}天前`;
+
+    // 超过7天显示具体日期
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return `${month}月${day}日`;
   },
 
   onFilterTap(e) {
@@ -129,6 +230,17 @@ Page({
     const messages = this.data.allMessages.filter(item => activeKey === 'all' || item.category === activeKey);
     const filters = this.data.filters.map(filter => Object.assign({}, filter, { active: filter.key === activeKey }));
     this.setData({ messages, filters, activeFilter: activeKey });
+
+    // 更新未读消息数量（可选，用于显示在 tabBar 上）
+    const unreadCount = notification.getUnreadCount();
+    if (unreadCount > 0) {
+      wx.setTabBarBadge({
+        index: 3, // 假设消息中心是第4个tab（索引从0开始）
+        text: String(unreadCount)
+      });
+    } else {
+      wx.removeTabBarBadge({ index: 3 });
+    }
   },
 
   goBack() {
