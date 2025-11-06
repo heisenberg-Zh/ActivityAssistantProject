@@ -2,6 +2,143 @@
 
 // ==================== 活动数据 ====================
 const activities = [
+  // ========== 预发布活动（定时发布）==========
+  {
+    id: 'scheduled1',
+    title: '周一网球活动',
+    isDeleted: false,
+    isPublic: true,
+    desc: '每周一固定网球活动，欢迎所有水平的球友参加。',
+    date: '12月23日 19:00',
+    timeRange: '12月23日 19:00-22:00',
+    startTime: '2025-12-23 19:00',
+    endTime: '2025-12-23 22:00',
+    registerDeadline: '2025-12-23 18:00',
+    place: '奥体中心网球场',
+    address: '北京市朝阳区奥体中心',
+    latitude: 39.9928,
+    longitude: 116.3972,
+    checkinRadius: 500,
+    type: '运动',
+    status: 'scheduled', // 预发布状态
+    total: 16,
+    joined: 0,
+    minParticipants: 8,
+    banner: 'blue',
+    fee: 50,
+    feeType: 'AA',
+    needReview: false,
+    organizerId: 'u1',
+    organizerName: '张小北',
+    tags: ['运动', '网球', '固定活动'],
+    requirements: '请自带球拍和运动装备',
+    createdAt: '2025-12-14 10:00',
+    hasGroups: false,
+    customFields: [
+      { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
+      { id: 'mobile', label: '手机号', required: true, desc: '用于联系参与者', isCustom: false }
+    ],
+    // 定时发布相关字段
+    scheduledPublishTime: '2025-12-22 12:00', // 定时发布时间（提前一天中午12点发布）
+    actualPublishTime: null, // 实际发布时间（未发布时为null）
+    isRecurring: true, // 周期性活动
+    recurringGroupId: 'recurring_tennis_monday', // 周期性活动组ID
+    recurringConfig: {
+      frequency: 'weekly', // 重复频率：每周
+      weekdays: [1], // 周一
+      totalWeeks: 4 // 持续4周
+    }
+  },
+  {
+    id: 'scheduled2',
+    title: '周三网球活动',
+    isDeleted: false,
+    isPublic: true,
+    desc: '每周三固定网球活动，欢迎所有水平的球友参加。',
+    date: '12月25日 19:00',
+    timeRange: '12月25日 19:00-22:00',
+    startTime: '2025-12-25 19:00',
+    endTime: '2025-12-25 22:00',
+    registerDeadline: '2025-12-25 18:00',
+    place: '奥体中心网球场',
+    address: '北京市朝阳区奥体中心',
+    latitude: 39.9928,
+    longitude: 116.3972,
+    checkinRadius: 500,
+    type: '运动',
+    status: 'scheduled', // 预发布状态
+    total: 16,
+    joined: 0,
+    minParticipants: 8,
+    banner: 'blue',
+    fee: 50,
+    feeType: 'AA',
+    needReview: false,
+    organizerId: 'u1',
+    organizerName: '张小北',
+    tags: ['运动', '网球', '固定活动'],
+    requirements: '请自带球拍和运动装备',
+    createdAt: '2025-12-14 10:00',
+    hasGroups: false,
+    customFields: [
+      { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
+      { id: 'mobile', label: '手机号', required: true, desc: '用于联系参与者', isCustom: false }
+    ],
+    // 定时发布相关字段
+    scheduledPublishTime: '2025-12-24 12:00', // 定时发布时间（提前一天中午12点发布）
+    actualPublishTime: null,
+    isRecurring: true,
+    recurringGroupId: 'recurring_tennis_wednesday',
+    recurringConfig: {
+      frequency: 'weekly',
+      weekdays: [3], // 周三
+      totalWeeks: 4
+    }
+  },
+  {
+    id: 'scheduled3',
+    title: '新年联欢晚会',
+    isDeleted: false,
+    isPublic: true,
+    desc: '欢庆2026新年，公司年度联欢晚会，精彩节目不容错过！',
+    date: '12月31日 18:00',
+    timeRange: '12月31日 18:00-22:00',
+    startTime: '2025-12-31 18:00',
+    endTime: '2025-12-31 22:00',
+    registerDeadline: '2025-12-30 18:00',
+    place: '国际会议中心',
+    address: '北京市朝阳区国际会议中心',
+    latitude: 39.9085,
+    longitude: 116.4579,
+    checkinRadius: 300,
+    type: '聚会',
+    status: 'scheduled',
+    total: 200,
+    joined: 0,
+    minParticipants: 50,
+    banner: 'pink',
+    fee: 0,
+    feeType: '免费',
+    needReview: true,
+    organizerId: 'u1',
+    organizerName: '张小北',
+    tags: ['聚会', '年会', '庆祝'],
+    requirements: '请着正装出席',
+    createdAt: '2025-12-14 15:30',
+    hasGroups: false,
+    customFields: [
+      { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
+      { id: 'mobile', label: '手机号', required: true, desc: '用于联系参与者', isCustom: false },
+      { id: 'custom_1', label: '部门', required: true, desc: '请填写您的部门', isCustom: true }
+    ],
+    // 定时发布相关字段
+    scheduledPublishTime: '2025-12-20 09:00', // 定时发布时间（提前11天发布）
+    actualPublishTime: null,
+    isRecurring: false, // 非周期性活动
+    recurringGroupId: null,
+    recurringConfig: null
+  },
+
   // ========== 测试私密活动 ==========
   {
     id: 'private1',
