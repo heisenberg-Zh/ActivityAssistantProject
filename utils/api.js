@@ -1,41 +1,127 @@
 // utils/api.js - API封装层
 const { activities, participants, registrations, checkinRecords } = require('./mock.js');
+const { sanitizeInput, escapeHtml } = require('./security.js');
+const { requestWithRetry, NetworkErrorType, requestCache } = require('./request-manager.js');
 
 // 模拟网络延迟
 const delay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
 
-// 通用请求封装
+// 通用请求封装（支持超时、重试、缓存）
 const request = async (url, options = {}) => {
   const {
     method = 'GET',
     data = {},
-    mock = true
+    mock = true,
+    useCache = false,        // 是否使用缓存（仅GET请求）
+    cacheMaxAge = 5 * 60 * 1000, // 缓存时长（默认5分钟）
+    timeout = 10000,         // 超时时间
+    retryCount = 2,          // 重试次数
+    showLoading = false,     // 是否显示loading
+    showError = true         // 是否显示错误提示
   } = options;
 
+  // Mock模式
   if (mock) {
+    // 模拟网络延迟
     await delay(300);
     return mockRequest(url, method, data);
   }
 
-  // 真实API调用（待后端接入）
-  return new Promise((resolve, reject) => {
-    wx.request({
-      url: `${getApp().globalData.apiBase}${url}`,
-      method,
-      data,
-      header: {
-        'content-type': 'application/json',
-        'Authorization': wx.getStorageSync('token') || ''
-      },
-      success: (res) => {
-        if (res.statusCode === 200) {
-          resolve(res.data);
-        } else {
-          reject(new Error(res.data.message || '请求失败'));
+  // 真实API调用
+  // 如果是GET请求且启用缓存，先尝试从缓存获取
+  if (method === 'GET' && useCache) {
+    const cacheKey = requestCache.generateKey(url, data);
+    const cached = requestCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
+  // 创建请求函数
+  const requestFn = () => {
+    return new Promise((resolve, reject) => {
+      const app = getApp();
+      const apiBase = app?.globalData?.apiBase || '';
+
+      wx.request({
+        url: `${apiBase}${url}`,
+        method,
+        data,
+        header: {
+          'content-type': 'application/json',
+          'Authorization': wx.getStorageSync('token') || ''
+        },
+        timeout,
+        success: (res) => {
+          if (res.statusCode === 200) {
+            // 解析响应数据
+            try {
+              const result = res.data;
+
+              // 如果是GET请求且启用缓存，保存到缓存
+              if (method === 'GET' && useCache) {
+                const cacheKey = requestCache.generateKey(url, data);
+                requestCache.set(cacheKey, result);
+              }
+
+              resolve(result);
+            } catch (err) {
+              reject({
+                type: NetworkErrorType.PARSE_ERROR,
+                message: '数据解析失败',
+                error: err
+              });
+            }
+          } else if (res.statusCode === 401) {
+            // 未授权，跳转登录
+            reject({
+              type: NetworkErrorType.SERVER_ERROR,
+              message: '登录已过期，请重新登录',
+              statusCode: 401
+            });
+
+            // 清除登录状态
+            wx.removeStorageSync('token');
+            wx.removeStorageSync('isLoggedIn');
+
+            // 跳转登录页
+            setTimeout(() => {
+              wx.navigateTo({ url: '/pages/auth/login' });
+            }, 1500);
+          } else if (res.statusCode >= 500) {
+            // 服务器错误
+            reject({
+              type: NetworkErrorType.SERVER_ERROR,
+              message: res.data?.message || '服务器错误',
+              statusCode: res.statusCode
+            });
+          } else {
+            // 其他错误
+            reject({
+              type: NetworkErrorType.REQUEST_FAIL,
+              message: res.data?.message || '请求失败',
+              statusCode: res.statusCode
+            });
+          }
+        },
+        fail: (err) => {
+          console.error('Request fail:', err);
+          reject({
+            type: NetworkErrorType.REQUEST_FAIL,
+            message: err.errMsg || '网络请求失败',
+            error: err
+          });
         }
-      },
-      fail: reject
+      });
     });
+  };
+
+  // 使用带重试的请求
+  return requestWithRetry(requestFn, {
+    timeout,
+    retryCount,
+    showLoading,
+    showError
   });
 };
 
@@ -55,9 +141,18 @@ const mockRequest = (url, method, data) => {
   }
 
   if (url === '/api/activities' && method === 'POST') {
+    // 安全清理：防止XSS注入
+    const safeData = {
+      ...data,
+      title: sanitizeInput(data.title, { maxLength: 50 }),
+      desc: data.desc ? sanitizeInput(data.desc, { maxLength: 500 }) : '',
+      place: data.place ? sanitizeInput(data.place, { maxLength: 100 }) : '',
+      address: data.address ? sanitizeInput(data.address, { maxLength: 200 }) : ''
+    };
+
     const newActivity = {
       id: 'a' + (activities.length + 1),
-      ...data,
+      ...safeData,
       status: '即将开始',
       joined: 0,
       createdAt: new Date().toISOString()
@@ -68,9 +163,16 @@ const mockRequest = (url, method, data) => {
 
   // 报名相关接口
   if (url === '/api/registrations' && method === 'POST') {
+    // 安全清理：防止XSS注入
+    const safeData = {
+      ...data,
+      name: data.name ? sanitizeInput(data.name, { maxLength: 20 }) : ''
+      // 手机号在validator.js中已经验证，这里不需要额外清理
+    };
+
     const newReg = {
       id: 'r' + (registrations.length + 1),
-      ...data,
+      ...safeData,
       status: data.needReview ? 'pending' : 'approved',
       registeredAt: new Date().toISOString()
     };
@@ -111,59 +213,135 @@ const mockRequest = (url, method, data) => {
 
 // 活动API
 const activityAPI = {
-  // 获取活动列表
-  getList: (params = {}) => request('/api/activities', { method: 'GET', data: params }),
+  // 获取活动列表（启用缓存）
+  getList: (params = {}) => request('/api/activities', {
+    method: 'GET',
+    data: params,
+    useCache: true,
+    cacheMaxAge: 3 * 60 * 1000, // 缓存3分钟
+    showLoading: false
+  }),
 
-  // 获取活动详情
-  getDetail: (id) => request(`/api/activities/${id}`, { method: 'GET' }),
+  // 获取活动详情（启用缓存）
+  getDetail: (id) => request(`/api/activities/${id}`, {
+    method: 'GET',
+    useCache: true,
+    cacheMaxAge: 5 * 60 * 1000, // 缓存5分钟
+    showLoading: false
+  }),
 
-  // 创建活动
-  create: (data) => request('/api/activities', { method: 'POST', data }),
+  // 创建活动（显示loading，增加超时时间）
+  create: (data) => request('/api/activities', {
+    method: 'POST',
+    data,
+    timeout: 15000,
+    showLoading: true,
+    loadingText: '创建中...',
+    retryCount: 1
+  }),
 
   // 更新活动
-  update: (id, data) => request(`/api/activities/${id}`, { method: 'PUT', data }),
+  update: (id, data) => request(`/api/activities/${id}`, {
+    method: 'PUT',
+    data,
+    showLoading: true,
+    loadingText: '保存中...'
+  }),
 
   // 删除活动
-  delete: (id) => request(`/api/activities/${id}`, { method: 'DELETE' })
+  delete: (id) => request(`/api/activities/${id}`, {
+    method: 'DELETE',
+    showLoading: true,
+    loadingText: '删除中...'
+  })
 };
 
 // 报名API
 const registrationAPI = {
-  // 创建报名
-  create: (data) => request('/api/registrations', { method: 'POST', data }),
+  // 创建报名（显示loading）
+  create: (data) => request('/api/registrations', {
+    method: 'POST',
+    data,
+    timeout: 10000,
+    showLoading: true,
+    loadingText: '提交中...',
+    retryCount: 1
+  }),
 
   // 取消报名
-  cancel: (id) => request(`/api/registrations/${id}`, { method: 'DELETE' }),
+  cancel: (id) => request(`/api/registrations/${id}`, {
+    method: 'DELETE',
+    showLoading: true,
+    loadingText: '取消中...'
+  }),
 
   // 获取活动报名列表
-  getByActivity: (activityId) => request(`/api/registrations/activity/${activityId}`, { method: 'GET' }),
+  getByActivity: (activityId) => request(`/api/registrations/activity/${activityId}`, {
+    method: 'GET',
+    useCache: false // 报名数据实时性要求高，不缓存
+  }),
 
   // 审核报名
-  approve: (id, approved) => request(`/api/registrations/${id}/approve`, { method: 'PUT', data: { approved } })
+  approve: (id, approved) => request(`/api/registrations/${id}/approve`, {
+    method: 'PUT',
+    data: { approved },
+    showLoading: true
+  })
 };
 
 // 签到API
 const checkinAPI = {
-  // 创建签到
-  create: (data) => request('/api/checkins', { method: 'POST', data }),
+  // 创建签到（显示loading）
+  create: (data) => request('/api/checkins', {
+    method: 'POST',
+    data,
+    timeout: 8000,
+    showLoading: true,
+    loadingText: '签到中...',
+    retryCount: 1
+  }),
 
   // 获取活动签到列表
-  getByActivity: (activityId) => request(`/api/checkins/activity/${activityId}`, { method: 'GET' }),
+  getByActivity: (activityId) => request(`/api/checkins/activity/${activityId}`, {
+    method: 'GET',
+    useCache: true,
+    cacheMaxAge: 1 * 60 * 1000 // 缓存1分钟
+  }),
 
   // 获取用户签到记录
-  getByUser: (userId) => request(`/api/checkins/user/${userId}`, { method: 'GET' })
+  getByUser: (userId) => request(`/api/checkins/user/${userId}`, {
+    method: 'GET',
+    useCache: true,
+    cacheMaxAge: 2 * 60 * 1000
+  })
 };
 
 // 用户API
 const userAPI = {
-  // 获取用户信息
-  getProfile: () => request('/api/user/profile', { method: 'GET' }),
+  // 获取用户信息（启用缓存）
+  getProfile: () => request('/api/user/profile', {
+    method: 'GET',
+    useCache: true,
+    cacheMaxAge: 10 * 60 * 1000 // 缓存10分钟
+  }),
 
   // 更新用户信息
-  updateProfile: (data) => request('/api/user/profile', { method: 'PUT', data }),
+  updateProfile: (data) => request('/api/user/profile', {
+    method: 'PUT',
+    data,
+    showLoading: true,
+    loadingText: '保存中...'
+  }),
 
   // 微信登录
-  login: (code) => request('/api/auth/login', { method: 'POST', data: { code } })
+  login: (code) => request('/api/auth/login', {
+    method: 'POST',
+    data: { code },
+    timeout: 15000,
+    showLoading: true,
+    loadingText: '登录中...',
+    retryCount: 1
+  })
 };
 
 module.exports = {
