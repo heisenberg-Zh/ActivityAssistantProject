@@ -30,9 +30,8 @@
 
 <view class="section">
   <view class="card shadow-card menu-card">
-    <text class="section-title">快捷入口</text>
     <view class="menu-list">
-      <block wx:for="{{quickLinks}}" wx:key="key" wx:for-item="item">
+      <block wx:for="{{menuLinks}}" wx:key="key" wx:for-item="item">
         <view class="menu-item" bindtap="handleMenu" data-key="{{item.key}}">
           <view class="menu-icon" style="background: {{item.bg}}; color: {{item.color}};">{{item.icon}}</view>
           <text class="text-md text-gray-800">{{item.label}}</text>
@@ -44,21 +43,36 @@
 </view>
 
 <view class="section">
-  <view class="card shadow-card menu-card">
-    <text class="section-title">设置与帮助</text>
-    <view class="menu-list">
-      <block wx:for="{{settingsLinks}}" wx:key="key" wx:for-item="item">
-        <view class="menu-item" bindtap="handleMenu" data-key="{{item.key}}">
-          <view class="menu-icon" style="background: {{item.bg}}; color: {{item.color}};">{{item.icon}}</view>
-          <text class="text-md text-gray-800">{{item.label}}</text>
-        </view>
-      </block>
-    </view>
-  </view>
+  <view class="logout-btn" bindtap="logout">退出登录</view>
 </view>
 
-<view class="section">
-  <view class="logout-btn" bindtap="logout">退出登录</view>
+<!-- 帮助与反馈弹窗 -->
+<view class="feedback-modal" wx:if="{{showFeedbackModal}}">
+  <view class="feedback-mask" bindtap="closeFeedbackModal"></view>
+  <view class="feedback-content">
+    <view class="feedback-header">
+      <text class="feedback-title">帮助与反馈</text>
+      <view class="feedback-close" bindtap="closeFeedbackModal">✕</view>
+    </view>
+
+    <view class="feedback-body">
+      <text class="feedback-hint">如需帮助或有意见和建议，欢迎反馈</text>
+      <textarea
+        class="feedback-textarea"
+        placeholder="请输入您的反馈内容..."
+        maxlength="1000"
+        value="{{feedbackContent}}"
+        bindinput="onFeedbackInput"
+        auto-height
+      />
+      <text class="feedback-counter">{{feedbackCount}}/1000</text>
+    </view>
+
+    <view class="feedback-footer">
+      <view class="feedback-btn feedback-btn--cancel" bindtap="closeFeedbackModal">取消</view>
+      <view class="feedback-btn feedback-btn--submit" bindtap="submitFeedback">确定</view>
+    </view>
+  </view>
 </view>
 
 <view class="bottom-space"></view>
