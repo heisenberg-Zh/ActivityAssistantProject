@@ -1,0 +1,63 @@
+/* pages/favorites/index.wxss */
+@import '/app.wxss';
+@import '/pages/activities/list.wxss';
+
+.page-container {
+  min-height: 100vh;
+  background: #f7f8fa;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 空状态样式 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 48rpx;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 120rpx;
+  margin-bottom: 32rpx;
+  opacity: 0.6;
+  display: block;
+}
+
+.empty-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 16rpx;
+  display: block;
+}
+
+.empty-hint {
+  font-size: 26rpx;
+  color: #9ca3af;
+  margin-bottom: 48rpx;
+  display: block;
+}
+
+.empty-btn {
+  padding: 24rpx 48rpx;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+/* 列表头部 */
+.section-header {
+  padding: 24rpx 24rpx 16rpx 24rpx;
+}
+
+.section-title {
+  font-size: 28rpx;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.content-section {
+  padding: 0 24rpx;
+}

@@ -4,6 +4,8 @@ const { registrationAPI } = require('../../utils/api.js');
 const { validateRegistrationForm } = require('../../utils/validator.js');
 const { formatMobile, formatMoney, getAvatarColor } = require('../../utils/formatter.js');
 const { formatDateCN, isBeforeRegisterDeadline } = require('../../utils/datetime.js');
+const { getCurrentUserId } = require('../../utils/user-helper.js');
+const { submitGuard } = require('../../utils/submit-guard.js');
 
 // 生成温馨提示
 const generateGuidelines = (detail) => {
@@ -95,8 +97,8 @@ Page({
       // 检查是否已满员
       const isFull = detail.joined >= detail.total;
 
-      // 检查当前用户是否已报名（当前用户ID假设为u1）
-      const currentUserId = 'u1';
+      // 检查当前用户是否已报名
+      const currentUserId = getCurrentUserId();
       const userRegs = registrations.filter(
         r => r.activityId === id && r.userId === currentUserId && r.status !== 'cancelled'
       );
@@ -217,7 +219,7 @@ Page({
     }
 
     // 检查当前用户是否已报名该分组
-    const currentUserId = 'u1';
+    const currentUserId = getCurrentUserId();
     const userRegInGroup = registrations.find(
       r => r.activityId === id && r.userId === currentUserId && r.groupId === groupId && r.status !== 'cancelled'
     );
@@ -448,39 +450,53 @@ Page({
 
   // 执行实际的报名提交
   async performSubmit(id, detail, formData, selectedGroupId) {
-    wx.showLoading({ title: '提交中...' });
+    // 防重复提交：使用活动ID作为锁定标识
+    const lockKey = `registration:${id}`;
 
-    try {
-      // 构建提交数据，包含所有动态字段
-      const submissionData = {
-        activityId: id,
-        groupId: selectedGroupId, // 添加分组ID
-        ...formData,
-        needReview: detail.needReview
-      };
+    // 使用submitGuard包装提交逻辑
+    return submitGuard.wrapAsync(
+      lockKey,
+      async () => {
+        wx.showLoading({ title: '提交中...' });
 
-      const result = await registrationAPI.create(submissionData);
+        try {
+          // 构建提交数据，包含所有动态字段
+          const submissionData = {
+            activityId: id,
+            groupId: selectedGroupId, // 添加分组ID
+            ...formData,
+            needReview: detail.needReview
+          };
 
-      wx.hideLoading();
+          const result = await registrationAPI.create(submissionData);
 
-      if (result.code === 0) {
-        const message = detail.needReview ? '报名成功，等待审核' : '报名成功';
-        wx.showToast({ title: message, icon: 'success' });
+          wx.hideLoading();
 
-        // 延迟跳转到详情页
-        setTimeout(() => {
-          wx.redirectTo({
-            url: `/pages/activities/detail?id=${id}`
-          });
-        }, 1500);
-      } else {
-        wx.showToast({ title: result.message || '报名失败', icon: 'none' });
+          if (result.code === 0) {
+            const message = detail.needReview ? '报名成功，等待审核' : '报名成功';
+            wx.showToast({ title: message, icon: 'success' });
+
+            // 延迟跳转到详情页
+            setTimeout(() => {
+              wx.redirectTo({
+                url: `/pages/activities/detail?id=${id}`
+              });
+            }, 1500);
+          } else {
+            wx.showToast({ title: result.message || '报名失败', icon: 'none' });
+          }
+        } catch (err) {
+          wx.hideLoading();
+          console.error('报名失败:', err);
+          wx.showToast({ title: '报名失败，请重试', icon: 'none' });
+        }
+      },
+      {
+        lockTime: 5000, // 锁定5秒
+        showTips: true,
+        tipsMessage: '报名提交中，请勿重复操作'
       }
-    } catch (err) {
-      wx.hideLoading();
-      console.error('报名失败:', err);
-      wx.showToast({ title: '报名失败，请重试', icon: 'none' });
-    }
+    );
   },
 
   // 查看所有参与者

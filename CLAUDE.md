@@ -105,6 +105,11 @@ ActivityAssistantProject/
 - 接入真实后端 API (活动 CRUD、报名、签到、统计)
 - 实现微信登录鉴权和用户信息存储
 - 替换 `utils/mock.js` 中的假数据为真实 API 调用
+- **用户反馈 API**：提交用户的帮助与反馈内容到后端（`pages/profile/index.js:submitFeedback` 方法）
+- **收藏功能 API**：
+  - 同步用户收藏数据到服务器（目前使用本地存储 `wx.setStorageSync`）
+  - 收藏列表云端同步，支持跨设备访问
+  - 相关文件：`pages/favorites/index.js`、`pages/activities/detail.js:toggleFavorite`
 
 ### 功能增强
 - 微信群内接龙报名功能
@@ -149,3 +154,24 @@ onShareAppMessage() {
 - **需求文档**: `plan.md` - 详细的产品需求和技术规格
 - **项目说明**: `README.md` - 快速开始和功能概览
 - **UI 原型**: `ui-html/` - HTML 原型参考文件
+- **API安全规范**: `API_SECURITY_SPEC.md` - 后端API权限校验和安全规范（必读）
+
+## 安全注意事项
+
+### 前端安全措施
+本项目前端已实现以下安全措施：
+- **XSS防护**: 使用 `utils/security.js` 中的 `sanitizeInput` 和 `escapeHtml` 对用户输入进行清理
+- **手机号验证**: 使用严格的正则表达式防止SQL注入
+- **防重复提交**: 部分接口使用防抖和节流机制
+- **本地存储加密**: 敏感信息使用 `setSecureStorage` 加密存储
+
+### 后端开发要求
+**重要**: 前端的安全措施仅是第一道防线，**后端必须独立实现所有安全校验**。详见 `API_SECURITY_SPEC.md`
+
+关键要求：
+1. 所有API请求必须进行Token认证
+2. 权限校验必须在后端执行，不能信任前端传递的角色标识
+3. 用户ID必须从Token中获取，不能信任前端传递的userId
+4. 所有用户输入必须进行XSS和SQL注入防护
+5. 敏感信息（联系方式）必须脱敏返回，仅授权用户可查看完整信息
+6. 实现请求限流防止API滥用

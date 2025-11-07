@@ -35,7 +35,9 @@ Page({
     fromShare: false, // 是否通过分享链接访问
     // 管理权限
     canManage: false,
-    managementRole: '' // 'creator' 或 'admin'
+    managementRole: '', // 'creator' 或 'admin'
+    // 收藏相关
+    isFavorited: false // 是否已收藏
   },
 
   onLoad(query) {
@@ -202,6 +204,10 @@ Page({
       const isAdministrator = detail.administrators && detail.administrators.some(admin => admin.userId === currentUserId);
       const canViewContact = isRegistered || isOrganizer || isAdministrator || managementPermission.hasPermission;
 
+      // 检查是否已收藏
+      const favoriteIds = wx.getStorageSync('favoriteActivityIds') || [];
+      const isFavorited = favoriteIds.includes(id);
+
       // 组装 extra 额外信息对象
       const extra = {
         organizer: organizerInfo.name,
@@ -226,6 +232,7 @@ Page({
         canManage: managementPermission.hasPermission,
         managementRole: managementPermission.role || '',
         canViewContact, // 是否可以查看联系方式
+        isFavorited, // 是否已收藏
         loading: false
       });
 
@@ -586,5 +593,35 @@ Page({
         });
       }
     });
+  },
+
+  // 切换收藏状态
+  toggleFavorite() {
+    const { id, isFavorited } = this.data;
+
+    // 获取收藏列表
+    let favoriteIds = wx.getStorageSync('favoriteActivityIds') || [];
+
+    if (isFavorited) {
+      // 取消收藏
+      favoriteIds = favoriteIds.filter(fid => fid !== id);
+      wx.setStorageSync('favoriteActivityIds', favoriteIds);
+      this.setData({ isFavorited: false });
+      wx.showToast({
+        title: '已取消收藏',
+        icon: 'success'
+      });
+    } else {
+      // 添加收藏
+      if (!favoriteIds.includes(id)) {
+        favoriteIds.push(id);
+        wx.setStorageSync('favoriteActivityIds', favoriteIds);
+      }
+      this.setData({ isFavorited: true });
+      wx.showToast({
+        title: '收藏成功',
+        icon: 'success'
+      });
+    }
   }
 });
