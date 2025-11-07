@@ -1,12 +1,15 @@
 // utils/validator.js - 数据验证工具
+const { sanitizeInput, isSafeMobile } = require('./security.js');
 
 // 验证手机号
 const validateMobile = (mobile) => {
   if (!mobile) return { valid: false, message: '请输入手机号' };
-  const reg = /^1[3-9]\d{9}$/;
-  if (!reg.test(mobile)) {
+
+  // 安全检查：防止SQL注入
+  if (!isSafeMobile(mobile)) {
     return { valid: false, message: '手机号格式不正确' };
   }
+
   return { valid: true, message: '' };
 };
 
@@ -74,20 +77,142 @@ const validateTimeRange = (startTime, endTime) => {
   return { valid: true, message: '' };
 };
 
+/**
+ * 验证定时发布时间
+ * @param {String} scheduledTime - 定时发布时间
+ * @param {String} activityStartTime - 活动开始时间
+ * @returns {Object} 验证结果
+ */
+const validateScheduledPublishTime = (scheduledTime, activityStartTime) => {
+  // 验证时间格式
+  const scheduled = new Date(scheduledTime);
+  const activityStart = new Date(activityStartTime);
+  const now = new Date();
+
+  if (isNaN(scheduled.getTime())) {
+    return { valid: false, message: '定时发布时间格式不正确' };
+  }
+
+  // 定时发布时间不能早于当前时间
+  if (scheduled <= now) {
+    return { valid: false, message: '定时发布时间必须晚于当前时间' };
+  }
+
+  // 定时发布时间不能晚于活动开始时间
+  if (isNaN(activityStart.getTime()) === false && scheduled >= activityStart) {
+    return { valid: false, message: '定时发布时间必须早于活动开始时间' };
+  }
+
+  // 定时发布时间不能超过30天
+  const maxDays = 30;
+  const maxTime = new Date(now.getTime() + maxDays * 24 * 60 * 60 * 1000);
+  if (scheduled > maxTime) {
+    return { valid: false, message: `定时发布时间不能超过${maxDays}天` };
+  }
+
+  return { valid: true, message: '' };
+};
+
+/**
+ * 验证周期性活动配置
+ * @param {Object} recurringConfig - 周期性配置
+ * @param {String} startTime - 活动开始时间
+ * @returns {Object} 验证结果
+ */
+const validateRecurringConfig = (recurringConfig, startTime) => {
+  if (!recurringConfig) {
+    return { valid: false, message: '请配置周期性活动参数' };
+  }
+
+  const { frequency, weekdays, totalWeeks } = recurringConfig;
+
+  // 验证频率
+  if (!frequency || !['daily', 'weekly', 'monthly'].includes(frequency)) {
+    return { valid: false, message: '周期频率不正确' };
+  }
+
+  // 如果是按周重复，需要验证weekdays
+  if (frequency === 'weekly') {
+    if (!weekdays || !Array.isArray(weekdays) || weekdays.length === 0) {
+      return { valid: false, message: '请选择重复的星期' };
+    }
+
+    // 验证weekdays值是否在0-6之间
+    const validWeekdays = weekdays.every(day => day >= 0 && day <= 6);
+    if (!validWeekdays) {
+      return { valid: false, message: '星期值不正确（0-6）' };
+    }
+  }
+
+  // 验证总周数
+  if (!totalWeeks || totalWeeks < 1 || totalWeeks > 52) {
+    return { valid: false, message: '重复周数应在1-52之间' };
+  }
+
+  // 验证开始时间
+  const start = new Date(startTime);
+  const now = new Date();
+  if (isNaN(start.getTime())) {
+    return { valid: false, message: '活动开始时间格式不正确' };
+  }
+
+  if (start <= now) {
+    return { valid: false, message: '周期性活动的开始时间必须晚于当前时间' };
+  }
+
+  return { valid: true, message: '' };
+};
+
+/**
+ * 验证报名截止时间
+ * @param {String} registerDeadline - 报名截止时间
+ * @param {String} activityStartTime - 活动开始时间
+ * @returns {Object} 验证结果
+ */
+const validateRegisterDeadline = (registerDeadline, activityStartTime) => {
+  const deadline = new Date(registerDeadline);
+  const activityStart = new Date(activityStartTime);
+  const now = new Date();
+
+  if (isNaN(deadline.getTime())) {
+    return { valid: false, message: '报名截止时间格式不正确' };
+  }
+
+  if (isNaN(activityStart.getTime())) {
+    return { valid: false, message: '活动开始时间格式不正确' };
+  }
+
+  // 报名截止时间不能早于当前时间
+  if (deadline <= now) {
+    return { valid: false, message: '报名截止时间必须晚于当前时间' };
+  }
+
+  // 报名截止时间不能晚于活动开始时间
+  if (deadline > activityStart) {
+    return { valid: false, message: '报名截止时间不能晚于活动开始时间' };
+  }
+
+  return { valid: true, message: '' };
+};
+
 // 验证活动表单
 const validateActivityForm = (form) => {
   const errors = [];
 
+  // 安全清理：防止XSS注入
+  const safeTitle = sanitizeInput(form.title, { maxLength: 50 });
+  const safeDesc = form.desc ? sanitizeInput(form.desc, { maxLength: 500 }) : '';
+
   // 验证标题
-  const titleCheck = validateRequired(form.title, '活动标题');
+  const titleCheck = validateRequired(safeTitle, '活动标题');
   if (!titleCheck.valid) errors.push(titleCheck.message);
 
-  const titleLengthCheck = validateLength(form.title, 2, 50, '活动标题');
+  const titleLengthCheck = validateLength(safeTitle, 2, 50, '活动标题');
   if (!titleLengthCheck.valid) errors.push(titleLengthCheck.message);
 
   // 验证描述
-  if (form.desc) {
-    const descLengthCheck = validateLength(form.desc, 0, 500, '活动描述');
+  if (safeDesc) {
+    const descLengthCheck = validateLength(safeDesc, 0, 500, '活动描述');
     if (!descLengthCheck.valid) errors.push(descLengthCheck.message);
   }
 
@@ -130,11 +255,14 @@ const validateActivityForm = (form) => {
 const validateRegistrationForm = (form) => {
   const errors = [];
 
+  // 安全清理：防止XSS注入
+  const safeName = sanitizeInput(form.name, { maxLength: 20 });
+
   // 验证姓名
-  const nameCheck = validateRequired(form.name, '姓名');
+  const nameCheck = validateRequired(safeName, '姓名');
   if (!nameCheck.valid) errors.push(nameCheck.message);
 
-  const nameLengthCheck = validateLength(form.name, 2, 20, '姓名');
+  const nameLengthCheck = validateLength(safeName, 2, 20, '姓名');
   if (!nameLengthCheck.valid) errors.push(nameLengthCheck.message);
 
   // 验证手机号
@@ -154,6 +282,9 @@ module.exports = {
   validateRange,
   validateDate,
   validateTimeRange,
+  validateScheduledPublishTime,
+  validateRecurringConfig,
+  validateRegisterDeadline,
   validateActivityForm,
   validateRegistrationForm
 };

@@ -4,6 +4,8 @@ const { checkinAPI } = require('../../utils/api.js');
 const { validateCheckinLocation, formatDistance } = require('../../utils/location.js');
 const { isInCheckinWindow, isLate, formatDateTime } = require('../../utils/datetime.js');
 const { formatCheckinStatus } = require('../../utils/formatter.js');
+const { getCurrentUserId } = require('../../utils/user-helper.js');
+const { submitGuard } = require('../../utils/submit-guard.js');
 
 Page({
   data: {
@@ -240,48 +242,64 @@ Page({
   async submitCheckin() {
     const { activityId, activity, currentLocation, distance } = this.data;
 
-    wx.showLoading({ title: '签到中...' });
+    // 防重复提交：使用活动ID作为锁定标识
+    const lockKey = `checkin:${activityId}`;
 
-    try {
-      const now = new Date();
-      const checkIsLate = isLate(now.toISOString(), activity.startTime, 10);
+    return submitGuard.wrapAsync(
+      lockKey,
+      async () => {
+        wx.showLoading({ title: '签到中...' });
 
-      const result = await checkinAPI.create({
-        activityId,
-        userId: 'u1', // 当前用户ID，应从登录态获取
-        registrationId: 'r1', // 应从报名记录获取
-        latitude: currentLocation?.latitude || activity.latitude,
-        longitude: currentLocation?.longitude || activity.longitude,
-        address: activity.address,
-        isLate: checkIsLate,
-        isValid: this.data.withinRange,
-        distance
-      });
+        try {
+          const now = new Date();
+          const checkIsLate = isLate(now.toISOString(), activity.startTime, 10);
 
-      wx.hideLoading();
+          // 获取当前用户ID
+          const currentUserId = getCurrentUserId();
 
-      if (result.code === 0) {
-        const checkTime = formatDateTime(now.toISOString(), 'HH:mm');
-        this.setData({
-          checked: true,
-          checkTime
-        });
+          const result = await checkinAPI.create({
+            activityId,
+            userId: currentUserId,
+            registrationId: 'r1', // TODO: 应从报名记录获取
+            latitude: currentLocation?.latitude || activity.latitude,
+            longitude: currentLocation?.longitude || activity.longitude,
+            address: activity.address,
+            isLate: checkIsLate,
+            isValid: this.data.withinRange,
+            distance
+          });
 
-        const message = checkIsLate ? '签到成功（迟到）' : '签到成功';
-        wx.showToast({ title: message, icon: 'success' });
+          wx.hideLoading();
 
-        // 重新加载签到记录
-        setTimeout(() => {
-          this.loadCheckinRecords(activityId);
-        }, 1000);
-      } else {
-        wx.showToast({ title: result.message || '签到失败', icon: 'none' });
+          if (result.code === 0) {
+            const checkTime = formatDateTime(now.toISOString(), 'HH:mm');
+            this.setData({
+              checked: true,
+              checkTime
+            });
+
+            const message = checkIsLate ? '签到成功（迟到）' : '签到成功';
+            wx.showToast({ title: message, icon: 'success' });
+
+            // 重新加载签到记录
+            setTimeout(() => {
+              this.loadCheckinRecords(activityId);
+            }, 1000);
+          } else {
+            wx.showToast({ title: result.message || '签到失败', icon: 'none' });
+          }
+        } catch (err) {
+          wx.hideLoading();
+          console.error('签到失败:', err);
+          wx.showToast({ title: '签到失败，请重试', icon: 'none' });
+        }
+      },
+      {
+        lockTime: 5000, // 锁定5秒
+        showTips: true,
+        tipsMessage: '签到提交中，请勿重复操作'
       }
-    } catch (err) {
-      wx.hideLoading();
-      console.error('签到失败:', err);
-      wx.showToast({ title: '签到失败，请重试', icon: 'none' });
-    }
+    );
   },
 
   // 打开地图

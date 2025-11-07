@@ -2,6 +2,8 @@
 const { API_CONFIG, WX_CONFIG } = require('./utils/config.js');
 const scheduler = require('./utils/scheduler.js');
 const notification = require('./utils/notification.js');
+const { setSecureStorage, getSecureStorage } = require('./utils/security.js');
+const { cleanCorruptedStorage, checkStorageHealth } = require('./utils/storage-cleaner.js');
 
 App({
   globalData: {
@@ -20,6 +22,24 @@ App({
 
   onLaunch() {
     console.log('ActivityAssistant app launched');
+
+    // 清理损坏的存储数据（修复升级后的兼容性问题）
+    try {
+      const cleanedCount = cleanCorruptedStorage();
+      if (cleanedCount > 0) {
+        console.log(`🧹 已清理 ${cleanedCount} 个损坏的存储项`);
+      }
+
+      // 存储健康检查
+      const healthReport = checkStorageHealth();
+      if (!healthReport.healthy) {
+        console.warn('⚠️ 存储健康检查发现问题:', healthReport.issues);
+      } else {
+        console.log('✅ 存储健康检查通过');
+      }
+    } catch (err) {
+      console.error('清理存储时出错:', err);
+    }
 
     // 获取系统信息
     this.getSystemInfo();
@@ -84,10 +104,34 @@ App({
   // 初始化用户信息
   initUserInfo() {
     try {
-      const userInfo = wx.getStorageSync('userInfo');
-      const isLoggedIn = wx.getStorageSync('isLoggedIn');
-      const currentUserId = wx.getStorageSync('currentUserId');
-      const currentUser = wx.getStorageSync('currentUser');
+      // 尝试读取用户信息（兼容旧数据）
+      let userInfo = null;
+      let currentUserId = null;
+      let currentUser = null;
+
+      // 安全读取用户信息
+      try {
+        userInfo = getSecureStorage('userInfo');
+      } catch (err) {
+        console.warn('读取userInfo失败，尝试清理:', err);
+        wx.removeStorageSync('userInfo');
+      }
+
+      try {
+        currentUserId = getSecureStorage('currentUserId');
+      } catch (err) {
+        console.warn('读取currentUserId失败，尝试清理:', err);
+        wx.removeStorageSync('currentUserId');
+      }
+
+      try {
+        currentUser = getSecureStorage('currentUser');
+      } catch (err) {
+        console.warn('读取currentUser失败，尝试清理:', err);
+        wx.removeStorageSync('currentUser');
+      }
+
+      const isLoggedIn = wx.getStorageSync('isLoggedIn'); // 登录状态不加密
 
       // 确保 isLoggedIn 是布尔值
       const loggedIn = isLoggedIn === true || isLoggedIn === 'true';
@@ -103,10 +147,26 @@ App({
         };
         console.log('✅ 用户信息已加载:', this.globalData.currentUser);
       } else {
-        console.log('⚠️ 用户未登录');
+        // 初始化默认用户（开发环境）
+        console.log('⚠️ 用户未登录，使用默认用户');
+        this.globalData.isLoggedIn = false;
+        this.globalData.currentUserId = 'u1';
+        this.globalData.currentUser = {
+          id: 'u1',
+          name: '张小北',
+          avatar: '/activityassistant_avatar_01.png'
+        };
       }
     } catch (err) {
       console.error('❌ 加载用户信息失败:', err);
+      // 降级处理：使用默认用户
+      this.globalData.isLoggedIn = false;
+      this.globalData.currentUserId = 'u1';
+      this.globalData.currentUser = {
+        id: 'u1',
+        name: '张小北',
+        avatar: '/activityassistant_avatar_01.png'
+      };
     }
   },
 
@@ -130,7 +190,8 @@ App({
   setUserInfo(userInfo) {
     this.globalData.userInfo = userInfo;
     try {
-      wx.setStorageSync('userInfo', userInfo);
+      // 使用加密存储保存用户信息
+      setSecureStorage('userInfo', userInfo);
     } catch (err) {
       console.error('保存用户信息失败:', err);
     }
@@ -143,6 +204,7 @@ App({
     this.globalData.currentUserId = null;
     this.globalData.currentUser = null;
     try {
+      // 清除所有用户相关的存储（包括加密的）
       wx.removeStorageSync('userInfo');
       wx.removeStorageSync('isLoggedIn');
       wx.removeStorageSync('currentUserId');
