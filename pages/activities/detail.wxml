@@ -18,6 +18,9 @@
 <view wx:else>
 <view class="detail-header">
   <text class="detail-title">{{detail.title}}</text>
+  <view class="favorite-icon {{isFavorited ? 'favorite-icon--active' : ''}}" bindtap="toggleFavorite">
+    <view class="star-icon"></view>
+  </view>
 </view>
 
 <view class="detail-cover banner banner--{{detail.banner}}">

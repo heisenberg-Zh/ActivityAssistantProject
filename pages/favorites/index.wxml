@@ -1,0 +1,48 @@
+<!-- pages/favorites/index.wxml -->
+<view class="page-container">
+  <!-- 空状态 -->
+  <view wx:if="{{favoriteActivities.length === 0}}" class="empty-state">
+    <text class="empty-icon">⭐</text>
+    <text class="empty-title">暂无收藏活动</text>
+    <text class="empty-hint">快去发现有趣的活动吧～</text>
+    <navigator url="/pages/activities/list" open-type="switchTab" class="btn btn--primary empty-btn">浏览活动</navigator>
+  </view>
+
+  <!-- 收藏活动列表 -->
+  <view wx:else class="content-section">
+    <view class="section-header">
+      <text class="section-title">共收藏 {{favoriteActivities.length}} 个活动</text>
+    </view>
+
+    <block wx:for="{{favoriteActivities}}" wx:key="id" wx:for-item="item">
+      <view class="card shadow-card activity-card">
+        <view class="row-between activity-card__header">
+          <view class="row gap-12">
+            <view class="badge {{ item.status === '进行中' ? 'badge--ok' : (item.status === '即将开始' ? 'badge--info' : 'badge--muted') }}">{{item.status}}</view>
+            <view wx:if="{{item.privacyTag}}" class="badge badge--warning">🔒 {{item.privacyTag}}</view>
+          </view>
+          <view class="badge badge--light">{{item.type}}</view>
+        </view>
+        <view class="activity-card__body">
+          <text class="text-lg text-gray-800 mb-8">{{item.title}}</text>
+          <text class="text-sm text-gray-500 mb-12">{{item.desc}}</text>
+          <view class="row text-sm text-gray-500 mb-8">
+            <text>时间：{{item.timeRange}}</text>
+          </view>
+          <view class="row text-sm text-gray-500 mb-12">
+            <text>地点：{{item.place}}</text>
+          </view>
+          <view class="row-between mb-12">
+            <text class="text-sm text-gray-600">已报 {{item.joined}} / {{item.total}}</text>
+            <view class="row gap-12">
+              <view class="btn btn--danger btn--small" catchtap="removeFavorite" data-id="{{item.id}}">取消收藏</view>
+              <view class="btn btn--secondary btn--small" catchtap="goDetail" data-id="{{item.id}}">查看详情</view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <view class="bottom-space"></view>
+</view>

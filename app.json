@@ -14,6 +14,7 @@
     "pages/my-activities/index",
     "pages/my-activities/joined-list",
     "pages/my-activities/created-list",
+    "pages/favorites/index",
     "pages/messages/index",
     "pages/settings/index",
     "pages/participants/index",
