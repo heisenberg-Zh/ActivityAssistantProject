@@ -1,0 +1,71 @@
+# ============================================
+# ActivityAssistant 后端应用主配置
+# ============================================
+
+spring:
+  application:
+    name: activity-assistant
+
+  # 激活的配置文件（默认为 dev）
+  profiles:
+    active: dev
+
+  # Jackson JSON 配置
+  jackson:
+    time-zone: GMT+8
+    date-format: yyyy-MM-dd HH:mm:ss
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+  # JPA 配置
+  jpa:
+    open-in-view: false
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: false
+
+# 服务器配置
+server:
+  port: 8080
+  servlet:
+    context-path: /
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+# 日志配置
+logging:
+  pattern:
+    console: '%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n'
+  level:
+    root: INFO
+    com.activityassistant: DEBUG
+
+# SpringDoc OpenAPI 配置（Swagger）
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+
+# 应用自定义配置
+app:
+  # JWT 配置
+  jwt:
+    secret: ActivityAssistant2025SecretKeyForJWTTokenGeneration
+    expiration: 604800000  # 7天（毫秒）
+    header: Authorization
+    prefix: Bearer
+
+  # 微信小程序配置（将在环境配置文件中覆盖）
+  wechat:
+    app-id:
+    app-secret:
