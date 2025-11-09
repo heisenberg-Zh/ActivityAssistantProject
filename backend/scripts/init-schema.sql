@@ -75,7 +75,7 @@ CREATE TABLE activities (
     is_deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否删除（软删除）',
 
     -- JSON字段（存储动态数据）
-    groups JSON DEFAULT NULL COMMENT '分组数据（JSON）',
+	`groups` JSON DEFAULT NULL COMMENT '分组数据（JSON）',
     administrators JSON DEFAULT NULL COMMENT '管理员列表（JSON）',
     whitelist JSON DEFAULT NULL COMMENT '白名单（JSON）',
     blacklist JSON DEFAULT NULL COMMENT '黑名单（JSON）',

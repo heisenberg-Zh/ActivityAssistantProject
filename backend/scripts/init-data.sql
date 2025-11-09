@@ -32,13 +32,14 @@ INSERT INTO users (id, open_id, nickname, avatar, mobile, role, created_at) VALU
 -- ============================================
 
 -- 活动1：进行中的网球活动（有分组）
+-- 活动1：进行中的网球活动（有分组）
 INSERT INTO activities (
     id, title, description, organizer_id, type, status,
     start_time, end_time, register_deadline,
     place, address, latitude, longitude, checkin_radius,
     total, joined, min_participants, fee, fee_type,
     need_review, is_public, is_deleted,
-    groups, created_at
+    `groups`, created_at
 ) VALUES (
     'a1',
     '周末网球活动',
