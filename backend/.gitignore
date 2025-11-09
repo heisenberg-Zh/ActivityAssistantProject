@@ -32,8 +32,11 @@ out/
 .settings/
 bin/
 
-# VS Code
-.vscode/
+# VS Code / Cursor
+# 保留 .vscode 配置文件用于 Cursor 开发环境
+# .vscode/
+# 但忽略用户个人配置
+.vscode/settings.local.json
 
 # NetBeans
 nbproject/private/
