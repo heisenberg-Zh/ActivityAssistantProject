@@ -393,11 +393,19 @@ mysql -u activity_user -p activity_assistant < D:\Project\ActivityAssistantProje
 1. 打开 `backend/scripts/init-schema.sql`
 2. 点击 **Execute**（闪电图标）
 
+
+Error Code: 1064. You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'groups JSON DEFAULT NULL COMMENT '分组数据（JSON）',     administrators JS' at line 38	0.000 sec
+
+
 ### 9.2 导入测试数据
 
 ```bash
 mysql -u activity_user -p activity_assistant < D:\Project\ActivityAssistantProject\backend\scripts\init-data.sql
 ```
+
+
+Error Code: 1064. You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'groups, created_at ) VALUES (     'a1',     '周末网球活动',     '奥体中' at line 7	0.000 sec
+
 
 ### 9.3 验证数据
 
