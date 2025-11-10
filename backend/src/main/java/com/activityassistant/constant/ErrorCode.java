@@ -33,6 +33,11 @@ public class ErrorCode {
     public static final int TOO_MANY_REQUESTS = 429;
     public static final int INTERNAL_SERVER_ERROR = 500;
 
+    // 业务通用错误码（900-999）
+    public static final int INVALID_PARAMETER = 900;
+    public static final int PERMISSION_DENIED = 901;
+    public static final int INVALID_OPERATION = 902;
+
     // ============================================
     // 用户相关错误码（1000-1999）
     // ============================================
@@ -41,6 +46,7 @@ public class ErrorCode {
     public static final int USER_INVALID_CREDENTIALS = 1003;
     public static final int USER_ACCOUNT_DISABLED = 1004;
     public static final int USER_INVALID_PHONE = 1005;
+    public static final int PHONE_ALREADY_EXISTS = 1006;
 
     // ============================================
     // 活动相关错误码（2000-2999）
