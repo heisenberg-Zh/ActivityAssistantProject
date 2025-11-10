@@ -130,7 +130,23 @@ public class JwtUtil {
     }
 
     /**
-     * 验证 Token 是否有效
+     * 验证 Token 是否有效（仅验证格式和有效期）
+     *
+     * @param token JWT Token
+     * @return 是否有效
+     */
+    public boolean validateToken(String token) {
+        try {
+            parseToken(token);
+            return !isTokenExpired(token);
+        } catch (Exception e) {
+            log.warn("Token验证失败: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 验证 Token 是否有效（验证格式、有效期和用户ID）
      *
      * @param token  JWT Token
      * @param userId 用户ID
