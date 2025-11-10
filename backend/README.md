@@ -16,11 +16,15 @@
 本项目为"活动助手"微信小程序提供后端RESTful API服务，支持活动管理、报名签到、数据统计等核心功能。
 
 ### 核心功能
-- ✅ 微信登录鉴权
-- ✅ 活动创建与管理（支持分组、自定义字段）
-- ✅ 报名审核与名额控制
-- ✅ GPS定位签到
-- ✅ 数据统计与导出
+- ✅ 微信登录鉴权（已完成）
+- ✅ JWT Token认证授权（已完成）
+- ⏳ 活动创建与管理（开发中）
+- ⏳ 报名审核与名额控制（计划中）
+- ⏳ GPS定位签到（计划中）
+- ⏳ 数据统计与导出（计划中）
+
+**当前版本**：v1.0.0-alpha（阶段1完成）
+**最后更新**：2025-11-10
 
 ---
 
@@ -98,21 +102,32 @@ java -jar target/activity-assistant-1.0.0.jar
 
 ### 6. 验证运行
 
-访问：http://localhost:8080/swagger-ui.html
+访问：http://localhost:8082/swagger-ui.html
 
 看到API文档页面说明启动成功！✅
+
+**测试登录接口**：
+```bash
+curl -X POST 'http://localhost:8082/api/auth/login' \
+  -H 'Content-Type: application/json' \
+  -d '{"code":"test_code_dev"}'
+```
+
+**期望返回**：包含token和userInfo的JSON响应
 
 ---
 
 ## 📚 文档索引
 
-| 文档 | 说明 |
-|-----|------|
-| [实施计划](docs/IMPLEMENTATION_PLAN.md) | 完整的开发计划和分阶段任务 |
-| [环境搭建指南](docs/SETUP_GUIDE.md) | 开发环境安装步骤（Windows） |
-| [数据库设计](docs/DATABASE_DESIGN.md) | 数据库表结构和SQL脚本 |
-| [API规范](docs/API_SPECIFICATION.md) | RESTful API接口文档 |
-| [开发进度](docs/DEVELOPMENT_PROGRESS.md) | 实时开发进度追踪 |
+| 文档 | 说明 | 状态 |
+|-----|------|------|
+| [实施计划](docs/IMPLEMENTATION_PLAN.md) | 完整的开发计划和分阶段任务 | ✅ 完成 |
+| [环境搭建指南](docs/SETUP_GUIDE.md) | 开发环境安装步骤（Windows） | ✅ 完成 |
+| [数据库设计](docs/DATABASE_DESIGN.md) | 数据库表结构和SQL脚本 | ✅ 完成 |
+| [API规范](docs/API_SPECIFICATION.md) | RESTful API接口文档 | ✅ 完成 |
+| [开发进度](docs/DEVELOPMENT_PROGRESS.md) | 实时开发进度追踪 | 🔄 持续更新 |
+
+**开发进度**：阶段0 ✅ 100% | 阶段1 ✅ 100% | 整体进度 40%
 
 ---
 
@@ -193,23 +208,31 @@ spring:
 ### 基础URL
 
 ```
-开发环境：http://localhost:8080
+开发环境：http://localhost:8082
 生产环境：https://api.yourdomain.com
 ```
 
-### 核心接口
+### 已实现接口（阶段1）
 
-| 模块 | 接口 | 说明 |
-|-----|------|------|
-| **认证** | `POST /api/auth/login` | 微信登录 |
-| **用户** | `GET /api/user/profile` | 获取用户信息 |
-| **活动** | `GET /api/activities` | 活动列表 |
-| **活动** | `POST /api/activities` | 创建活动 |
-| **报名** | `POST /api/registrations` | 提交报名 |
-| **签到** | `POST /api/checkins` | 签到 |
-| **统计** | `GET /api/statistics/activities/:id` | 活动统计 |
+| 模块 | 接口 | 说明 | 状态 |
+|-----|------|------|------|
+| **健康检查** | `GET /api/health` | 系统健康状态 | ✅ 已完成 |
+| **认证** | `POST /api/auth/login` | 微信登录 | ✅ 已完成 |
+| **用户** | `GET /api/user/profile` | 获取当前用户信息 | ✅ 已完成 |
+| **用户** | `PUT /api/user/profile` | 更新用户信息 | ✅ 已完成 |
+| **用户** | `GET /api/user/{userId}` | 查看他人信息 | ✅ 已完成 |
 
-**完整接口文档**：http://localhost:8080/swagger-ui.html
+### 计划接口（阶段2-4）
+
+| 模块 | 接口 | 说明 | 状态 |
+|-----|------|------|------|
+| **活动** | `GET /api/activities` | 活动列表 | ⏳ 计划中 |
+| **活动** | `POST /api/activities` | 创建活动 | ⏳ 计划中 |
+| **报名** | `POST /api/registrations` | 提交报名 | ⏳ 计划中 |
+| **签到** | `POST /api/checkins` | 签到 | ⏳ 计划中 |
+| **统计** | `GET /api/statistics/activities/:id` | 活动统计 | ⏳ 计划中 |
+
+**完整接口文档**：http://localhost:8082/swagger-ui.html
 
 ---
 
@@ -345,4 +368,31 @@ MIT License
 
 ---
 
-**最后更新**：2025-01-08
+**最后更新**：2025-11-10
+
+---
+
+## 📈 开发进度
+
+### 已完成
+- ✅ **阶段0**：项目准备（100%）
+  - 文档编写完成
+  - 环境搭建完成
+  - 数据库初始化完成
+
+- ✅ **阶段1**：用户认证模块（100%）
+  - 项目框架搭建
+  - 用户登录/注册
+  - JWT认证授权
+  - Spring Security集成
+  - 5个API接口上线
+
+### 进行中
+- 🔜 **阶段2**：活动管理模块（0%）
+  - 计划开始时间：待定
+
+### 计划中
+- ⏳ **阶段3**：报名管理模块
+- ⏳ **阶段4**：签到与统计模块
+
+**详细进度**：查看 [开发进度文档](docs/DEVELOPMENT_PROGRESS.md)
