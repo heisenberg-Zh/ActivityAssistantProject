@@ -1,6 +1,5 @@
 // pages/home/index.js
-const { activities, registrations } = require('../../utils/mock.js');
-const { filterActivitiesByPermission } = require('../../utils/activity-helper.js');
+const { activityAPI, registrationAPI } = require('../../utils/api.js');
 const app = getApp();
 
 Page({
@@ -14,39 +13,77 @@ Page({
       { name: '运动', key: '运动', active: false }
     ],
     list: [],
-    enrichedActivities: []
+    enrichedActivities: [],
+    loading: true
   },
 
-  onLoad() {
-    // 获取当前用户ID
-    const currentUserId = app.globalData.currentUserId || 'u1';
+  async onLoad() {
+    await this.loadActivities();
+  },
 
-    // 获取用户的报名记录（仅审核通过的）
-    const userRegistrations = registrations.filter(
-      r => r.userId === currentUserId && r.status === 'approved'
-    );
+  // 加载活动数据
+  async loadActivities() {
+    try {
+      wx.showLoading({ title: '加载中...' });
 
-    // 过滤活动：首页不显示不公开的活动（即使是自己创建的）
-    const filteredActivities = filterActivitiesByPermission(
-      activities,
-      currentUserId,
-      userRegistrations,
-      { includeOwned: false } // 首页不显示自己创建的私密活动
-    );
+      // 获取当前用户ID
+      const currentUserId = app.globalData.currentUserId || 'u1';
 
-    // 为活动列表添加已报名状态
-    const enrichedActivities = filteredActivities.map(activity => {
-      const isRegistered = registrations.some(
-        r => r.activityId === activity.id && r.userId === currentUserId && r.status !== 'cancelled'
-      );
-      return { ...activity, isRegistered };
-    });
+      // 并行请求活动列表和我的报名记录
+      const [activitiesResult, registrationsResult] = await Promise.all([
+        activityAPI.getList({
+          status: 'published',  // 只显示已发布的活动
+          isPublic: true,       // 只显示公开活动
+          page: 0,
+          size: 50,
+          sort: 'startTime,asc'
+        }),
+        registrationAPI.getMyRegistrations({
+          status: 'approved',   // 只获取已通过的报名
+          page: 0,
+          size: 100
+        })
+      ]);
 
-    this.setData({
-      slides: enrichedActivities,
-      list: enrichedActivities,
-      enrichedActivities
-    });
+      // 检查API响应
+      if (activitiesResult.code !== 0) {
+        throw new Error(activitiesResult.message || '获取活动列表失败');
+      }
+
+      // 获取活动列表（处理分页数据）
+      const activities = activitiesResult.data.content || activitiesResult.data || [];
+
+      // 获取我的报名记录
+      const myRegistrations = registrationsResult.code === 0
+        ? (registrationsResult.data.content || registrationsResult.data || [])
+        : [];
+
+      // 为活动列表添加已报名状态
+      const enrichedActivities = activities.map(activity => {
+        const isRegistered = myRegistrations.some(
+          r => r.activityId === activity.id && r.status === 'approved'
+        );
+        return { ...activity, isRegistered };
+      });
+
+      this.setData({
+        slides: enrichedActivities.slice(0, 5),  // 轮播图显示前5个
+        list: enrichedActivities,
+        enrichedActivities,
+        loading: false
+      });
+
+      wx.hideLoading();
+    } catch (err) {
+      wx.hideLoading();
+      console.error('加载活动数据失败:', err);
+      wx.showToast({
+        title: err.message || '加载失败，请稍后重试',
+        icon: 'none',
+        duration: 2000
+      });
+      this.setData({ loading: false });
+    }
   },
 
   onCategoryTap(e) {

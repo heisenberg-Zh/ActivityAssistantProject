@@ -8,10 +8,14 @@ const delay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
 
 // 通用请求封装（支持超时、重试、缓存）
 const request = async (url, options = {}) => {
+  // 从全局配置获取useMock设置
+  const app = getApp();
+  const globalUseMock = app?.globalData?.useMock !== undefined ? app.globalData.useMock : false;
+
   const {
     method = 'GET',
     data = {},
-    mock = true,
+    mock = globalUseMock,    // 默认使用全局配置的mock设置
     useCache = false,        // 是否使用缓存（仅GET请求）
     cacheMaxAge = 5 * 60 * 1000, // 缓存时长（默认5分钟）
     timeout = 10000,         // 超时时间
@@ -213,10 +217,10 @@ const mockRequest = (url, method, data) => {
 
 // 活动API
 const activityAPI = {
-  // 获取活动列表（启用缓存）
+  // 获取活动列表（启用缓存，支持分页和筛选）
   getList: (params = {}) => request('/api/activities', {
     method: 'GET',
-    data: params,
+    data: params,  // 支持 type, status, keyword, page, size, sort 等参数
     useCache: true,
     cacheMaxAge: 3 * 60 * 1000, // 缓存3分钟
     showLoading: false
@@ -227,6 +231,15 @@ const activityAPI = {
     method: 'GET',
     useCache: true,
     cacheMaxAge: 5 * 60 * 1000, // 缓存5分钟
+    showLoading: false
+  }),
+
+  // 获取我创建的活动列表
+  getMyActivities: (params = {}) => request('/api/activities/my-activities', {
+    method: 'GET',
+    data: params,  // 支持分页参数
+    useCache: true,
+    cacheMaxAge: 2 * 60 * 1000,
     showLoading: false
   }),
 
@@ -253,6 +266,20 @@ const activityAPI = {
     method: 'DELETE',
     showLoading: true,
     loadingText: '删除中...'
+  }),
+
+  // 发布活动
+  publish: (id) => request(`/api/activities/${id}/publish`, {
+    method: 'POST',
+    showLoading: true,
+    loadingText: '发布中...'
+  }),
+
+  // 取消活动
+  cancel: (id) => request(`/api/activities/${id}/cancel`, {
+    method: 'POST',
+    showLoading: true,
+    loadingText: '取消中...'
   })
 };
 
@@ -275,17 +302,32 @@ const registrationAPI = {
     loadingText: '取消中...'
   }),
 
-  // 获取活动报名列表
-  getByActivity: (activityId) => request(`/api/registrations/activity/${activityId}`, {
+  // 获取报名详情
+  getDetail: (id) => request(`/api/registrations/${id}`, {
     method: 'GET',
+    useCache: false
+  }),
+
+  // 获取我的报名列表
+  getMyRegistrations: (params = {}) => request('/api/registrations/my', {
+    method: 'GET',
+    data: params,  // 支持分页参数
+    useCache: false // 报名数据实时性要求高，不缓存
+  }),
+
+  // 获取活动报名列表
+  getByActivity: (activityId, params = {}) => request(`/api/registrations/activity/${activityId}`, {
+    method: 'GET',
+    data: params,  // 支持分页参数
     useCache: false // 报名数据实时性要求高，不缓存
   }),
 
   // 审核报名
-  approve: (id, approved) => request(`/api/registrations/${id}/approve`, {
+  approve: (id, data) => request(`/api/registrations/${id}/approve`, {
     method: 'PUT',
-    data: { approved },
-    showLoading: true
+    data,  // { status: 'approved' 或 'rejected', note: '...' }
+    showLoading: true,
+    loadingText: '处理中...'
   })
 };
 
@@ -301,18 +343,26 @@ const checkinAPI = {
     retryCount: 1
   }),
 
-  // 获取活动签到列表
-  getByActivity: (activityId) => request(`/api/checkins/activity/${activityId}`, {
+  // 获取签到详情
+  getDetail: (id) => request(`/api/checkins/${id}`, {
     method: 'GET',
+    useCache: false
+  }),
+
+  // 获取我的签到列表
+  getMyCheckins: (params = {}) => request('/api/checkins/my', {
+    method: 'GET',
+    data: params,  // 支持分页参数
     useCache: true,
     cacheMaxAge: 1 * 60 * 1000 // 缓存1分钟
   }),
 
-  // 获取用户签到记录
-  getByUser: (userId) => request(`/api/checkins/user/${userId}`, {
+  // 获取活动签到列表
+  getByActivity: (activityId, params = {}) => request(`/api/checkins/activity/${activityId}`, {
     method: 'GET',
+    data: params,  // 支持分页参数
     useCache: true,
-    cacheMaxAge: 2 * 60 * 1000
+    cacheMaxAge: 1 * 60 * 1000 // 缓存1分钟
   })
 };
 
@@ -323,6 +373,13 @@ const userAPI = {
     method: 'GET',
     useCache: true,
     cacheMaxAge: 10 * 60 * 1000 // 缓存10分钟
+  }),
+
+  // 获取指定用户信息
+  getUserInfo: (userId) => request(`/api/user/${userId}`, {
+    method: 'GET',
+    useCache: true,
+    cacheMaxAge: 10 * 60 * 1000
   }),
 
   // 更新用户信息
@@ -344,10 +401,35 @@ const userAPI = {
   })
 };
 
+// 统计API
+const statisticsAPI = {
+  // 获取活动统计
+  getActivityStatistics: (activityId) => request(`/api/statistics/activities/${activityId}`, {
+    method: 'GET',
+    useCache: true,
+    cacheMaxAge: 2 * 60 * 1000  // 缓存2分钟
+  }),
+
+  // 获取用户统计
+  getUserStatistics: (userId) => request(`/api/statistics/users/${userId}`, {
+    method: 'GET',
+    useCache: true,
+    cacheMaxAge: 5 * 60 * 1000  // 缓存5分钟
+  }),
+
+  // 获取我的统计
+  getMyStatistics: () => request('/api/statistics/my', {
+    method: 'GET',
+    useCache: true,
+    cacheMaxAge: 2 * 60 * 1000  // 缓存2分钟
+  })
+};
+
 module.exports = {
   request,
   activityAPI,
   registrationAPI,
   checkinAPI,
-  userAPI
+  userAPI,
+  statisticsAPI
 };

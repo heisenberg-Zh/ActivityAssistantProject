@@ -1,6 +1,5 @@
 // pages/activities/detail.js
-const { activities, participants, registrations } = require('../../utils/mock.js');
-const { activityAPI } = require('../../utils/api.js');
+const { activityAPI, registrationAPI, userAPI } = require('../../utils/api.js');
 const { parseDate } = require('../../utils/date-helper.js');
 const {
   formatMoney,
@@ -58,53 +57,36 @@ Page({
     try {
       wx.showLoading({ title: '加载中...' });
 
-      // 调试信息：打印活动ID和活动列表
-      console.log('正在查找活动 ID:', id);
-      console.log('活动列表数量:', activities.length);
-      console.log('活动列表ID:', activities.map(a => a.id));
+      // 获取当前用户ID
+      const currentUserId = app.globalData.currentUserId || 'u1';
 
-      let detail = activities.find(item => item.id === id);
+      // 并行请求活动详情和报名记录
+      const [detailResult, registrationsResult] = await Promise.all([
+        activityAPI.getDetail(id),
+        registrationAPI.getByActivity(id, { page: 0, size: 100 })
+      ]);
 
-      // 如果严格匹配失败，尝试宽松匹配
-      if (!detail) {
-        console.warn('严格匹配失败，尝试宽松匹配...');
-        detail = activities.find(item => String(item.id).trim() === String(id).trim());
+      // 检查API响应
+      if (detailResult.code !== 0) {
+        throw new Error(detailResult.message || '获取活动详情失败');
       }
 
-      // 如果还是失败，尝试不区分大小写匹配
-      if (!detail) {
-        console.warn('宽松匹配失败，尝试不区分大小写匹配...');
-        detail = activities.find(item =>
-          String(item.id).trim().toLowerCase() === String(id).trim().toLowerCase()
-        );
-      }
+      const detail = detailResult.data;
 
       if (!detail) {
-        console.error('所有匹配方式都失败了！');
-        console.error('查找的 ID:', id, '(类型:', typeof id, ')');
-        console.error('可用的活动 IDs:', activities.map(a => ({
-          id: a.id,
-          idType: typeof a.id,
-          title: a.title
-        })));
         wx.hideLoading();
         wx.showToast({ title: '活动不存在', icon: 'none' });
         return;
       }
 
-      console.log('成功找到活动:', detail.title, '(匹配方式:', detail.id === id ? '严格' : '宽松', ')');
+      console.log('成功加载活动详情:', detail.title);
 
       // ========== 权限检查 ==========
-      const currentUserId = app.globalData.currentUserId || 'u1';
-      const userRegistrations = registrations.filter(
-        r => r.userId === currentUserId && r.status === 'approved'
-      );
-
-      // 检查用户是否有权查看此活动
+      // 检查用户是否有权查看此活动（私密活动等）
       const permissionCheck = checkActivityViewPermission(
         detail,
         currentUserId,
-        userRegistrations,
+        [], // 后端已处理权限，这里简化处理
         this.data.fromShare
       );
 
@@ -123,43 +105,52 @@ Page({
       // ========== 权限检查结束 ==========
 
       // 获取组织者信息
-      const organizer = participants.find(p => p.id === detail.organizerId) || {
+      let organizerInfo = {
         id: detail.organizerId,
-        name: detail.organizerName,
-        avatar: ''
+        name: detail.organizerName || '组织者',
+        avatar: '/activityassistant_avatar_01.png'
       };
 
-      // 组装组织者展示信息
-      const organizerInfo = {
-        ...organizer,
-        initial: getNameInitial(organizer.name),
-        bgColor: getAvatarColor(organizer.name)
-      };
+      // 尝试获取组织者详细信息
+      try {
+        const organizerResult = await userAPI.getUserInfo(detail.organizerId);
+        if (organizerResult.code === 0) {
+          organizerInfo = {
+            ...organizerInfo,
+            ...organizerResult.data,
+            initial: getNameInitial(organizerResult.data.nickname || organizerResult.data.name),
+            bgColor: getAvatarColor(organizerResult.data.nickname || organizerResult.data.name)
+          };
+        }
+      } catch (err) {
+        console.warn('获取组织者信息失败，使用默认信息:', err);
+        organizerInfo = {
+          ...organizerInfo,
+          initial: getNameInitial(organizerInfo.name),
+          bgColor: getAvatarColor(organizerInfo.name)
+        };
+      }
 
       // 获取参与者列表
-      // 如果活动有分组，初始显示第一个分组的参与者；否则显示全部参与者
+      const activityRegs = registrationsResult.code === 0
+        ? (registrationsResult.data.content || registrationsResult.data || []).filter(r => r.status === 'approved')
+        : [];
+
+      // 如果活动有分组，初始显示第一个分组的参与者
       const currentGroupId = detail.hasGroups && detail.groups && detail.groups.length > 0
         ? detail.groups[0].id
         : null;
 
-      const activityRegs = registrations.filter(r => {
-        if (r.activityId !== id || r.status !== 'approved') return false;
-        // 如果有分组，只显示当前分组的参与者
-        if (currentGroupId) {
-          return r.groupId === currentGroupId;
-        }
-        return true;
-      });
+      const filteredRegs = currentGroupId
+        ? activityRegs.filter(r => r.groupId === currentGroupId)
+        : activityRegs;
 
-      const members = activityRegs.map(reg => {
-        const user = participants.find(p => p.id === reg.userId);
-        return {
-          id: reg.userId,
-          name: reg.name,
-          avatar: user?.avatar || `/activityassistant_avatar_0${Math.floor(Math.random() * 4) + 1}.png`,
-          groupId: reg.groupId
-        };
-      });
+      const members = filteredRegs.map(reg => ({
+        id: reg.userId,
+        name: reg.name,
+        avatar: `/activityassistant_avatar_0${Math.floor(Math.random() * 4) + 1}.png`,
+        groupId: reg.groupId
+      }));
 
       // 计算进度
       const progress = Math.min(100, Math.round((detail.joined / detail.total) * 100));
@@ -188,11 +179,9 @@ Page({
         (Math.abs(now.getTime() - startTime.getTime()) <= 30 * 60 * 1000);
 
       // 检查当前用户是否已报名（必须是审核通过的报名）
-      // 注意：这里要检查该活动的所有报名记录，不能只检查 activityRegs（它可能只包含当前分组）
-      const isRegistered = registrations.some(r =>
-        r.activityId === id &&
+      const isRegistered = activityRegs.some(r =>
         r.userId === currentUserId &&
-        r.status === 'approved'
+        (r.status === 'approved' || r.status === 'pending')
       );
 
       // 检查管理权限

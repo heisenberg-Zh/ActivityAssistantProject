@@ -2,11 +2,11 @@
 
 // API配置
 const API_CONFIG = {
-  // API基础地址（待后端接入后修改）
-  baseUrl: 'https://api.example.com',
+  // API基础地址（后端开发环境）
+  baseUrl: 'http://localhost:8082',
 
-  // 是否使用Mock数据
-  useMock: true,
+  // 是否使用Mock数据（已切换到真实API模式）
+  useMock: false,
 
   // 请求超时时间（毫秒）
   timeout: 10000,

@@ -1,7 +1,7 @@
 // pages/my-activities/index.js
-const { activities, registrations } = require('../../utils/mock.js');
+const { activityAPI, registrationAPI } = require('../../utils/api.js');
 const { isBeforeRegisterDeadline } = require('../../utils/datetime.js');
-const { getUserManagedActivities, checkManagementPermission } = require('../../utils/activity-management-helper.js');
+const { checkManagementPermission } = require('../../utils/activity-management-helper.js');
 const app = getApp();
 
 const filters = [
@@ -38,73 +38,95 @@ Page({
   },
 
   // 加载活动数据
-  loadActivities() {
-    const currentUserId = app.globalData.currentUserId || 'u1';
+  async loadActivities() {
+    try {
+      wx.showLoading({ title: '加载中...' });
 
-    // 获取草稿列表
-    const drafts = wx.getStorageSync('activity_drafts') || [];
-    const draftActivities = drafts.map(draft => ({
-      id: draft.draftId,
-      displayId: draft.draftId,
-      title: draft.form.title,
-      type: draft.form.type || '未分类',
-      status: '草稿',
-      role: '我的草稿',
-      timeRange: draft.form.startDate ? `${draft.form.startDate} ${draft.form.startTime || ''}` : '待设置',
-      place: draft.form.place || '待设置',
-      joined: 0,
-      total: draft.form.total || 0,
-      createdAt: draft.createdAt,
-      updatedAt: draft.updatedAt,
-      actions: [
-        { label: '继续编辑', action: 'editDraft', type: 'primary' },
-        { label: '删除', action: 'deleteDraft', type: 'danger' }
-      ]
-    }));
+      const currentUserId = app.globalData.currentUserId || 'u1';
 
-    // 获取我创建的活动
-    const createdActivities = activities
-      .filter(a => !a.isDeleted && a.organizerId === currentUserId)
-      .map(a => ({
-        ...a,
-        role: '我创建的',
-        actions: this.getActionsForActivity(a, 'created')
+      // 获取草稿列表（本地存储）
+      const drafts = wx.getStorageSync('activity_drafts') || [];
+      const draftActivities = drafts.map(draft => ({
+        id: draft.draftId,
+        displayId: draft.draftId,
+        title: draft.form.title,
+        type: draft.form.type || '未分类',
+        status: '草稿',
+        role: '我的草稿',
+        timeRange: draft.form.startDate ? `${draft.form.startDate} ${draft.form.startTime || ''}` : '待设置',
+        place: draft.form.place || '待设置',
+        joined: 0,
+        total: draft.form.total || 0,
+        createdAt: draft.createdAt,
+        updatedAt: draft.updatedAt,
+        actions: [
+          { label: '继续编辑', action: 'editDraft', type: 'primary' },
+          { label: '删除', action: 'deleteDraft', type: 'danger' }
+        ]
       }));
 
-    // 获取我管理的活动（不包括我创建的）
-    const managedActivities = getUserManagedActivities(activities, currentUserId, {
-      includeCreated: false,
-      includeManaged: true
-    }).map(a => ({
-      ...a,
-      role: '我管理的',
-      actions: this.getActionsForActivity(a, 'managed')
-    }));
+      // 并行请求我创建的活动和我参加的活动
+      const [myActivitiesResult, myRegistrationsResult] = await Promise.all([
+        activityAPI.getMyActivities({ page: 0, size: 100 }),
+        registrationAPI.getMyRegistrations({ page: 0, size: 100 })
+      ]);
 
-    // 获取我参加的活动
-    const myRegistrations = registrations.filter(
-      r => r.userId === currentUserId && r.status === 'approved'
-    );
-    const joinedActivities = myRegistrations.map(reg => {
-      const activity = activities.find(a => a.id === reg.activityId);
-      if (!activity || activity.isDeleted) return null;
-      return {
-        ...activity,
-        role: '我参加的',
-        actions: this.getActionsForActivity(activity, 'joined')
-      };
-    }).filter(a => a !== null);
+      // 获取我创建的活动
+      const createdActivities = myActivitiesResult.code === 0
+        ? (myActivitiesResult.data.content || myActivitiesResult.data || []).map(a => ({
+            ...a,
+            role: '我创建的',
+            actions: this.getActionsForActivity(a, 'created')
+          }))
+        : [];
 
-    // 合并所有活动（草稿放在最前面）
-    const allActivities = [...draftActivities, ...createdActivities, ...managedActivities, ...joinedActivities];
+      // 获取我参加的活动
+      const myRegistrations = myRegistrationsResult.code === 0
+        ? (myRegistrationsResult.data.content || myRegistrationsResult.data || [])
+        : [];
 
-    this.setData({
-      list: allActivities,
-      display: allActivities
-    });
+      // 获取我参加的活动的详细信息
+      const joinedActivitiesPromises = myRegistrations
+        .filter(r => r.status === 'approved')
+        .map(async reg => {
+          try {
+            const activityResult = await activityAPI.getDetail(reg.activityId);
+            if (activityResult.code === 0 && activityResult.data) {
+              return {
+                ...activityResult.data,
+                role: '我参加的',
+                actions: this.getActionsForActivity(activityResult.data, 'joined')
+              };
+            }
+          } catch (err) {
+            console.warn(`获取活动${reg.activityId}详情失败:`, err);
+          }
+          return null;
+        });
 
-    // 应用当前筛选
-    this.applyFilter(this.data.activeFilter);
+      const joinedActivities = (await Promise.all(joinedActivitiesPromises)).filter(a => a !== null);
+
+      // 合并所有活动（草稿放在最前面）
+      const allActivities = [...draftActivities, ...createdActivities, ...joinedActivities];
+
+      this.setData({
+        list: allActivities,
+        display: allActivities
+      });
+
+      // 应用当前筛选
+      this.applyFilter(this.data.activeFilter);
+
+      wx.hideLoading();
+    } catch (err) {
+      wx.hideLoading();
+      console.error('加载活动数据失败:', err);
+      wx.showToast({
+        title: err.message || '加载失败，请稍后重试',
+        icon: 'none',
+        duration: 2000
+      });
+    }
   },
 
   // 根据活动和角色获取操作按钮
