@@ -5,6 +5,7 @@ import com.activityassistant.dto.request.UpdateActivityRequest;
 import com.activityassistant.dto.response.ActivityVO;
 import com.activityassistant.model.Activity;
 import com.activityassistant.model.User;
+import com.activityassistant.repository.RegistrationRepository;
 import com.activityassistant.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -22,6 +23,9 @@ public class ActivityMapper {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private RegistrationRepository registrationRepository;
 
     /**
      * Activity转ActivityVO
@@ -84,8 +88,8 @@ public class ActivityMapper {
             builder.isOrganizer(userId.equals(activity.getOrganizerId()));
             // TODO: 检查是否为管理员（需要解析administrators JSON）
             builder.isAdmin(false);
-            // TODO: 检查是否已报名（需要查询registrations表）
-            builder.isRegistered(false);
+            // 检查是否已报名
+            builder.isRegistered(registrationRepository.existsByActivityIdAndUserId(activity.getId(), userId));
         }
 
         return builder.build();
