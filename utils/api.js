@@ -2,6 +2,7 @@
 const { activities, participants, registrations, checkinRecords } = require('./mock.js');
 const { sanitizeInput, escapeHtml } = require('./security.js');
 const { requestWithRetry, NetworkErrorType, requestCache } = require('./request-manager.js');
+const { transformResponse, transformRequest } = require('./data-adapter.js');
 
 // 模拟网络延迟
 const delay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
@@ -47,10 +48,13 @@ const request = async (url, options = {}) => {
       const app = getApp();
       const apiBase = app?.globalData?.apiBase || '';
 
+      // 转换请求数据（前端格式 -> 后端格式）
+      const transformedData = transformRequest(data, url, method);
+
       wx.request({
         url: `${apiBase}${url}`,
         method,
-        data,
+        data: transformedData,
         header: {
           'content-type': 'application/json',
           'Authorization': wx.getStorageSync('token') || ''
@@ -60,7 +64,16 @@ const request = async (url, options = {}) => {
           if (res.statusCode === 200) {
             // 解析响应数据
             try {
-              const result = res.data;
+              let result = res.data;
+
+              // 如果响应包含 data 字段（统一响应格式）
+              if (result && result.data !== undefined) {
+                // 转换响应数据（后端格式 -> 前端格式）
+                result.data = transformResponse(result.data, url);
+              } else {
+                // 直接转换整个响应
+                result = transformResponse(result, url);
+              }
 
               // 如果是GET请求且启用缓存，保存到缓存
               if (method === 'GET' && useCache) {
