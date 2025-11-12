@@ -104,6 +104,15 @@ public interface RegistrationRepository extends JpaRepository<Registration, Stri
     long countByUserId(String userId);
 
     /**
+     * 统计用户在特定状态下的报名次数
+     *
+     * @param userId 用户ID
+     * @param status 报名状态
+     * @return 报名次数
+     */
+    long countByUserIdAndStatus(String userId, String status);
+
+    /**
      * 根据活动ID和分组ID查询报名列表
      *
      * @param activityId 活动ID

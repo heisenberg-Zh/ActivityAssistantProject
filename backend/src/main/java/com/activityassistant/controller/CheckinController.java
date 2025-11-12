@@ -40,7 +40,7 @@ public class CheckinController {
         log.info("收到提交签到请求，活动ID: {}", request.getActivityId());
         String userId = SecurityUtils.getCurrentUserId();
         CheckinVO checkin = checkinService.createCheckin(request, userId);
-        return ApiResponse.success(checkin, "签到成功");
+        return ApiResponse.success("签到成功", checkin);
     }
 
     /**
