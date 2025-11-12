@@ -23,6 +23,14 @@ App({
   onLaunch() {
     console.log('ActivityAssistant app launched');
 
+    // 打印环境配置信息
+    console.log('====== 环境配置 ======');
+    console.log('当前环境:', API_CONFIG.env);
+    console.log('API地址:', API_CONFIG.baseUrl);
+    console.log('使用Mock:', API_CONFIG.useMock);
+    console.log('环境说明:', API_CONFIG.description);
+    console.log('====================');
+
     // 清理损坏的存储数据（修复升级后的兼容性问题）
     try {
       const cleanedCount = cleanCorruptedStorage();

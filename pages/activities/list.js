@@ -1,6 +1,5 @@
 // pages/activities/list.js
-const { activities, registrations } = require('../../utils/mock.js');
-const { filterActivitiesByPermission, enrichActivityWithTags } = require('../../utils/activity-helper.js');
+const { activityAPI, registrationAPI } = require('../../utils/api.js');
 const app = getApp();
 
 const filters = [
@@ -19,42 +18,75 @@ Page({
     filters,
     activeFilter: 'all',
     list: [],
-    filtered: []
+    filtered: [],
+    loading: true
   },
 
-  onLoad() {
-    // 获取当前用户ID
-    const currentUserId = app.globalData.currentUserId || 'u1';
+  async onLoad() {
+    await this.loadActivities();
+  },
 
-    // 获取用户的报名记录（仅审核通过的）
-    const userRegistrations = registrations.filter(
-      r => r.userId === currentUserId && r.status === 'approved'
-    );
+  // 加载活动数据
+  async loadActivities() {
+    try {
+      wx.showLoading({ title: '加载中...' });
 
-    // 过滤活动：列表页显示自己创建的私密活动
-    const filteredActivities = filterActivitiesByPermission(
-      activities,
-      currentUserId,
-      userRegistrations,
-      { includeOwned: true } // 列表页显示自己创建的私密活动
-    );
+      // 获取当前用户ID
+      const currentUserId = app.globalData.currentUserId || 'u1';
 
-    // 为活动列表添加已报名状态和标签
-    const enrichedActivities = filteredActivities.map(activity => {
-      const isRegistered = registrations.some(
-        r => r.activityId === activity.id && r.userId === currentUserId && r.status !== 'cancelled'
-      );
+      // 并行请求活动列表和我的报名记录
+      const [activitiesResult, registrationsResult] = await Promise.all([
+        activityAPI.getList({
+          page: 0,
+          size: 100,
+          sort: 'createdAt,desc'
+        }),
+        registrationAPI.getMyRegistrations({
+          page: 0,
+          size: 100
+        })
+      ]);
 
-      // 添加标签（如私密标签）
-      const withTags = enrichActivityWithTags(activity, currentUserId);
+      // 检查API响应
+      if (activitiesResult.code !== 0) {
+        throw new Error(activitiesResult.message || '获取活动列表失败');
+      }
 
-      return { ...withTags, isRegistered };
-    });
+      // 获取活动列表
+      const activities = activitiesResult.data.content || activitiesResult.data || [];
 
-    this.setData({
-      list: enrichedActivities,
-      filtered: enrichedActivities
-    });
+      // 获取我的报名记录
+      const myRegistrations = registrationsResult.code === 0
+        ? (registrationsResult.data.content || registrationsResult.data || [])
+        : [];
+
+      // 为活动列表添加已报名状态
+      const enrichedActivities = activities.map(activity => {
+        const isRegistered = myRegistrations.some(
+          r => r.activityId === activity.id &&
+          r.status !== 'cancelled' &&
+          r.status !== 'rejected'
+        );
+        return { ...activity, isRegistered };
+      });
+
+      this.setData({
+        list: enrichedActivities,
+        filtered: enrichedActivities,
+        loading: false
+      });
+
+      wx.hideLoading();
+    } catch (err) {
+      wx.hideLoading();
+      console.error('加载活动数据失败:', err);
+      wx.showToast({
+        title: err.message || '加载失败，请稍后重试',
+        icon: 'none',
+        duration: 2000
+      });
+      this.setData({ loading: false });
+    }
   },
 
   onSearchInput(e) {

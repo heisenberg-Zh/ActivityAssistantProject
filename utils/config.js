@@ -1,18 +1,56 @@
 // utils/config.js - 全局配置文件
 
+/**
+ * 环境配置
+ * - development: 开发环境（使用本地后端）
+ * - production: 生产环境（使用线上后端）
+ * - mock: Mock模式（使用假数据）
+ *
+ * 切换方式：修改下方的 CURRENT_ENV 变量
+ */
+const CURRENT_ENV = 'mock'; // 可选值: 'development' | 'production' | 'mock'
+
+// 不同环境的API配置
+const ENV_CONFIG = {
+  development: {
+    baseUrl: 'http://localhost:8082',
+    useMock: false,
+    description: '开发环境（需在微信开发者工具中禁用域名校验）'
+  },
+  production: {
+    baseUrl: 'https://your-domain.com',  // TODO: 替换为实际生产域名
+    useMock: false,
+    description: '生产环境（需在微信公众平台配置合法域名）'
+  },
+  mock: {
+    baseUrl: '',
+    useMock: true,
+    description: 'Mock模式（使用本地假数据）'
+  }
+};
+
+// 获取当前环境配置
+const currentEnvConfig = ENV_CONFIG[CURRENT_ENV] || ENV_CONFIG.development;
+
 // API配置
 const API_CONFIG = {
-  // API基础地址（待后端接入后修改）
-  baseUrl: 'https://api.example.com',
+  // 当前环境
+  env: CURRENT_ENV,
+
+  // API基础地址
+  baseUrl: currentEnvConfig.baseUrl,
 
   // 是否使用Mock数据
-  useMock: true,
+  useMock: currentEnvConfig.useMock,
 
   // 请求超时时间（毫秒）
   timeout: 10000,
 
   // 请求重试次数
-  retryCount: 3
+  retryCount: 3,
+
+  // 环境描述（用于调试）
+  description: currentEnvConfig.description
 };
 
 // 地图配置
