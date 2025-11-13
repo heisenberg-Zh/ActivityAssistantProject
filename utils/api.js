@@ -57,7 +57,7 @@ const request = async (url, options = {}) => {
         data: transformedData,
         header: {
           'content-type': 'application/json',
-          'Authorization': wx.getStorageSync('token') || ''
+          'Authorization': wx.getStorageSync('token') ? `Bearer ${wx.getStorageSync('token')}` : ''
         },
         timeout,
         success: (res) => {
