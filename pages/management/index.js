@@ -58,6 +58,38 @@ Page({
   },
 
   onLoad(query) {
+    // ========== 【重要】登录前置检查 ==========
+    // 管理活动需要登录，避免用户进入页面后才发现无权限
+    const token = wx.getStorageSync('token');
+    if (!token || token.trim().length === 0) {
+      console.warn('用户未登录，无法管理活动');
+      wx.showModal({
+        title: '需要登录',
+        content: '管理活动需要登录，请先登录后再试',
+        confirmText: '去登录',
+        cancelText: '返回',
+        success: (res) => {
+          if (res.confirm) {
+            wx.showToast({
+              title: '请退出小程序重新进入',
+              icon: 'none',
+              duration: 3000
+            });
+            setTimeout(() => {
+              wx.navigateBack();
+            }, 3000);
+          } else {
+            wx.navigateBack();
+          }
+        },
+        fail: () => {
+          wx.navigateBack();
+        }
+      });
+      return; // 中止页面加载
+    }
+    // ========== 登录检查结束 ==========
+
     // 获取状态栏高度和系统信息
     const statusBarHeight = app.globalData.statusBarHeight || 0;
     const navBarHeight = statusBarHeight + 44;
