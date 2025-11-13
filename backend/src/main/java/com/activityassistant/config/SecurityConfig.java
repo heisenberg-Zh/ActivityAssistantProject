@@ -61,6 +61,18 @@ public class SecurityConfig {
                         // 静态资源
                         .requestMatchers("/static/**", "/public/**", "/favicon.ico").permitAll()
 
+                        // 活动相关公开接口（游客可浏览）
+                        .requestMatchers(HttpMethod.GET, "/api/activities").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/activities/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/activities/*/participants").permitAll()
+
+                        // 报名相关公开接口（未登录返回有限信息）
+                        .requestMatchers(HttpMethod.GET, "/api/registrations/my").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/registrations/activity/*").permitAll()
+
+                        // 用户信息公开接口（游客可查看他人公开信息，脱敏）
+                        .requestMatchers(HttpMethod.GET, "/api/user/*").permitAll()
+
                         // 其他所有接口都需要认证
                         .anyRequest().authenticated()
                 )

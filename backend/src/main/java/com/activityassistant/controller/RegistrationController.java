@@ -69,14 +69,18 @@ public class RegistrationController {
      * @return 报名列表（分页）
      */
     @GetMapping("/activity/{activityId}")
-    @Operation(summary = "查询活动报名列表", description = "查询活动的所有报名记录（仅组织者）")
+    @Operation(summary = "查询活动报名列表", description = "查询活动的所有报名记录（未登录用户可查看，但信息有限）")
     public ApiResponse<Page<RegistrationVO>> getActivityRegistrations(
             @PathVariable String activityId,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
         log.info("收到查询活动报名列表请求，活动ID: {}, 状态: {}", activityId, status);
-        String userId = SecurityUtils.getCurrentUserId();
+
+        // 使用安全方法获取用户ID，未登录返回null
+        String userId = SecurityUtils.getCurrentUserIdOrNull();
+
+        // 未登录用户也可以查看报名列表（但可能只看到有限信息）
         Page<RegistrationVO> registrationPage = registrationService.getActivityRegistrations(
                 activityId, status, page, size, userId);
         return ApiResponse.success(registrationPage);
@@ -91,13 +95,22 @@ public class RegistrationController {
      * @return 报名列表（分页）
      */
     @GetMapping("/my")
-    @Operation(summary = "查询我的报名列表", description = "查询当前用户的所有报名记录")
+    @Operation(summary = "查询我的报名列表", description = "查询当前用户的所有报名记录（未登录返回空列表）")
     public ApiResponse<Page<RegistrationVO>> getMyRegistrations(
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
         log.info("收到查询我的报名列表请求");
-        String userId = SecurityUtils.getCurrentUserId();
+
+        // 使用安全方法获取用户ID，未登录返回null
+        String userId = SecurityUtils.getCurrentUserIdOrNull();
+
+        // 未登录用户返回空列表
+        if (userId == null) {
+            log.info("用户未登录，返回空报名列表");
+            return ApiResponse.success(Page.empty());
+        }
+
         Page<RegistrationVO> registrationPage = registrationService.getUserRegistrations(
                 userId, status, page, size);
         return ApiResponse.success(registrationPage);
