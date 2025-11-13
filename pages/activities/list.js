@@ -1,5 +1,6 @@
 // pages/activities/list.js
 const { activityAPI, registrationAPI } = require('../../utils/api.js');
+const { translateActivityStatus } = require('../../utils/formatter.js');
 const app = getApp();
 
 const filters = [
@@ -60,14 +61,18 @@ Page({
         ? (registrationsResult.data.content || registrationsResult.data || [])
         : [];
 
-      // 为活动列表添加已报名状态
+      // 为活动列表添加已报名状态，并翻译状态为中文
       const enrichedActivities = activities.map(activity => {
         const isRegistered = myRegistrations.some(
           r => r.activityId === activity.id &&
           r.status !== 'cancelled' &&
           r.status !== 'rejected'
         );
-        return { ...activity, isRegistered };
+        return {
+          ...activity,
+          isRegistered,
+          status: translateActivityStatus(activity.status) // 翻译英文状态为中文
+        };
       });
 
       this.setData({

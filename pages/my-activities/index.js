@@ -1,5 +1,6 @@
 // pages/my-activities/index.js
 const { activityAPI, registrationAPI } = require('../../utils/api.js');
+const { translateActivityStatus } = require('../../utils/formatter.js');
 const { isBeforeRegisterDeadline } = require('../../utils/datetime.js');
 const { checkManagementPermission } = require('../../utils/activity-management-helper.js');
 const app = getApp();
@@ -71,10 +72,11 @@ Page({
         registrationAPI.getMyRegistrations({ page: 0, size: 100 })
       ]);
 
-      // 获取我创建的活动
+      // 获取我创建的活动，并翻译状态
       const createdActivities = myActivitiesResult.code === 0
         ? (myActivitiesResult.data.content || myActivitiesResult.data || []).map(a => ({
             ...a,
+            status: translateActivityStatus(a.status), // 翻译英文状态为中文
             role: '我创建的',
             actions: this.getActionsForActivity(a, 'created')
           }))
@@ -94,6 +96,7 @@ Page({
             if (activityResult.code === 0 && activityResult.data) {
               return {
                 ...activityResult.data,
+                status: translateActivityStatus(activityResult.data.status), // 翻译英文状态为中文
                 role: '我参加的',
                 actions: this.getActionsForActivity(activityResult.data, 'joined')
               };
