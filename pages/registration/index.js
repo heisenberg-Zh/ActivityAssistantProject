@@ -65,6 +65,38 @@ Page({
   },
 
   onLoad(query) {
+    // ========== 【重要】登录前置检查 ==========
+    // 报名需要登录，避免用户填写完表单后才发现无权限
+    const token = wx.getStorageSync('token');
+    if (!token || token.trim().length === 0) {
+      console.warn('用户未登录，无法报名');
+      wx.showModal({
+        title: '需要登录',
+        content: '报名参加活动需要登录，请先登录后再试',
+        confirmText: '去登录',
+        cancelText: '返回',
+        success: (res) => {
+          if (res.confirm) {
+            wx.showToast({
+              title: '请退出小程序重新进入',
+              icon: 'none',
+              duration: 3000
+            });
+            setTimeout(() => {
+              wx.navigateBack();
+            }, 3000);
+          } else {
+            wx.navigateBack();
+          }
+        },
+        fail: () => {
+          wx.navigateBack();
+        }
+      });
+      return; // 中止页面加载
+    }
+    // ========== 登录检查结束 ==========
+
     const id = query.id || 'a1';
     this.loadActivityDetail(id);
     this.loadParticipants(id);

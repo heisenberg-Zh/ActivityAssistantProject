@@ -1387,6 +1387,42 @@ Page({
 
   // 页面加载
   onLoad(options) {
+    // ========== 【重要】登录前置检查 ==========
+    // 创建/编辑活动需要登录，避免用户填写完表单后才发现无权限
+    const token = wx.getStorageSync('token');
+    if (!token || token.trim().length === 0) {
+      console.warn('用户未登录，无法创建活动');
+      wx.showModal({
+        title: '需要登录',
+        content: '创建活动需要登录，请先登录后再试',
+        confirmText: '去登录',
+        cancelText: '返回',
+        success: (res) => {
+          if (res.confirm) {
+            // 用户点击"去登录" - 跳转登录页（如果有登录页）
+            // 注意：目前小程序使用自动登录，这里可以尝试重新触发登录
+            wx.showToast({
+              title: '请退出小程序重新进入',
+              icon: 'none',
+              duration: 3000
+            });
+            setTimeout(() => {
+              wx.switchTab({ url: '/pages/home/index' });
+            }, 3000);
+          } else {
+            // 用户点击"返回"
+            wx.switchTab({ url: '/pages/home/index' });
+          }
+        },
+        fail: () => {
+          // Modal失败时也返回首页
+          wx.switchTab({ url: '/pages/home/index' });
+        }
+      });
+      return; // 中止页面加载
+    }
+    // ========== 登录检查结束 ==========
+
     // 设置今天的日期
     const today = new Date();
     const todayDate = formatDateTime(today.toISOString(), 'YYYY-MM-DD');

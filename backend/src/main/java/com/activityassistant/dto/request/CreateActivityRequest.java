@@ -36,7 +36,7 @@ public class CreateActivityRequest {
      * 开始时间
      */
     @NotNull(message = "开始时间不能为空")
-    @Future(message = "开始时间必须是未来时间")
+    @FutureOrPresent(message = "开始时间不能是过去时间")
     private LocalDateTime startTime;
 
     /**

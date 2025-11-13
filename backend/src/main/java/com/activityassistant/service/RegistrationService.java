@@ -166,16 +166,14 @@ public class RegistrationService {
      * @return 报名列表（分页）
      */
     public Page<RegistrationVO> getActivityRegistrations(String activityId, String status, Integer page, Integer size, String userId) {
-        log.info("查询活动报名列表，活动ID: {}, 状态: {}", activityId, status);
+        log.info("查询活动报名列表，活动ID: {}, 状态: {}, 用户ID: {}", activityId, status, userId);
 
         // 查询活动
         Activity activity = activityRepository.findByIdAndIsDeletedFalse(activityId)
                 .orElseThrow(() -> new NotFoundException("活动不存在"));
 
-        // 权限校验：只有组织者可以查看报名列表
-        if (!activity.getOrganizerId().equals(userId)) {
-            throw new BusinessException(PERMISSION_DENIED, "无权查看此活动的报名列表");
-        }
+        // 判断是否是组织者
+        boolean isOrganizer = userId != null && activity.getOrganizerId().equals(userId);
 
         // 构建分页和排序
         Sort sort = Sort.by(Sort.Direction.DESC, "registeredAt");
@@ -183,10 +181,18 @@ public class RegistrationService {
 
         // 查询数据
         Page<Registration> registrationPage;
-        if (status != null && !status.isEmpty()) {
-            registrationPage = registrationRepository.findByActivityIdAndStatus(activityId, status, pageable);
+
+        if (isOrganizer) {
+            // 组织者可以查看所有报名记录
+            if (status != null && !status.isEmpty()) {
+                registrationPage = registrationRepository.findByActivityIdAndStatus(activityId, status, pageable);
+            } else {
+                registrationPage = registrationRepository.findByActivityId(activityId, pageable);
+            }
         } else {
-            registrationPage = registrationRepository.findByActivityId(activityId, pageable);
+            // 非组织者（包括未登录用户）只能查看已通过的报名
+            registrationPage = registrationRepository.findByActivityIdAndStatus(activityId, "approved", pageable);
+            log.info("非组织者访问，只返回已通过的报名列表");
         }
 
         // 转换为VO

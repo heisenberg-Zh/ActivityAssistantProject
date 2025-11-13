@@ -58,6 +58,9 @@ App({
     // 初始化用户信息
     this.initUserInfo();
 
+    // 自动登录（开发环境）
+    this.autoLogin();
+
     // 检查定时任务
     this.checkScheduledTasks();
   },
@@ -221,6 +224,98 @@ App({
     } catch (err) {
       console.error('清除用户信息失败:', err);
     }
+  },
+
+  // 自动登录（开发环境）
+  async autoLogin() {
+    // Mock模式下不需要登录
+    if (API_CONFIG.useMock) {
+      console.log('Mock模式，跳过自动登录');
+      return;
+    }
+
+    try {
+      // 检查是否已有有效token
+      const existingToken = wx.getStorageSync('token');
+      if (existingToken) {
+        console.log('✅ 已有token，跳过自动登录');
+        this.globalData.isLoggedIn = true;
+        return;
+      }
+
+      console.log('🔐 开始自动登录...');
+
+      // 开发环境使用测试code，生产环境使用wx.login()
+      const code = API_CONFIG.env === 'development' ? 'test_code_dev' : await this.getWxLoginCode();
+
+      // 调用登录API
+      const response = await this.callLoginAPI(code);
+
+      if (response.code === 0 && response.data) {
+        const { token, user } = response.data;
+
+        // 保存token和用户信息
+        wx.setStorageSync('token', token);
+        wx.setStorageSync('isLoggedIn', true);
+        setSecureStorage('userInfo', user);
+        setSecureStorage('currentUser', user);
+        setSecureStorage('currentUserId', user.userId);
+
+        // 更新全局数据
+        this.globalData.isLoggedIn = true;
+        this.globalData.currentUserId = user.userId;
+        this.globalData.currentUser = user;
+        this.globalData.userInfo = user;
+
+        console.log('✅ 自动登录成功:', user.nickname || user.userId);
+      } else {
+        console.warn('⚠️ 自动登录失败:', response.message);
+      }
+    } catch (err) {
+      console.error('❌ 自动登录异常:', err);
+    }
+  },
+
+  // 获取微信登录code
+  getWxLoginCode() {
+    return new Promise((resolve, reject) => {
+      wx.login({
+        success: (res) => {
+          if (res.code) {
+            resolve(res.code);
+          } else {
+            reject(new Error('获取微信code失败'));
+          }
+        },
+        fail: (err) => {
+          reject(err);
+        }
+      });
+    });
+  },
+
+  // 调用登录API
+  callLoginAPI(code) {
+    return new Promise((resolve, reject) => {
+      wx.request({
+        url: `${this.globalData.apiBase}/api/auth/login`,
+        method: 'POST',
+        data: { code },
+        header: {
+          'content-type': 'application/json'
+        },
+        success: (res) => {
+          if (res.statusCode === 200) {
+            resolve(res.data);
+          } else {
+            reject(new Error(`登录失败: ${res.statusCode}`));
+          }
+        },
+        fail: (err) => {
+          reject(err);
+        }
+      });
+    });
   },
 
   // 检查定时任务
