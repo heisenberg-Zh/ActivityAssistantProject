@@ -140,6 +140,18 @@
 <view class="section" wx:if="{{currentStep === 3}}">
   <view class="card shadow-card form-section">
     <text class="section-title">地点设置</text>
+
+    <!-- 定位模式切换开关 -->
+    <view class="option-row" style="margin-bottom: 24rpx; padding: 20rpx; background: #f0f9ff; border-radius: 16rpx; border-left: 4rpx solid #3b82f6;">
+      <view class="option-label">
+        <text class="text-md text-gray-800">{{useRealLocation ? '🌍 真实定位模式' : '🧪 测试模式'}}</text>
+        <text class="text-xs text-gray-500">
+          {{useRealLocation ? '使用手机GPS定位，适用于真实环境' : '使用预设地点列表，适用于开发测试'}}
+        </text>
+      </view>
+      <switch checked="{{useRealLocation}}" bindchange="toggleLocationMode" color="#3b82f6" />
+    </view>
+
     <view class="form-field">
       <text class="field-label">活动地点 *</text>
       <view class="location-picker" bindtap="chooseLocation">

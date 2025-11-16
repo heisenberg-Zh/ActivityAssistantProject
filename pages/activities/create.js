@@ -26,6 +26,8 @@ Page({
     currentStep: 1,
     todayDate: '', // 今天的日期，用于限制选择范围
     canPublish: false, // 是否可以发布（所有必填步骤已完成）
+    // 地点选择模式
+    useRealLocation: false, // false=测试模式(预设地点), true=真实定位模式
     // 页面显示控制
     pageTitle: '创建活动', // 页面标题
     showDraftButtons: true, // 是否显示草稿和复制按钮
@@ -694,11 +696,106 @@ Page({
     return true;
   },
 
-  // 选择地点
+  // 切换地点选择模式
+  toggleLocationMode() {
+    const useRealLocation = !this.data.useRealLocation;
+    this.setData({ useRealLocation });
+    wx.showToast({
+      title: useRealLocation ? '已切换到真实定位' : '已切换到测试模式',
+      icon: 'success',
+      duration: 2000
+    });
+  },
+
+  // 选择地点 - 根据模式选择不同的方式
   chooseLocation() {
-    console.log('点击选择地点');
-    // 直接使用自定义地点选择器，避免隐私协议问题
-    this.showLocationPicker();
+    console.log('点击选择地点，当前模式:', this.data.useRealLocation ? '真实定位' : '测试模式');
+
+    if (this.data.useRealLocation) {
+      // 真实定位模式 - 使用微信原生API
+      this.useRealLocationPicker();
+    } else {
+      // 测试模式 - 使用预设地点列表
+      this.showLocationPicker();
+    }
+  },
+
+  // 真实GPS定位选择器
+  useRealLocationPicker() {
+    console.log('使用真实GPS定位');
+
+    wx.chooseLocation({
+      success: (res) => {
+        console.log('选择地点成功:', res);
+
+        this.setData({
+          'form.place': res.name,
+          'form.address': res.address,
+          'form.latitude': res.latitude,
+          'form.longitude': res.longitude
+        });
+
+        wx.showToast({
+          title: '已选择：' + res.name,
+          icon: 'success',
+          duration: 2000
+        });
+
+        // 检查是否可以发布
+        this.checkCanPublish();
+      },
+      fail: (err) => {
+        console.error('选择地点失败:', err);
+
+        // 友好的错误提示
+        let errorMsg = '选择地点失败';
+
+        if (err.errMsg && err.errMsg.includes('cancel')) {
+          // 用户取消选择
+          console.log('用户取消选择地点');
+          return;
+        } else if (err.errMsg && err.errMsg.includes('authorize')) {
+          // 权限未授予
+          errorMsg = '需要位置权限才能选择地点';
+          wx.showModal({
+            title: '需要位置权限',
+            content: '请在设置中允许小程序访问您的位置信息',
+            confirmText: '去设置',
+            success: (modalRes) => {
+              if (modalRes.confirm) {
+                wx.openSetting({
+                  success: (settingRes) => {
+                    if (settingRes.authSetting['scope.userLocation']) {
+                      wx.showToast({ title: '权限已开启，请重新选择', icon: 'success' });
+                    }
+                  }
+                });
+              }
+            }
+          });
+          return;
+        } else if (err.errMsg && err.errMsg.includes('privacy')) {
+          // 隐私协议问题
+          errorMsg = '请在小程序设置中允许访问位置';
+          wx.showModal({
+            title: '位置权限未开启',
+            content: '真实定位功能需要位置权限。您可以：\n1. 在设置中开启位置权限\n2. 或切换到测试模式使用预设地点',
+            confirmText: '切换测试模式',
+            cancelText: '我知道了',
+            success: (modalRes) => {
+              if (modalRes.confirm) {
+                // 切换到测试模式
+                this.setData({ useRealLocation: false });
+                wx.showToast({ title: '已切换到测试模式', icon: 'success' });
+              }
+            }
+          });
+          return;
+        }
+
+        wx.showToast({ title: errorMsg, icon: 'none', duration: 2000 });
+      }
+    });
   },
 
   // 原生地点选择器（已禁用，避免隐私协议问题）
