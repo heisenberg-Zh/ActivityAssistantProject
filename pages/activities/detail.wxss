@@ -52,13 +52,17 @@
 
 .permission-actions {
   display: flex;
-  flex-direction: column;
-  gap: 16rpx;
+  flex-direction: row;
+  gap: 24rpx;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
 }
 
 .permission-actions .btn {
-  width: 100%;
-  padding: 24rpx;
+  flex: 1;
+  max-width: 280rpx;
+  padding: 24rpx 32rpx;
   border-radius: 16rpx;
   font-size: 28rpx;
   font-weight: 600;
