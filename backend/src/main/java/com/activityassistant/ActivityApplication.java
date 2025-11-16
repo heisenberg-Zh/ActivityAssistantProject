@@ -31,8 +31,8 @@ public class ActivityApplication {
         System.out.println("\n" +
                 "========================================\n" +
                 "  ActivityAssistant 后端服务启动成功！\n" +
-                "  API 文档地址: http://localhost:8080/swagger-ui.html\n" +
-                "  健康检查: http://localhost:8080/actuator/health\n" +
+                "  API 文档地址: http://localhost:8082/swagger-ui.html\n" +
+                "  健康检查: http://localhost:8082/actuator/health\n" +
                 "========================================\n");
     }
 }
