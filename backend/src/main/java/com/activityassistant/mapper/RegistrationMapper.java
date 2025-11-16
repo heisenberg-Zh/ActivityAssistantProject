@@ -7,6 +7,7 @@ import com.activityassistant.model.Registration;
 import com.activityassistant.model.User;
 import com.activityassistant.repository.ActivityRepository;
 import com.activityassistant.repository.UserRepository;
+import com.activityassistant.service.IdGeneratorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -26,6 +27,9 @@ public class RegistrationMapper {
 
     @Autowired
     private ActivityRepository activityRepository;
+
+    @Autowired
+    private IdGeneratorService idGeneratorService;
 
     /**
      * Registration转RegistrationVO
@@ -88,7 +92,7 @@ public class RegistrationMapper {
         }
 
         return Registration.builder()
-                .id(UUID.randomUUID().toString())
+                .id(idGeneratorService.generateRegistrationId())
                 .activityId(request.getActivityId())
                 .groupId(request.getGroupId())
                 .userId(userId)
