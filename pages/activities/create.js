@@ -639,7 +639,59 @@ Page({
       'form.registerDeadlineTime': time || this.data.form.registerDeadlineTime
     });
 
+    // 实时校验报名截止时间
+    this.validateRegisterDeadline();
+
     this.checkCanPublish();
+  },
+
+  // 校验报名截止时间
+  validateRegisterDeadline() {
+    const { form } = this.data;
+
+    if (!form.registerDeadlineDate || !form.registerDeadlineTime) {
+      return true; // 未设置则不校验
+    }
+
+    const registerDeadline = parseDate(`${form.registerDeadlineDate} ${form.registerDeadlineTime}`);
+    const now = new Date();
+
+    // 1. 不能早于当前时间
+    if (registerDeadline <= now) {
+      wx.showModal({
+        title: '报名截止时间无效',
+        content: '报名截止时间不能早于或等于当前时间，请重新选择。',
+        showCancel: false,
+        success: () => {
+          this.setData({
+            'form.registerDeadlineDate': '',
+            'form.registerDeadlineTime': '09:00'
+          });
+        }
+      });
+      return false;
+    }
+
+    // 2. 不能晚于活动开始时间
+    if (form.startDate && form.startTime) {
+      const activityStart = parseDate(`${form.startDate} ${form.startTime}`);
+      if (registerDeadline >= activityStart) {
+        wx.showModal({
+          title: '报名截止时间无效',
+          content: '报名截止时间不能晚于或等于活动开始时间，请重新选择。',
+          showCancel: false,
+          success: () => {
+            this.setData({
+              'form.registerDeadlineDate': '',
+              'form.registerDeadlineTime': '09:00'
+            });
+          }
+        });
+        return false;
+      }
+    }
+
+    return true;
   },
 
   // 选择地点
@@ -1091,19 +1143,47 @@ Page({
 
   // 上传海报
   uploadPoster() {
-    wx.chooseMedia({
-      count: 1,
-      mediaType: ['image'],
-      sizeType: ['compressed'],
-      sourceType: ['album', 'camera'],
+    // 使用 wx.chooseImage 替代 wx.chooseMedia，避免隐私协议问题
+    wx.chooseImage({
+      count: 1, // 最多可以选择的图片张数
+      sizeType: ['compressed'], // 压缩图，节省空间
+      sourceType: ['album', 'camera'], // 可以指定来源是相册还是相机
       success: (res) => {
-        const tempFilePath = res.tempFiles[0].tempFilePath;
-        this.setData({ 'form.poster': tempFilePath });
-        wx.showToast({ title: '海报已选择', icon: 'success' });
+        // 返回选定照片的本地文件路径列表，tempFilePath可以作为img标签的src属性显示图片
+        const tempFilePath = res.tempFilePaths[0];
+
+        console.log('海报已选择:', tempFilePath);
+
+        // 保存到表单数据
+        this.setData({
+          'form.poster': tempFilePath
+        });
+
+        wx.showToast({
+          title: '海报已选择',
+          icon: 'success',
+          duration: 2000
+        });
       },
       fail: (err) => {
         console.error('选择图片失败:', err);
-        wx.showToast({ title: '选择图片失败', icon: 'none' });
+
+        // 友好的错误提示
+        let errorMsg = '选择图片失败';
+
+        if (err.errMsg && err.errMsg.includes('cancel')) {
+          errorMsg = '已取消选择';
+        } else if (err.errMsg && err.errMsg.includes('permission')) {
+          errorMsg = '请允许访问相册权限';
+        } else if (err.errMsg && err.errMsg.includes('privacy')) {
+          errorMsg = '请在小程序设置中允许访问相册';
+        }
+
+        wx.showToast({
+          title: errorMsg,
+          icon: 'none',
+          duration: 2000
+        });
       }
     });
   },
@@ -1367,13 +1447,101 @@ Page({
           }
         }, 1500);
       } else {
-        wx.showToast({ title: result.message || '操作失败', icon: 'none' });
+        // 处理参数校验失败等错误
+        this.showErrorDialog(result);
       }
     } catch (err) {
       wx.hideLoading();
       console.error('操作失败:', err);
-      wx.showToast({ title: '操作失败，请重试', icon: 'none' });
+
+      // 解析并展示错误信息
+      if (err && err.data) {
+        this.showErrorDialog(err.data);
+      } else if (err && err.errMsg) {
+        wx.showModal({
+          title: '操作失败',
+          content: err.errMsg || '网络请求失败，请检查网络连接后重试',
+          showCancel: false
+        });
+      } else {
+        wx.showModal({
+          title: '操作失败',
+          content: '未知错误，请重试',
+          showCancel: false
+        });
+      }
     }
+  },
+
+  /**
+   * 显示错误信息弹窗
+   * 解析后端返回的参数校验错误，友好展示给用户
+   */
+  showErrorDialog(result) {
+    const { code, message, data } = result;
+
+    // 字段名到中文名称的映射
+    const fieldNameMap = {
+      'title': '活动标题',
+      'type': '活动类型',
+      'startTime': '开始时间',
+      'endTime': '结束时间',
+      'registerDeadline': '报名截止时间',
+      'place': '地点名称',
+      'address': '详细地址',
+      'latitude': '纬度',
+      'longitude': '经度',
+      'checkinRadius': '签到范围',
+      'total': '总人数上限',
+      'minParticipants': '最少成行人数',
+      'fee': '费用',
+      'feeType': '费用类型',
+      'needReview': '是否需要审核',
+      'isPublic': '是否公开',
+      'groups': '分组配置',
+      'customFields': '自定义字段',
+      'scheduledPublishTime': '定时发布时间',
+      'description': '活动描述',
+      'organizerPhone': '联系人电话',
+      'organizerWechat': '联系人微信'
+    };
+
+    // 如果有详细的字段错误信息（参数校验失败）
+    if (code === 400 && data && typeof data === 'object') {
+      const errorList = [];
+
+      for (const [field, error] of Object.entries(data)) {
+        const fieldName = fieldNameMap[field] || field;
+        errorList.push(`• ${fieldName}: ${error}`);
+      }
+
+      if (errorList.length > 0) {
+        const errorContent = errorList.join('\n');
+
+        wx.showModal({
+          title: '参数校验失败',
+          content: `请修改以下内容后重试：\n\n${errorContent}`,
+          showCancel: true,
+          cancelText: '我知道了',
+          confirmText: '返回修改',
+          confirmColor: '#3b82f6',
+          success: (res) => {
+            if (res.confirm) {
+              // 用户点击"返回修改"，跳转到第一步
+              this.setCurrentStep(1);
+            }
+          }
+        });
+        return;
+      }
+    }
+
+    // 通用错误提示
+    wx.showModal({
+      title: message || '操作失败',
+      content: typeof data === 'string' ? data : '请检查输入内容后重试',
+      showCancel: false
+    });
   },
 
   // 返回
