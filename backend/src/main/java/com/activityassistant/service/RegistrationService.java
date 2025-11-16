@@ -57,17 +57,17 @@ public class RegistrationService {
         Activity activity = activityRepository.findByIdAndIsDeletedFalse(request.getActivityId())
                 .orElseThrow(() -> new NotFoundException("活动不存在"));
 
-        // 检查活动状态
-        if (!"published".equals(activity.getStatus())) {
-            throw new BusinessException(INVALID_OPERATION, "活动未发布，无法报名");
-        }
-
+        // 检查活动状态 - 只有已发布(published)和进行中(ongoing)的活动可以报名
         if ("cancelled".equals(activity.getStatus())) {
             throw new BusinessException(INVALID_OPERATION, "活动已取消，无法报名");
         }
 
         if ("finished".equals(activity.getStatus())) {
             throw new BusinessException(INVALID_OPERATION, "活动已结束，无法报名");
+        }
+
+        if (!"published".equals(activity.getStatus()) && !"ongoing".equals(activity.getStatus())) {
+            throw new BusinessException(INVALID_OPERATION, "活动未发布，无法报名");
         }
 
         // 检查是否已报名

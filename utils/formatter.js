@@ -27,10 +27,12 @@ const formatParticipants = (joined, total) => {
 // 将后端英文状态翻译为中文
 const translateActivityStatus = (status) => {
   const statusMap = {
+    'pending': '待发布',
     'draft': '草稿',
     'published': '报名中',
     'ongoing': '进行中',
     'upcoming': '即将开始',
+    'finished': '已结束',
     'ended': '已结束',
     'cancelled': '已取消'
   };
@@ -44,12 +46,13 @@ const formatActivityStatus = (status) => {
   const translatedStatus = translateActivityStatus(status);
 
   const statusMap = {
+    '待发布': { text: '待发布', color: '#9ca3af' },
+    '草稿': { text: '草稿', color: '#9ca3af' },
+    '报名中': { text: '报名中', color: '#f59e0b' },
     '进行中': { text: '进行中', color: '#10b981' },
     '即将开始': { text: '即将开始', color: '#3b82f6' },
     '已结束': { text: '已结束', color: '#6b7280' },
-    '已取消': { text: '已取消', color: '#ef4444' },
-    '报名中': { text: '报名中', color: '#f59e0b' },
-    '草稿': { text: '草稿', color: '#9ca3af' }
+    '已取消': { text: '已取消', color: '#ef4444' }
   };
 
   return statusMap[translatedStatus] || { text: translatedStatus, color: '#6b7280' };

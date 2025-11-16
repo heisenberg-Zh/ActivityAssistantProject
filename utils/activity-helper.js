@@ -54,39 +54,62 @@ function filterActivitiesByPermission(activities, currentUserId, userRegistratio
  * @returns {Object} { hasPermission: Boolean, reason: String }
  */
 function checkActivityViewPermission(activity, currentUserId, userRegistrations = [], fromShare = false) {
+  console.log('[权限检查] 活动ID:', activity.id || activity.activity_id);
+  console.log('[权限检查] 活动公开状态:', activity.isPublic, '类型:', typeof activity.isPublic);
+  console.log('[权限检查] 组织者ID:', activity.organizerId);
+  console.log('[权限检查] 当前用户ID:', currentUserId);
+  console.log('[权限检查] 是否从分享访问:', fromShare);
+
   // 已删除的活动不可访问
   if (activity.isDeleted) {
+    console.log('[权限检查] 活动已删除');
     return { hasPermission: false, reason: '活动不存在或已删除' };
   }
 
   // 公开活动可以查看
-  if (activity.isPublic) {
+  if (activity.isPublic === true || activity.isPublic === 'true' || activity.isPublic === 1) {
+    console.log('[权限检查] 活动公开，允许访问');
     return { hasPermission: true };
   }
 
-  // 不公开的活动
+  // 不公开的活动 - 需要进一步检查权限
 
-  // 通过分享链接访问，允许查看
+  // 1. 创建者可以查看（最优先检查）
+  if (activity.organizerId && activity.organizerId === currentUserId) {
+    console.log('[权限检查] 当前用户是创建者，允许访问');
+    return { hasPermission: true };
+  }
+
+  // 2. 管理员可以查看
+  if (activity.administrators && Array.isArray(activity.administrators)) {
+    const isAdmin = activity.administrators.some(admin =>
+      admin.userId === currentUserId || admin === currentUserId
+    );
+    if (isAdmin) {
+      console.log('[权限检查] 当前用户是管理员，允许访问');
+      return { hasPermission: true };
+    }
+  }
+
+  // 3. 通过分享链接访问，允许查看
   if (fromShare) {
+    console.log('[权限检查] 通过分享链接访问，允许访问');
     return { hasPermission: true };
   }
 
-  // 创建者可以查看
-  if (activity.organizerId === currentUserId) {
-    return { hasPermission: true };
-  }
-
-  // 已报名且审核通过的用户可以查看
+  // 4. 已报名且审核通过的用户可以查看
   if (userRegistrations && userRegistrations.length > 0) {
     const hasApprovedRegistration = userRegistrations.some(
       reg => reg.activityId === activity.id && reg.status === 'approved'
     );
     if (hasApprovedRegistration) {
+      console.log('[权限检查] 用户已报名且审核通过，允许访问');
       return { hasPermission: true };
     }
   }
 
   // 无权限
+  console.log('[权限检查] 无访问权限');
   return { hasPermission: false, reason: '无权查看此私密活动' };
 }
 

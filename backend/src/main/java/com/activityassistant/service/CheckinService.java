@@ -49,6 +49,9 @@ public class CheckinService {
     @Autowired
     private CheckinMapper checkinMapper;
 
+    @Autowired
+    private IdGeneratorService idGeneratorService;
+
     /**
      * 创建签到（GPS位置验证）
      *
@@ -123,7 +126,7 @@ public class CheckinService {
 
         // 8. 创建签到记录
         Checkin checkin = Checkin.builder()
-                .id(UUID.randomUUID().toString())
+                .id(idGeneratorService.generateCheckinId())
                 .activityId(request.getActivityId())
                 .userId(userId)
                 .registrationId(registration.getId())
