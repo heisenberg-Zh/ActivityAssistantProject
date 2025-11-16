@@ -47,6 +47,9 @@
   "permission": {
     "scope.userLocation": {
       "desc": "你的位置信息将用于活动签到和地点选择"
+    },
+    "scope.writePhotosAlbum": {
+      "desc": "用于保存活动海报和分享图片"
     }
   },
   "requiredPrivateInfos": [

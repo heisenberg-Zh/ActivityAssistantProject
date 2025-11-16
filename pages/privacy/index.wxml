@@ -1,0 +1,39 @@
+<!-- pages/privacy/index.wxml -->
+<view class="privacy-container">
+  <view class="privacy-content">
+    <view class="privacy-title">用户隐私保护指引</view>
+
+    <view class="privacy-section">
+      <text class="privacy-text">感谢您使用ActivityAssistant活动助手！</text>
+      <text class="privacy-text">为了更好地为您提供服务，我们需要获取以下权限：</text>
+    </view>
+
+    <view class="privacy-section">
+      <view class="privacy-item">
+        <text class="privacy-item-icon">📷</text>
+        <view class="privacy-item-content">
+          <text class="privacy-item-title">相册权限</text>
+          <text class="privacy-item-desc">用于上传活动海报和分享图片</text>
+        </view>
+      </view>
+
+      <view class="privacy-item">
+        <text class="privacy-item-icon">📍</text>
+        <view class="privacy-item-content">
+          <text class="privacy-item-title">位置权限</text>
+          <text class="privacy-item-desc">用于活动签到和地点选择</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="privacy-section">
+      <text class="privacy-hint">我们承诺：</text>
+      <text class="privacy-hint">• 不会收集与服务无关的个人信息</text>
+      <text class="privacy-hint">• 不会将您的信息分享给第三方</text>
+      <text class="privacy-hint">• 您可以随时在设置中管理权限</text>
+    </view>
+
+    <button class="privacy-agree-btn" bindtap="agreePrivacy">同意并继续</button>
+    <button class="privacy-disagree-btn" bindtap="disagreePrivacy">暂不使用</button>
+  </view>
+</view>
