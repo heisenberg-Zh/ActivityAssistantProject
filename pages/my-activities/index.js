@@ -150,6 +150,7 @@ Page({
         actions.push({ label: '编辑', action: 'edit', type: 'primary' });
         actions.push({ label: '详情', action: 'detail', type: 'secondary' });
       } else {
+        // 已结束等其他状态 - 显示查看统计
         actions.push({ label: '查看统计', action: 'stats', type: 'primary' });
         actions.push({ label: '详情', action: 'detail', type: 'secondary' });
       }
@@ -157,12 +158,19 @@ Page({
       actions.push({ label: '复制', action: 'copy', type: 'secondary' });
     } else if (role === 'managed') {
       // 我管理的活动
-      actions.push({ label: '管理', action: 'manage', type: 'primary' });
-      actions.push({ label: '详情', action: 'detail', type: 'secondary' });
+      if (activity.status === '进行中' || activity.status === '即将开始') {
+        // 进行中或即将开始的活动显示"管理"按钮
+        actions.push({ label: '管理', action: 'manage', type: 'primary' });
+        actions.push({ label: '详情', action: 'detail', type: 'secondary' });
+      } else {
+        // 已结束等其他状态 - 显示查看统计
+        actions.push({ label: '查看统计', action: 'stats', type: 'primary' });
+        actions.push({ label: '详情', action: 'detail', type: 'secondary' });
+      }
       // 管理的活动也可以复制
       actions.push({ label: '复制', action: 'copy', type: 'secondary' });
     } else if (role === 'joined') {
-      // 我参加的活动
+      // 我参加的活动 - 不显示查看统计按钮
       if (activity.status === '进行中') {
         actions.push({ label: '签到', action: 'checkin', type: 'primary' });
         actions.push({ label: '详情', action: 'detail', type: 'secondary' });
@@ -170,6 +178,7 @@ Page({
         actions.push({ label: '详情', action: 'detail', type: 'primary' });
         actions.push({ label: '取消报名', action: 'cancelRegistration', type: 'danger' });
       } else {
+        // 已结束的活动 - 显示评价按钮，不显示查看统计
         actions.push({ label: '评价', action: 'review', type: 'primary' });
         actions.push({ label: '详情', action: 'detail', type: 'secondary' });
       }
@@ -216,8 +225,8 @@ Page({
         this.deleteDraft(id);
         break;
       case 'stats':
-        // 跳转到统计页面
-        wx.navigateTo({ url: '/pages/statistics/index' });
+        // 跳转到活动管理页面查看统计
+        wx.navigateTo({ url: `/pages/management/index?id=${id}` });
         break;
       case 'manage':
         // 跳转到管理页面
