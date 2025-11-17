@@ -24,8 +24,19 @@ function formatDate(dateTime) {
   if (!dateTime) return '';
 
   try {
-    // 处理ISO格式和空格格式
-    const date = new Date(dateTime.replace('T', ' ').replace(/\.\d+/, ''));
+    // 兼容iOS：保持ISO格式或转换为斜杠格式
+    // iOS不支持 "yyyy-MM-dd HH:mm:ss" 格式
+    let dateStr = dateTime;
+
+    // 如果包含空格（后端可能返回这种格式），转换为ISO格式
+    if (dateStr.includes(' ') && !dateStr.includes('T')) {
+      dateStr = dateStr.replace(' ', 'T');
+    }
+
+    // 移除毫秒部分
+    dateStr = dateStr.replace(/\.\d+/, '');
+
+    const date = new Date(dateStr);
 
     const month = date.getMonth() + 1;
     const day = date.getDate();
@@ -48,8 +59,25 @@ function formatTimeRange(startTime, endTime) {
   if (!startTime || !endTime) return '';
 
   try {
-    const start = new Date(startTime.replace('T', ' ').replace(/\.\d+/, ''));
-    const end = new Date(endTime.replace('T', ' ').replace(/\.\d+/, ''));
+    // 兼容iOS：保持ISO格式或转换为斜杠格式
+    // iOS不支持 "yyyy-MM-dd HH:mm:ss" 格式
+    let startStr = startTime;
+    let endStr = endTime;
+
+    // 如果包含空格（后端可能返回这种格式），转换为ISO格式
+    if (startStr.includes(' ') && !startStr.includes('T')) {
+      startStr = startStr.replace(' ', 'T');
+    }
+    if (endStr.includes(' ') && !endStr.includes('T')) {
+      endStr = endStr.replace(' ', 'T');
+    }
+
+    // 移除毫秒部分
+    startStr = startStr.replace(/\.\d+/, '');
+    endStr = endStr.replace(/\.\d+/, '');
+
+    const start = new Date(startStr);
+    const end = new Date(endStr);
 
     const month = start.getMonth() + 1;
     const day = start.getDate();
@@ -90,14 +118,16 @@ function toBackendDateTime(dateTimeStr) {
 /**
  * 将后端日期转换为前端格式
  * 输入: '2025-12-23T19:00:00'
- * 输出: '2025-12-23 19:00'
+ * 输出: '2025-12-23T19:00' (保持ISO格式，兼容iOS)
  */
 function toFrontendDateTime(dateTime) {
   if (!dateTime) return '';
 
   try {
-    // 去掉秒数和毫秒
-    return dateTime.replace('T', ' ').replace(/:\d{2}(\.\d+)?$/, '');
+    // 兼容iOS：保持ISO格式（使用'T'分隔符）
+    // HTML datetime-local 输入框也需要 'T' 格式
+    // 去掉秒数和毫秒，保留格式为 '2025-12-23T19:00'
+    return dateTime.replace(/:\d{2}(\.\d+)?$/, '');
   } catch (err) {
     console.error('前端日期转换失败:', dateTime, err);
     return dateTime;
