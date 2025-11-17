@@ -43,7 +43,16 @@
           <view class="row-between mb-12">
             <text class="text-sm text-gray-600">已报 {{item.joined}} / {{item.total}}</text>
             <view class="row gap-12">
-              <view class="btn {{item.isRegistered ? 'btn--registered' : 'btn--primary'}} btn--small" catchtap="{{item.isRegistered ? 'onRegisteredClick' : 'goRegister'}}" data-id="{{item.id}}">{{item.isRegistered ? '已报名' : '立即报名'}}</view>
+              <!-- 报名按钮 - 根据状态动态显示 -->
+              <view
+                wx:if="{{item.showRegisterButton}}"
+                class="btn {{item.buttonStyle}} btn--small"
+                catchtap="{{item.buttonDisabled ? '' : 'goRegister'}}"
+                data-id="{{item.id}}"
+                data-action="{{item.buttonAction}}">
+                {{item.buttonText}}
+              </view>
+              <!-- 查看详情按钮 -->
               <view class="btn btn--secondary btn--small" catchtap="goDetail" data-id="{{item.id}}">查看详情</view>
             </view>
           </view>

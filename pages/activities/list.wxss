@@ -111,6 +111,7 @@
 
 /* 按钮样式 - 使用全局样式 */
 
+/* 已报名状态 - 绿色 */
 .btn--registered {
   background: linear-gradient(135deg, #10b981, #059669);
   color: #ffffff;
@@ -121,6 +122,46 @@
 .btn--registered:active {
   background: linear-gradient(135deg, #059669, #047857);
   transform: scale(0.96);
+}
+
+/* 待审核状态 - 黄色 */
+.btn--pending {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 2rpx 8rpx rgba(245, 158, 11, 0.25);
+}
+
+.btn--pending:active {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  transform: scale(0.96);
+}
+
+/* 已拒绝状态 - 红色 */
+.btn--rejected {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 2rpx 8rpx rgba(239, 68, 68, 0.25);
+}
+
+.btn--rejected:active {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  transform: scale(0.96);
+}
+
+/* 禁用状态 - 灰色（已满、已截止等） */
+.btn--disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  border: 1rpx solid #d1d5db;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.btn--disabled:active {
+  transform: none;
+  background: #e5e7eb;
 }
 
 .icon-text {
