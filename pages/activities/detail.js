@@ -83,11 +83,19 @@ Page({
       console.log('成功加载活动详情:', detail.title);
 
       // ========== 权限检查 ==========
+      // 获取当前用户的报名记录（从活动报名列表中筛选）
+      const allRegistrations = registrationsResult.code === 0
+        ? (registrationsResult.data.content || registrationsResult.data || [])
+        : [];
+      const currentUserRegistrations = allRegistrations.filter(r => r.userId === currentUserId);
+
+      console.log('当前用户的报名记录:', currentUserRegistrations);
+
       // 检查用户是否有权查看此活动（私密活动等）
       const permissionCheck = checkActivityViewPermission(
         detail,
         currentUserId,
-        [], // 后端已处理权限，这里简化处理
+        currentUserRegistrations, // 传入当前用户的报名记录
         this.data.fromShare
       );
 
@@ -132,10 +140,8 @@ Page({
         };
       }
 
-      // 获取参与者列表
-      const activityRegs = registrationsResult.code === 0
-        ? (registrationsResult.data.content || registrationsResult.data || []).filter(r => r.status === 'approved')
-        : [];
+      // 获取参与者列表（使用前面已获取的报名记录）
+      const activityRegs = allRegistrations.filter(r => r.status === 'approved');
 
       // 如果活动有分组，初始显示第一个分组的参与者
       const currentGroupId = detail.hasGroups && detail.groups && detail.groups.length > 0

@@ -8,8 +8,12 @@
     <text class="permission-message">{{permissionDeniedReason}}</text>
     <text class="permission-hint">这是一个私密活动，仅创建者和已报名者可见</text>
     <view class="permission-actions">
-      <navigator url="/pages/home/index" open-type="switchTab" class="btn btn--primary">返回首页</navigator>
-      <navigator url="/pages/activities/list" class="btn btn--secondary">浏览活动</navigator>
+      <!-- 如果是通过分享进来的，提供返回按钮 -->
+      <button wx:if="{{fromShare}}" class="btn btn--primary" bindtap="goBack">返回</button>
+      <!-- 如果不是通过分享进来的，提供返回首页按钮 -->
+      <navigator wx:else url="/pages/home/index" open-type="switchTab" class="btn btn--primary">返回首页</navigator>
+      <!-- 浏览公开活动按钮 -->
+      <navigator url="/pages/activities/list" open-type="switchTab" class="btn btn--secondary">浏览公开活动</navigator>
     </view>
   </view>
 </view>
