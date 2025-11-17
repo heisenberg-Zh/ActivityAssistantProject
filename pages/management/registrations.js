@@ -1,5 +1,5 @@
 // pages/management/registrations.js
-const { activities, participants, registrations } = require('../../utils/mock.js');
+const { activityAPI, registrationAPI } = require('../../utils/api.js');
 const {
   checkManagementPermission
 } = require('../../utils/activity-management-helper.js');
@@ -42,53 +42,80 @@ Page({
   },
 
   // 加载数据
-  loadData() {
-    const { activityId } = this.data;
-    const currentUserId = app.globalData.currentUserId || 'u1';
+  async loadData() {
+    try {
+      wx.showLoading({ title: '加载中...' });
 
-    // 查找活动
-    const activity = activities.find(a => a.id === activityId);
+      const { activityId } = this.data;
+      const currentUserId = app.globalData.currentUserId || 'u1';
 
-    if (!activity) {
-      wx.showToast({ title: '活动不存在', icon: 'none' });
-      setTimeout(() => wx.navigateBack(), 1500);
-      return;
-    }
+      // 从后端API获取活动详情
+      const detailResult = await activityAPI.getDetail(activityId);
 
-    // 检查管理权限
-    const permission = checkManagementPermission(activity, currentUserId);
+      if (detailResult.code !== 0) {
+        throw new Error(detailResult.message || '获取活动详情失败');
+      }
 
-    if (!permission.hasPermission) {
-      wx.showModal({
-        title: '无权限',
-        content: '您不是此活动的创建者或管理员',
-        showCancel: false,
-        success: () => wx.navigateBack()
+      const activity = detailResult.data;
+
+      if (!activity) {
+        wx.hideLoading();
+        wx.showToast({ title: '活动不存在', icon: 'none' });
+        setTimeout(() => wx.navigateBack(), 1500);
+        return;
+      }
+
+      // 检查管理权限
+      const permission = checkManagementPermission(activity, currentUserId);
+
+      if (!permission.hasPermission) {
+        wx.hideLoading();
+        wx.showModal({
+          title: '无权限',
+          content: '您不是此活动的创建者或管理员',
+          showCancel: false,
+          success: () => wx.navigateBack()
+        });
+        return;
+      }
+
+      // 获取该活动的所有报名记录
+      const registrationsResult = await registrationAPI.getByActivity(activityId, {
+        page: 0,
+        size: 1000
       });
-      return;
-    }
 
-    // 获取该活动的所有报名记录
-    const activityRegs = registrations.filter(r => r.activityId === activityId);
+      const activityRegs = registrationsResult.code === 0
+        ? (registrationsResult.data.content || registrationsResult.data || [])
+        : [];
 
-    // 补充用户信息
-    const allRegistrations = activityRegs.map(reg => {
-      const user = participants.find(p => p.id === reg.userId);
-      return {
+      // 处理报名记录，添加显示所需的字段
+      const allRegistrations = activityRegs.map(reg => ({
         ...reg,
         userName: reg.name,
-        userAvatar: user?.avatar || '',
+        userAvatar: reg.avatar || '/activityassistant_avatar_01.png',
         statusText: this.getStatusText(reg.status),
         statusColor: this.getStatusColor(reg.status),
         registeredAt: reg.createdAt || '未知时间'
-      };
-    });
+      }));
 
-    this.setData({
-      activity,
-      allRegistrations,
-      displayRegistrations: allRegistrations
-    });
+      this.setData({
+        activity,
+        allRegistrations,
+        displayRegistrations: allRegistrations
+      });
+
+      wx.hideLoading();
+    } catch (err) {
+      wx.hideLoading();
+      console.error('加载报名数据失败:', err);
+      wx.showToast({
+        title: err.message || '加载失败',
+        icon: 'none',
+        duration: 2000
+      });
+      setTimeout(() => wx.navigateBack(), 2000);
+    }
   },
 
   // 获取状态文本
