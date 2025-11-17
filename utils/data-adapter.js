@@ -157,6 +157,16 @@ function transformActivityFromBackend(activity) {
 
       // 字段名适配
       desc: activity.description || '',  // 关键适配：description -> desc
+      organizerId: activity.organizer_id || activity.organizerId,  // 关键适配：organizer_id -> organizerId
+      organizerName: activity.organizer_name || activity.organizerName,  // organizer_name -> organizerName
+      organizerPhone: activity.organizer_phone || activity.organizerPhone,  // organizer_phone -> organizerPhone
+      organizerWechat: activity.organizer_wechat || activity.organizerWechat,  // organizer_wechat -> organizerWechat
+
+      // 布尔值字段适配
+      isPublic: activity.is_public !== undefined ? activity.is_public : activity.isPublic,  // is_public -> isPublic
+      isDeleted: activity.is_deleted !== undefined ? activity.is_deleted : activity.isDeleted,  // is_deleted -> isDeleted
+      needReview: activity.need_review !== undefined ? activity.need_review : activity.needReview,  // need_review -> needReview
+      isRecurring: activity.is_recurring !== undefined ? activity.is_recurring : activity.isRecurring,  // is_recurring -> isRecurring
 
       // 日期格式化
       date: formatDate(activity.startTime),
