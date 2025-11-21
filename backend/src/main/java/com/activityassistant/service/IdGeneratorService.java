@@ -37,7 +37,8 @@ public class IdGeneratorService {
         ACTIVITY("activity", "A"),
         REGISTRATION("registration", "R"),
         CHECKIN("checkin", "C"),
-        MESSAGE("message", "M");
+        MESSAGE("message", "M"),
+        REVIEW("review", "REV");
 
         private final String type;
         private final String prefix;
@@ -90,6 +91,15 @@ public class IdGeneratorService {
      */
     public String generateMessageId() {
         return generateId(BusinessType.MESSAGE);
+    }
+
+    /**
+     * 生成评价ID
+     * 格式：REV + YYYYMMDD + 6位序号
+     * 示例：REV20251116000001
+     */
+    public String generateReviewId() {
+        return generateId(BusinessType.REVIEW);
     }
 
     /**
