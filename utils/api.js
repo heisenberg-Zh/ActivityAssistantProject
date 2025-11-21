@@ -244,15 +244,109 @@ const mockRequest = (url, method, data) => {
       address: data.address ? sanitizeInput(data.address, { maxLength: 200 }) : ''
     };
 
+    // 根据定时发布设置确定活动状态
+    let activityStatus = safeData.status || 'published';
+
+    // 如果是定时发布（有 scheduledPublishTime 且时间在未来）
+    if (safeData.scheduledPublishTime) {
+      const scheduledTime = new Date(safeData.scheduledPublishTime);
+      const now = new Date();
+
+      if (scheduledTime > now) {
+        activityStatus = '预发布';  // 定时发布待执行
+      } else {
+        activityStatus = 'published';  // 时间已过，立即发布
+        safeData.actualPublishTime = now.toISOString();
+      }
+    } else {
+      // 立即发布
+      activityStatus = 'published';
+      safeData.actualPublishTime = new Date().toISOString();
+    }
+
     const newActivity = {
       id: 'a' + (activities.length + 1),
       ...safeData,
-      status: '即将开始',
+      status: activityStatus,
       joined: 0,
       createdAt: new Date().toISOString()
     };
     activities.push(newActivity);
-    return { code: 0, data: newActivity, message: '创建成功' };
+
+    const message = activityStatus === '预发布' ? '定时发布设置成功' : '创建成功';
+    return { code: 0, data: newActivity, message };
+  }
+
+  // 更新活动
+  if (url.match(/^\/api\/activities\/[^/]+$/) && method === 'PUT') {
+    const activityId = url.split('/')[3];
+    const activityIndex = activities.findIndex(a => a.id === activityId);
+
+    if (activityIndex === -1) {
+      return { code: -1, data: null, message: '活动不存在' };
+    }
+
+    // 安全清理：防止XSS注入
+    const safeData = {
+      ...data,
+      title: data.title ? sanitizeInput(data.title, { maxLength: 50 }) : activities[activityIndex].title,
+      desc: data.desc !== undefined ? sanitizeInput(data.desc, { maxLength: 500 }) : activities[activityIndex].desc,
+      place: data.place !== undefined ? sanitizeInput(data.place, { maxLength: 100 }) : activities[activityIndex].place,
+      address: data.address !== undefined ? sanitizeInput(data.address, { maxLength: 200 }) : activities[activityIndex].address
+    };
+
+    // 根据定时发布设置确定活动状态
+    let activityStatus = safeData.status || activities[activityIndex].status;
+
+    // 如果是定时发布（有 scheduledPublishTime 且时间在未来）
+    if (safeData.scheduledPublishTime) {
+      const scheduledTime = new Date(safeData.scheduledPublishTime);
+      const now = new Date();
+
+      if (scheduledTime > now) {
+        activityStatus = '预发布';  // 定时发布待执行
+      } else {
+        activityStatus = 'published';  // 时间已过，立即发布
+        safeData.actualPublishTime = safeData.actualPublishTime || now.toISOString();
+      }
+    } else if (safeData.scheduledPublishTime === null) {
+      // 显式设置为 null，表示取消定时发布，立即发布
+      activityStatus = 'published';
+      safeData.actualPublishTime = safeData.actualPublishTime || new Date().toISOString();
+    }
+
+    // 更新活动数据
+    const updatedActivity = {
+      ...activities[activityIndex],
+      ...safeData,
+      status: activityStatus,
+      updatedAt: new Date().toISOString()
+    };
+
+    activities[activityIndex] = updatedActivity;
+
+    const message = activityStatus === '预发布' ? '定时发布设置成功' : '更新成功';
+    return { code: 0, data: updatedActivity, message };
+  }
+
+  // 取消活动
+  if (url.match(/^\/api\/activities\/[^/]+\/cancel$/) && method === 'POST') {
+    const activityId = url.split('/')[3];
+    const activity = activities.find(a => a.id === activityId);
+
+    if (!activity) {
+      return { code: -1, data: null, message: '活动不存在' };
+    }
+
+    // 更新活动状态为已取消
+    activity.status = '已取消';
+    activity.canceledAt = new Date().toISOString();
+
+    return {
+      code: 0,
+      data: activity,
+      message: '活动已取消'
+    };
   }
 
   // 报名相关接口
@@ -278,6 +372,52 @@ const mockRequest = (url, method, data) => {
     const activityId = url.split('/').pop();
     const regs = registrations.filter(r => r.activityId === activityId);
     return { code: 0, data: regs, message: 'success' };
+  }
+
+  // 审核报名（通过/拒绝）
+  if (url.match(/^\/api\/registrations\/[^/]+\/approve$/) && method === 'PUT') {
+    const registrationId = url.split('/')[3];
+    const { status, note } = data;  // status: 'approved' 或 'rejected'
+
+    const reg = registrations.find(r => r.id === registrationId);
+
+    if (!reg) {
+      return { code: -1, data: null, message: '报名记录不存在' };
+    }
+
+    // 更新状态
+    reg.status = status;
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    if (status === 'approved') {
+      reg.approvedAt = timestamp;
+    } else if (status === 'rejected') {
+      reg.rejectedAt = timestamp;
+      reg.rejectNote = note || '';
+    }
+
+    return {
+      code: 0,
+      data: reg,
+      message: status === 'approved' ? '已通过审核' : '已拒绝'
+    };
+  }
+
+  // 删除/移除报名
+  if (url.match(/^\/api\/registrations\/[^/]+$/) && method === 'DELETE') {
+    const registrationId = url.split('/')[3];
+
+    const index = registrations.findIndex(r => r.id === registrationId);
+
+    if (index === -1) {
+      return { code: -1, data: null, message: '报名记录不存在' };
+    }
+
+    // 移除报名记录
+    registrations.splice(index, 1);
+
+    return { code: 0, data: null, message: '已移除报名' };
   }
 
   // 签到相关接口
@@ -681,6 +821,185 @@ const mockRequest = (url, method, data) => {
     return { code: 0, data: registeredUsers, message: 'success' };
   }
 
+  // 黑名单管理相关接口（临时使用Mock模式）
+  // 获取活动黑名单列表
+  if (url.match(/^\/api\/activities\/[^/]+\/blacklist$/) && method === 'GET') {
+    const activityId = url.split('/')[3];
+    const activity = activities.find(a => a.id === activityId);
+
+    if (!activity) {
+      return { code: -1, data: null, message: '活动不存在' };
+    }
+
+    // 返回黑名单列表（包含用户详情）
+    const blacklist = (activity.blacklist || []).map(item => {
+      const user = participants.find(p => p.id === item.userId);
+      return {
+        ...item,
+        name: user?.name || '未知用户',
+        avatar: user?.avatar || ''
+      };
+    });
+
+    return { code: 0, data: blacklist, message: 'success' };
+  }
+
+  // 批量添加黑名单
+  if (url.match(/^\/api\/activities\/[^/]+\/blacklist$/) && method === 'POST') {
+    const activityId = url.split('/')[3];
+    const { phones, reason, expiryDays } = data;  // phones: 手机号数组, reason: 拉黑原因, expiryDays: 过期天数(null表示永久)
+
+    const activity = activities.find(a => a.id === activityId);
+
+    if (!activity) {
+      return { code: -1, data: null, message: '活动不存在' };
+    }
+
+    // 初始化黑名单数组
+    if (!activity.blacklist) {
+      activity.blacklist = [];
+    }
+
+    const now = new Date();
+    const addedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const addedBy = 'u1';  // TODO: 应该从当前用户获取
+
+    let addedCount = 0;
+
+    // 计算过期时间
+    let expiresAt = null;
+    if (expiryDays && expiryDays > 0) {
+      const expiryDate = new Date(now);
+      expiryDate.setDate(expiryDate.getDate() + parseInt(expiryDays));
+      expiresAt = expiryDate.toISOString();
+    }
+
+    // 按手机号添加
+    if (phones && Array.isArray(phones)) {
+      phones.forEach(phone => {
+        // 检查是否已存在
+        const exists = activity.blacklist.some(b => b.phone === phone);
+        if (!exists) {
+          // 查找对应的用户ID
+          const user = participants.find(p => p.phone === phone || p.mobile === phone);
+          activity.blacklist.push({
+            phone,
+            userId: user?.id || null,
+            reason: reason || '',
+            isActive: true,
+            expiresAt,
+            addedAt,
+            addedBy
+          });
+          addedCount++;
+        }
+      });
+    }
+
+    return {
+      code: 0,
+      data: { addedCount },
+      message: `成功添加 ${addedCount} 个条目`
+    };
+  }
+
+  // 移除黑名单
+  if (url.match(/^\/api\/activities\/[^/]+\/blacklist\/[^/]+$/) && method === 'DELETE') {
+    const pathParts = url.split('/');
+    const activityId = pathParts[3];
+    const phone = decodeURIComponent(pathParts[5]);
+
+    const activity = activities.find(a => a.id === activityId);
+
+    if (!activity) {
+      return { code: -1, data: null, message: '活动不存在' };
+    }
+
+    if (!activity.blacklist) {
+      return { code: -1, data: null, message: '该条目不存在' };
+    }
+
+    // 移除黑名单条目
+    const index = activity.blacklist.findIndex(b => b.phone === phone);
+    if (index === -1) {
+      return { code: -1, data: null, message: '该条目不存在' };
+    }
+
+    activity.blacklist.splice(index, 1);
+
+    return { code: 0, data: null, message: '移除成功' };
+  }
+
+  // 切换黑名单启用/禁用状态
+  if (url.match(/^\/api\/activities\/[^/]+\/blacklist\/[^/]+\/toggle$/) && method === 'PUT') {
+    const pathParts = url.split('/');
+    const activityId = pathParts[3];
+    const phone = decodeURIComponent(pathParts[5]);
+
+    const activity = activities.find(a => a.id === activityId);
+
+    if (!activity) {
+      return { code: -1, data: null, message: '活动不存在' };
+    }
+
+    if (!activity.blacklist) {
+      return { code: -1, data: null, message: '该条目不存在' };
+    }
+
+    // 查找黑名单条目
+    const item = activity.blacklist.find(b => b.phone === phone);
+    if (!item) {
+      return { code: -1, data: null, message: '该条目不存在' };
+    }
+
+    // 切换状态
+    item.isActive = !item.isActive;
+
+    return {
+      code: 0,
+      data: { isActive: item.isActive },
+      message: item.isActive ? '已启用' : '已禁用'
+    };
+  }
+
+  // 用户反馈API（临时使用Mock模式）
+  // 提交用户反馈
+  if (url === '/api/feedback' && method === 'POST') {
+    const { content, contactInfo } = data;
+
+    // 验证反馈内容
+    if (!content || !content.trim()) {
+      return { code: -1, data: null, message: '反馈内容不能为空' };
+    }
+
+    if (content.trim().length < 5) {
+      return { code: -1, data: null, message: '反馈内容至少5个字' };
+    }
+
+    if (content.trim().length > 500) {
+      return { code: -1, data: null, message: '反馈内容不能超过500字' };
+    }
+
+    // 创建反馈记录
+    const feedback = {
+      id: 'fb' + Date.now(),
+      userId: 'u1',  // TODO: 应从当前用户获取
+      content: content.trim(),
+      contactInfo: contactInfo ? contactInfo.trim() : '',
+      status: 'pending',  // pending, processing, resolved
+      createdAt: new Date().toISOString()
+    };
+
+    // 实际应该保存到数据库，这里只是模拟
+    console.log('[Mock] 新反馈已保存:', feedback);
+
+    return {
+      code: 0,
+      data: feedback,
+      message: '提交成功，感谢您的反馈！'
+    };
+  }
+
   return { code: -1, data: null, message: '接口未实现' };
 };
 
@@ -764,11 +1083,17 @@ const registrationAPI = {
     retryCount: 1
   }),
 
-  // 取消报名
+  // 取消报名（用户自己取消）
   cancel: (id) => request(`/api/registrations/${id}`, {
     method: 'DELETE',
     showLoading: true,
     loadingText: '取消中...'
+  }),
+
+  // 移除报名（管理员移除）
+  remove: (id) => request(`/api/registrations/${id}`, {
+    method: 'DELETE',
+    showLoading: false  // 管理员操作不显示全局loading
   }),
 
   // 获取报名详情
@@ -1101,6 +1426,54 @@ const whitelistAPI = {
   })
 };
 
+// 黑名单管理API（临时使用Mock模式，待后端实现后移除 mock: true）
+const blacklistAPI = {
+  // 获取活动黑名单列表
+  getBlacklist: (activityId) => request(`/api/activities/${activityId}/blacklist`, {
+    method: 'GET',
+    useCache: false,
+    showLoading: false,
+    mock: true  // 临时启用Mock模式
+  }),
+
+  // 批量添加黑名单
+  addBatch: (activityId, data) => request(`/api/activities/${activityId}/blacklist`, {
+    method: 'POST',
+    data,  // { phones: [...], reason: '...', expiryDays: 30 }
+    showLoading: true,
+    loadingText: '添加中...',
+    mock: true  // 临时启用Mock模式
+  }),
+
+  // 移除黑名单
+  remove: (activityId, phone) => request(`/api/activities/${activityId}/blacklist/${encodeURIComponent(phone)}`, {
+    method: 'DELETE',
+    showLoading: true,
+    loadingText: '移除中...',
+    mock: true  // 临时启用Mock模式
+  }),
+
+  // 切换黑名单启用/禁用状态
+  toggleActive: (activityId, phone) => request(`/api/activities/${activityId}/blacklist/${encodeURIComponent(phone)}/toggle`, {
+    method: 'PUT',
+    showLoading: true,
+    loadingText: '处理中...',
+    mock: true  // 临时启用Mock模式
+  })
+};
+
+// 用户反馈API（临时使用Mock模式，待后端实现后移除 mock: true）
+const feedbackAPI = {
+  // 提交用户反馈
+  submit: (data) => request('/api/feedback', {
+    method: 'POST',
+    data,  // { content: '反馈内容', contactInfo: '联系方式（可选）' }
+    showLoading: true,
+    loadingText: '提交中...',
+    mock: true  // 临时启用Mock模式
+  })
+};
+
 module.exports = {
   request,
   activityAPI,
@@ -1112,5 +1485,7 @@ module.exports = {
   favoriteAPI,
   messageAPI,
   administratorAPI,
-  whitelistAPI
+  whitelistAPI,
+  blacklistAPI,
+  feedbackAPI
 };
