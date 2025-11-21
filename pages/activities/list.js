@@ -32,21 +32,18 @@ Page({
     try {
       wx.showLoading({ title: '加载中...' });
 
-      // 获取当前用户ID
-      const currentUserId = app.globalData.currentUserId || 'u1';
+      // ========== 【关键】检查登录状态 ==========
+      const isLoggedIn = app.checkLoginStatus();
+      const currentUserId = isLoggedIn ? (app.globalData.currentUserId || null) : null;
+      console.log('用户登录状态:', isLoggedIn, '当前用户ID:', currentUserId);
+      // ========== 登录状态检查结束 ==========
 
-      // 并行请求活动列表和我的报名记录
-      const [activitiesResult, registrationsResult] = await Promise.all([
-        activityAPI.getList({
-          page: 0,
-          size: 100,
-          sort: 'createdAt,desc'
-        }),
-        registrationAPI.getMyRegistrations({
-          page: 0,
-          size: 100
-        })
-      ]);
+      // 请求活动列表（所有人都可以看）
+      const activitiesResult = await activityAPI.getList({
+        page: 0,
+        size: 100,
+        sort: 'createdAt,desc'
+      });
 
       // 检查API响应
       if (activitiesResult.code !== 0) {
@@ -56,15 +53,27 @@ Page({
       // 获取活动列表
       const activities = activitiesResult.data.content || activitiesResult.data || [];
 
-      // 获取我的报名记录
-      const myRegistrations = registrationsResult.code === 0
-        ? (registrationsResult.data.content || registrationsResult.data || [])
-        : [];
+      // 获取我的报名记录（只有登录用户才请求）
+      let myRegistrations = [];
+      if (isLoggedIn && currentUserId) {
+        try {
+          const registrationsResult = await registrationAPI.getMyRegistrations({
+            page: 0,
+            size: 100
+          });
+          myRegistrations = registrationsResult.code === 0
+            ? (registrationsResult.data.content || registrationsResult.data || [])
+            : [];
+        } catch (err) {
+          console.warn('获取报名记录失败（可能未登录）:', err);
+          myRegistrations = [];
+        }
+      }
 
       // 为活动列表添加报名状态和按钮显示逻辑
       const enrichedActivities = activities.map(activity => {
-        // 查找该活动的报名记录
-        const myReg = myRegistrations.find(r => r.activityId === activity.id);
+        // 查找该活动的报名记录（只有登录用户才有）
+        const myReg = isLoggedIn ? myRegistrations.find(r => r.activityId === activity.id) : null;
 
         // 翻译活动状态为中文
         const translatedStatus = translateActivityStatus(activity.status);
@@ -234,6 +243,23 @@ Page({
   goRegister(e) {
     const id = e.currentTarget.dataset.id;
     const action = e.currentTarget.dataset.action;
+
+    // 【优先级1】先检查登录状态
+    if (!app.checkLoginStatus()) {
+      wx.showModal({
+        title: '需要登录',
+        content: '报名活动需要登录后才能操作，是否前往登录？',
+        confirmText: '去登录',
+        cancelText: '暂不',
+        confirmColor: '#3b82f6',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({ url: '/pages/auth/login' });
+          }
+        }
+      });
+      return;
+    }
 
     // 根据不同的action执行不同的操作
     if (action === 'viewDetail') {

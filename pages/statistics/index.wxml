@@ -1,91 +1,122 @@
 <!-- pages/statistics/index.wxml -->
-<!-- 时间筛选器 -->
-<view class="filter-strip">
-  <block wx:for="{{ranges}}" wx:key="key" wx:for-item="item">
-    <view class="pill {{item.active ? 'pill--primary' : ''}}" bindtap="onRangeTap" data-key="{{item.key}}">{{item.label}}</view>
-  </block>
-</view>
 
-<!-- 已参加的活动 -->
-<view class="section">
-  <view class="section-header">
-    <view class="header-left">
-      <text class="section-icon">👤</text>
-      <text class="section-title">已参加的活动</text>
+<!-- 游客状态提示 -->
+<view wx:if="{{!isLoggedIn}}" class="guest-container">
+  <view class="guest-content">
+    <view class="guest-icon">📊</view>
+    <text class="guest-title">统计数据</text>
+    <text class="guest-desc">登录后查看您的活动统计数据</text>
+    <view class="guest-features">
+      <view class="guest-feature-item">
+        <text class="guest-feature-icon">📅</text>
+        <text class="guest-feature-text">查看参加活动记录</text>
+      </view>
+      <view class="guest-feature-item">
+        <text class="guest-feature-icon">✅</text>
+        <text class="guest-feature-text">查看签到统计</text>
+      </view>
+      <view class="guest-feature-item">
+        <text class="guest-feature-icon">🎉</text>
+        <text class="guest-feature-text">查看创建活动数据</text>
+      </view>
+    </view>
+    <view class="guest-login-btn" bindtap="goLogin">
+      <text class="guest-login-icon">🔐</text>
+      <text class="guest-login-text">立即登录</text>
     </view>
   </view>
+</view>
 
-  <!-- 基础统计卡片 -->
-  <view class="stats-grid">
-    <block wx:for="{{joinedStats}}" wx:key="label" wx:for-item="stat">
-      <view class="stat-card {{stat.value === 0 || stat.value === '0' ? 'stat-card--empty' : ''}}">
-        <view class="stat-icon" style="background: {{stat.bg}}; color: {{stat.color}};">{{stat.icon}}</view>
-        <text class="stat-value">{{stat.value}}</text>
-        <text class="stat-label">{{stat.label}}</text>
-      </view>
+<!-- 已登录状态显示统计数据 -->
+<block wx:else>
+  <!-- 时间筛选器 -->
+  <view class="filter-strip">
+    <block wx:for="{{ranges}}" wx:key="key" wx:for-item="item">
+      <view class="pill {{item.active ? 'pill--primary' : ''}}" bindtap="onRangeTap" data-key="{{item.key}}">{{item.label}}</view>
     </block>
   </view>
 
-  <!-- 空状态提示 -->
-  <view wx:if="{{joinedStats[0].value === 0}}" class="section-tip">
-    <text class="tip-text">✨ 开始参加活动，记录你的精彩瞬间</text>
-  </view>
-  <view wx:elif="{{joinedStats[0].value > 0 && joinedStats[0].value < 3}}" class="section-tip">
-    <text class="tip-text">🎯 再接再厉！多参加活动，积累更多经历</text>
-  </view>
-
-  <!-- 操作按钮 -->
-  <view class="action-buttons">
-    <view class="btn btn--secondary" bindtap="goToJoinedList">
-      <text class="btn-icon">📋</text>
-      <text class="btn-text">活动列表</text>
-    </view>
-    <view class="btn btn--primary" bindtap="goToJoinedDetail">
-      <text class="btn-icon">📊</text>
-      <text class="btn-text">统计详情</text>
-    </view>
-  </view>
-</view>
-
-<!-- 已创建的活动 -->
-<view class="section">
-  <view class="section-header">
-    <view class="header-left">
-      <text class="section-icon">🎯</text>
-      <text class="section-title">已创建的活动</text>
-    </view>
-  </view>
-
-  <!-- 基础统计卡片 -->
-  <view class="stats-grid">
-    <block wx:for="{{createdStats}}" wx:key="label" wx:for-item="stat">
-      <view class="stat-card {{stat.value === 0 || stat.value === '0' ? 'stat-card--empty' : ''}}">
-        <view class="stat-icon" style="background: {{stat.bg}}; color: {{stat.color}};">{{stat.icon}}</view>
-        <text class="stat-value">{{stat.value}}</text>
-        <text class="stat-label">{{stat.label}}</text>
+  <!-- 已参加的活动 -->
+  <view class="section">
+    <view class="section-header">
+      <view class="header-left">
+        <text class="section-icon">👤</text>
+        <text class="section-title">已参加的活动</text>
       </view>
-    </block>
-  </view>
-
-  <!-- 空状态提示 -->
-  <view wx:if="{{createdStats[0].value === 0}}" class="section-tip">
-    <text class="tip-text">🎉 创建你的第一个活动，邀请朋友一起玩</text>
-  </view>
-  <view wx:elif="{{createdStats[0].value > 0 && createdStats[0].value < 3}}" class="section-tip">
-    <text class="tip-text">💪 继续加油！创建更多精彩活动</text>
-  </view>
-
-  <!-- 操作按钮 -->
-  <view class="action-buttons">
-    <view class="btn btn--secondary" bindtap="goToCreatedList">
-      <text class="btn-icon">📋</text>
-      <text class="btn-text">活动列表</text>
     </view>
-    <view class="btn btn--primary" bindtap="goToCreatedDetail">
-      <text class="btn-icon">📊</text>
-      <text class="btn-text">统计详情</text>
+
+    <!-- 基础统计卡片 -->
+    <view class="stats-grid">
+      <block wx:for="{{joinedStats}}" wx:key="label" wx:for-item="stat">
+        <view class="stat-card {{stat.value === 0 || stat.value === '0' ? 'stat-card--empty' : ''}}">
+          <view class="stat-icon" style="background: {{stat.bg}}; color: {{stat.color}};">{{stat.icon}}</view>
+          <text class="stat-value">{{stat.value}}</text>
+          <text class="stat-label">{{stat.label}}</text>
+        </view>
+      </block>
+    </view>
+
+    <!-- 空状态提示 -->
+    <view wx:if="{{joinedStats[0].value === 0}}" class="section-tip">
+      <text class="tip-text">✨ 开始参加活动，记录你的精彩瞬间</text>
+    </view>
+    <view wx:elif="{{joinedStats[0].value > 0 && joinedStats[0].value < 3}}" class="section-tip">
+      <text class="tip-text">🎯 再接再厉！多参加活动，积累更多经历</text>
+    </view>
+
+    <!-- 操作按钮 -->
+    <view class="action-buttons">
+      <view class="btn btn--secondary" bindtap="goToJoinedList">
+        <text class="btn-icon">📋</text>
+        <text class="btn-text">活动列表</text>
+      </view>
+      <view class="btn btn--primary" bindtap="goToJoinedDetail">
+        <text class="btn-icon">📊</text>
+        <text class="btn-text">统计详情</text>
+      </view>
     </view>
   </view>
-</view>
 
-<view class="bottom-space"></view>
+  <!-- 已创建的活动 -->
+  <view class="section">
+    <view class="section-header">
+      <view class="header-left">
+        <text class="section-icon">🎯</text>
+        <text class="section-title">已创建的活动</text>
+      </view>
+    </view>
+
+    <!-- 基础统计卡片 -->
+    <view class="stats-grid">
+      <block wx:for="{{createdStats}}" wx:key="label" wx:for-item="stat">
+        <view class="stat-card {{stat.value === 0 || stat.value === '0' ? 'stat-card--empty' : ''}}">
+          <view class="stat-icon" style="background: {{stat.bg}}; color: {{stat.color}};">{{stat.icon}}</view>
+          <text class="stat-value">{{stat.value}}</text>
+          <text class="stat-label">{{stat.label}}</text>
+        </view>
+      </block>
+    </view>
+
+    <!-- 空状态提示 -->
+    <view wx:if="{{createdStats[0].value === 0}}" class="section-tip">
+      <text class="tip-text">🎉 创建你的第一个活动，邀请朋友一起玩</text>
+    </view>
+    <view wx:elif="{{createdStats[0].value > 0 && createdStats[0].value < 3}}" class="section-tip">
+      <text class="tip-text">💪 继续加油！创建更多精彩活动</text>
+    </view>
+
+    <!-- 操作按钮 -->
+    <view class="action-buttons">
+      <view class="btn btn--secondary" bindtap="goToCreatedList">
+        <text class="btn-icon">📋</text>
+        <text class="btn-text">活动列表</text>
+      </view>
+      <view class="btn btn--primary" bindtap="goToCreatedDetail">
+        <text class="btn-icon">📊</text>
+        <text class="btn-text">统计详情</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="bottom-space"></view>
+</block>

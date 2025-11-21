@@ -6,10 +6,17 @@
       <view class="flex-col">
         <text class="text-xl text-gray-800">{{user.name}}</text>
         <text class="text-sm text-gray-500">{{user.role}}</text>
-        <text class="text-xs text-gray-400">ID: {{user.id}}</text>
+        <text wx:if="{{user.id}}" class="text-xs text-gray-400">ID: {{user.id}}</text>
       </view>
     </view>
-    <text class="profile-desc text-sm text-gray-600">{{user.tagline}}</text>
+    <text wx:if="{{user.tagline}}" class="profile-desc text-sm text-gray-600">{{user.tagline}}</text>
+
+    <!-- 游客状态登录按钮 -->
+    <view wx:if="{{user.name === '游客'}}" class="login-prompt-btn" bindtap="goLogin">
+      <view class="login-prompt-icon">🔐</view>
+      <text class="login-prompt-text">立即登录，体验完整功能</text>
+      <view class="login-prompt-arrow">→</view>
+    </view>
   </view>
 </view>
 
@@ -43,13 +50,13 @@
 </view>
 
 <view class="section">
-  <view class="logout-btn" bindtap="logout">退出登录</view>
+  <!-- 已登录显示退出登录，游客状态隐藏 -->
+  <view wx:if="{{user.name !== '游客'}}" class="logout-btn" bindtap="logout">退出登录</view>
 </view>
 
 <!-- 帮助与反馈弹窗 -->
-<view class="feedback-modal" wx:if="{{showFeedbackModal}}">
-  <view class="feedback-mask" bindtap="closeFeedbackModal"></view>
-  <view class="feedback-content">
+<view wx:if="{{showFeedbackModal}}" class="feedback-modal" bindtap="closeFeedbackModal">
+  <view class="feedback-content" catchtap>
     <view class="feedback-header">
       <text class="feedback-title">帮助与反馈</text>
       <view class="feedback-close" bindtap="closeFeedbackModal">✕</view>
@@ -60,17 +67,20 @@
       <textarea
         class="feedback-textarea"
         placeholder="请输入您的反馈内容..."
+        placeholder-class="textarea-placeholder"
         maxlength="1000"
         value="{{feedbackContent}}"
         bindinput="onFeedbackInput"
         auto-height
+        show-confirm-bar="{{false}}"
+        cursor-spacing="20"
       />
       <text class="feedback-counter">{{feedbackCount}}/1000</text>
     </view>
 
     <view class="feedback-footer">
-      <view class="feedback-btn feedback-btn--cancel" bindtap="closeFeedbackModal">取消</view>
-      <view class="feedback-btn feedback-btn--submit" bindtap="submitFeedback">确定</view>
+      <button class="feedback-btn feedback-btn--cancel" bindtap="closeFeedbackModal">取消</button>
+      <button class="feedback-btn feedback-btn--submit" bindtap="submitFeedback">提交</button>
     </view>
   </view>
 </view>

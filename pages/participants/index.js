@@ -1,5 +1,5 @@
 // pages/participants/index.js
-const { activities, participants, registrations } = require('../../utils/mock.js');
+const { registrationAPI } = require('../../utils/api.js');
 const { getAvatarColor, getNameInitial } = require('../../utils/formatter.js');
 
 Page({
@@ -9,7 +9,8 @@ Page({
     groupId: null,
     groupName: '',
     members: [],
-    hasGroup: false
+    hasGroup: false,
+    loading: true
   },
 
   onLoad(options) {
@@ -36,7 +37,7 @@ Page({
   },
 
   // 加载参与成员列表
-  loadMembers() {
+  async loadMembers() {
     const { activityId, groupId } = this.data;
 
     if (!activityId) {
@@ -44,46 +45,82 @@ Page({
       return;
     }
 
-    // 获取参与者列表
-    let activityRegs = registrations.filter(r => {
-      if (r.activityId !== activityId || r.status !== 'approved') return false;
-      // 如果有分组，只显示该分组的参与者
-      if (groupId) {
-        return r.groupId === groupId;
+    try {
+      wx.showLoading({ title: '加载中...' });
+      this.setData({ loading: true });
+
+      // 从后端API获取该活动的报名记录
+      const registrationsResult = await registrationAPI.getByActivity(activityId, {
+        page: 0,
+        size: 1000 // 获取所有报名记录
+      });
+
+      if (registrationsResult.code !== 0) {
+        throw new Error(registrationsResult.message || '获取报名记录失败');
       }
-      return true;
-    });
 
-    console.log('找到的报名记录:', activityRegs.length);
+      const allRegistrations = registrationsResult.data.content || registrationsResult.data || [];
 
-    const members = activityRegs.map(reg => {
-      const user = participants.find(p => p.id === reg.userId);
-      const name = reg.name || user?.name || '未知用户';
+      console.log('API返回的所有报名记录数量:', allRegistrations.length);
 
-      return {
-        id: reg.userId,
-        name: name,
-        avatar: user?.avatar || `/activityassistant_avatar_0${Math.floor(Math.random() * 4) + 1}.png`,
-        initial: getNameInitial(name),
-        bgColor: getAvatarColor(name),
-        registeredAt: reg.registeredAt,
-        groupId: reg.groupId
-      };
-    });
+      // 筛选已通过的报名记录
+      let activityRegs = allRegistrations.filter(r => {
+        if (r.status !== 'approved') return false;
+        // 如果有分组，只显示该分组的参与者
+        if (groupId) {
+          return r.groupId === groupId;
+        }
+        return true;
+      });
 
-    this.setData({ members });
+      console.log('筛选后的已通过报名记录数量:', activityRegs.length);
 
-    if (members.length === 0) {
-      wx.showToast({ title: '暂无参与者', icon: 'none' });
+      const members = activityRegs.map(reg => {
+        const name = reg.name || '未知用户';
+
+        return {
+          id: reg.userId,
+          name: name,
+          avatar: `/activityassistant_avatar_0${Math.floor(Math.random() * 4) + 1}.png`,
+          initial: getNameInitial(name),
+          bgColor: getAvatarColor(name),
+          registeredAt: reg.registeredAt || reg.createdAt,
+          groupId: reg.groupId
+        };
+      });
+
+      this.setData({
+        members,
+        loading: false
+      });
+
+      wx.hideLoading();
+
+      if (members.length === 0) {
+        wx.showToast({ title: '暂无参与者', icon: 'none' });
+      }
+    } catch (err) {
+      wx.hideLoading();
+      console.error('加载参与者列表失败:', err);
+      this.setData({ loading: false });
+      wx.showToast({
+        title: err.message || '加载失败',
+        icon: 'none',
+        duration: 2000
+      });
     }
   },
 
   // 返回
   goBack() {
-    if (getCurrentPages().length > 1) {
+    const pages = getCurrentPages();
+
+    if (pages.length > 1) {
+      // 有上一页，返回上一页
       wx.navigateBack({ delta: 1 });
     } else {
-      wx.switchTab({ url: '/pages/home/index' });
+      // 没有上一页，跳转到活动列表
+      wx.switchTab({ url: '/pages/activities/list' });
     }
   },
 

@@ -1,5 +1,5 @@
 // pages/checkin/index.js
-const { activities, registrations, checkinRecords } = require('../../utils/mock.js');
+const { activityAPI } = require('../../utils/api.js');
 const { checkinAPI } = require('../../utils/api.js');
 const { validateCheckinLocation, formatDistance } = require('../../utils/location.js');
 const { isInCheckinWindow, isLate, formatDateTime } = require('../../utils/datetime.js');
@@ -48,16 +48,13 @@ Page({
         content: '签到需要登录，请先登录后再试',
         confirmText: '去登录',
         cancelText: '返回',
+        confirmColor: '#3b82f6',
         success: (res) => {
           if (res.confirm) {
-            wx.showToast({
-              title: '请退出小程序重新进入',
-              icon: 'none',
-              duration: 3000
+            // 直接跳转到登录页面
+            wx.navigateTo({
+              url: '/pages/auth/login'
             });
-            setTimeout(() => {
-              wx.navigateBack();
-            }, 3000);
           } else {
             wx.navigateBack();
           }
@@ -83,40 +80,24 @@ Page({
   // 加载活动信息
   async loadActivity(activityId) {
     try {
-      // 调试信息：打印活动ID和活动列表
-      console.log('正在查找活动 ID:', activityId);
-      console.log('活动列表数量:', activities.length);
-      console.log('活动列表ID:', activities.map(a => a.id));
+      console.log('正在加载活动详情 ID:', activityId);
+      wx.showLoading({ title: '加载中...' });
 
-      let activity = activities.find(a => a.id === activityId);
+      // 从后端API获取活动详情
+      const result = await activityAPI.getDetail(activityId);
 
-      // 如果严格匹配失败，尝试宽松匹配
-      if (!activity) {
-        console.warn('严格匹配失败，尝试宽松匹配...');
-        activity = activities.find(a => String(a.id).trim() === String(activityId).trim());
-      }
-
-      // 如果还是失败，尝试不区分大小写匹配
-      if (!activity) {
-        console.warn('宽松匹配失败，尝试不区分大小写匹配...');
-        activity = activities.find(a =>
-          String(a.id).trim().toLowerCase() === String(activityId).trim().toLowerCase()
-        );
-      }
-
-      if (!activity) {
-        console.error('所有匹配方式都失败了！');
-        console.error('查找的 ID:', activityId, '(类型:', typeof activityId, ')');
-        console.error('可用的活动 IDs:', activities.map(a => ({
-          id: a.id,
-          idType: typeof a.id,
-          title: a.title
-        })));
-        wx.showToast({ title: '活动不存在', icon: 'none' });
+      if (result.code !== 0 || !result.data) {
+        console.error('获取活动详情失败:', result.message || '未知错误');
+        wx.hideLoading();
+        wx.showToast({
+          title: result.message || '活动不存在',
+          icon: 'none'
+        });
         return;
       }
 
-      console.log('成功找到活动:', activity.title, '(匹配方式:', activity.id === activityId ? '严格' : '宽松', ')');
+      const activity = result.data;
+      console.log('成功加载活动:', activity.title);
 
       // 获取状态对应的CSS类名
       const activityStatusClass = this.getStatusClass(activity.status);
@@ -125,6 +106,8 @@ Page({
         activity,
         activityStatusClass
       });
+
+      wx.hideLoading();
 
       // 检查是否在签到时间窗口内
       const inWindow = isInCheckinWindow(activity.startTime, 30);
@@ -137,8 +120,12 @@ Page({
         checkinMessage: message
       });
     } catch (err) {
-      console.error('加载活动失败:', err);
-      wx.showToast({ title: '加载失败', icon: 'none' });
+      console.error('加载活动信息失败:', err);
+      wx.hideLoading();
+      wx.showToast({
+        title: '加载失败',
+        icon: 'error'
+      });
     }
   },
 
@@ -355,10 +342,14 @@ Page({
 
   // 返回
   goBack() {
-    if (getCurrentPages().length > 1) {
+    const pages = getCurrentPages();
+
+    if (pages.length > 1) {
+      // 有上一页，返回上一页
       wx.navigateBack({ delta: 1 });
     } else {
-      wx.switchTab({ url: '/pages/home/index' });
+      // 没有上一页，跳转到活动列表
+      wx.switchTab({ url: '/pages/activities/list' });
     }
   },
 

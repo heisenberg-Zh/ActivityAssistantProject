@@ -27,24 +27,20 @@ Page({
     try {
       wx.showLoading({ title: '加载中...' });
 
-      // 获取当前用户ID
-      const currentUserId = app.globalData.currentUserId || 'u1';
+      // ========== 【关键】检查登录状态 ==========
+      const isLoggedIn = app.checkLoginStatus();
+      const currentUserId = isLoggedIn ? (app.globalData.currentUserId || null) : null;
+      console.log('用户登录状态:', isLoggedIn, '当前用户ID:', currentUserId);
+      // ========== 登录状态检查结束 ==========
 
-      // 并行请求活动列表和我的报名记录
-      const [activitiesResult, registrationsResult] = await Promise.all([
-        activityAPI.getList({
-          status: 'published',  // 只显示已发布的活动
-          isPublic: true,       // 只显示公开活动
-          page: 0,
-          size: 50,
-          sort: 'startTime,asc'
-        }),
-        registrationAPI.getMyRegistrations({
-          status: 'approved',   // 只获取已通过的报名
-          page: 0,
-          size: 100
-        })
-      ]);
+      // 请求活动列表（所有人都可以看）
+      const activitiesResult = await activityAPI.getList({
+        status: 'published',  // 只显示已发布的活动
+        isPublic: true,       // 只显示公开活动
+        page: 0,
+        size: 50,
+        sort: 'startTime,asc'
+      });
 
       // 检查API响应
       if (activitiesResult.code !== 0) {
@@ -54,14 +50,28 @@ Page({
       // 获取活动列表（处理分页数据）
       const activities = activitiesResult.data.content || activitiesResult.data || [];
 
-      // 获取我的报名记录
-      const myRegistrations = registrationsResult.code === 0
-        ? (registrationsResult.data.content || registrationsResult.data || [])
-        : [];
+      // 获取我的报名记录（只有登录用户才请求）
+      let myRegistrations = [];
+      if (isLoggedIn && currentUserId) {
+        try {
+          const registrationsResult = await registrationAPI.getMyRegistrations({
+            status: 'approved',   // 只获取已通过的报名
+            page: 0,
+            size: 100
+          });
+          myRegistrations = registrationsResult.code === 0
+            ? (registrationsResult.data.content || registrationsResult.data || [])
+            : [];
+        } catch (err) {
+          console.warn('获取报名记录失败（可能未登录）:', err);
+          myRegistrations = [];
+        }
+      }
 
       // 为活动列表添加已报名状态，并翻译状态为中文
       const enrichedActivities = activities.map(activity => {
-        const isRegistered = myRegistrations.some(
+        // 只有登录用户才检查报名状态
+        const isRegistered = isLoggedIn && myRegistrations.some(
           r => r.activityId === activity.id && r.status === 'approved'
         );
         return {
@@ -99,10 +109,46 @@ Page({
   },
 
   goCreateActivity() {
+    // 检查是否已登录
+    if (!app.checkLoginStatus()) {
+      wx.showModal({
+        title: '需要登录',
+        content: '创建活动需要登录后才能使用，是否前往登录？',
+        confirmText: '去登录',
+        cancelText: '暂不',
+        confirmColor: '#3b82f6',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({
+              url: '/pages/auth/login'
+            });
+          }
+        }
+      });
+      return;
+    }
     wx.navigateTo({ url: '/pages/activities/create' });
   },
 
   goMyActivities() {
+    // 检查是否已登录
+    if (!app.checkLoginStatus()) {
+      wx.showModal({
+        title: '需要登录',
+        content: '查看我的活动需要登录后才能使用，是否前往登录？',
+        confirmText: '去登录',
+        cancelText: '暂不',
+        confirmColor: '#3b82f6',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({
+              url: '/pages/auth/login'
+            });
+          }
+        }
+      });
+      return;
+    }
     wx.navigateTo({ url: '/pages/my-activities/index' });
   },
 
@@ -112,6 +158,23 @@ Page({
   },
 
   goRegister(e) {
+    // 【优先级1】先检查登录状态
+    if (!app.checkLoginStatus()) {
+      wx.showModal({
+        title: '需要登录',
+        content: '报名活动需要登录后才能操作，是否前往登录？',
+        confirmText: '去登录',
+        cancelText: '暂不',
+        confirmColor: '#3b82f6',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({ url: '/pages/auth/login' });
+          }
+        }
+      });
+      return;
+    }
+
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({ url: `/pages/registration/index?id=${id}` });
   },

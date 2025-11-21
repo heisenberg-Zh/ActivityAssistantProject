@@ -1,5 +1,5 @@
 // pages/registration/index.js
-const { activities, registrations } = require('../../utils/mock.js');
+const { activityAPI } = require('../../utils/api.js');
 const { registrationAPI } = require('../../utils/api.js');
 const { validateRegistrationForm } = require('../../utils/validator.js');
 const { formatMobile, formatMoney, getAvatarColor } = require('../../utils/formatter.js');
@@ -55,6 +55,7 @@ Page({
     feeInfo: '',
     guidelines: [],
     participants: [],
+    allRegistrations: [], // 存储所有报名记录，用于分组筛选
     customFields: [], // 动态字段配置
     formData: {}, // 动态表单数据
     agree: false,
@@ -75,16 +76,13 @@ Page({
         content: '报名参加活动需要登录，请先登录后再试',
         confirmText: '去登录',
         cancelText: '返回',
+        confirmColor: '#3b82f6',
         success: (res) => {
           if (res.confirm) {
-            wx.showToast({
-              title: '请退出小程序重新进入',
-              icon: 'none',
-              duration: 3000
+            // 直接跳转到登录页面
+            wx.navigateTo({
+              url: '/pages/auth/login'
             });
-            setTimeout(() => {
-              wx.navigateBack();
-            }, 3000);
           } else {
             wx.navigateBack();
           }
@@ -105,7 +103,21 @@ Page({
   // 加载活动详情
   async loadActivityDetail(id) {
     try {
-      const detail = activities.find(item => item.id === id) || activities[0];
+      wx.showLoading({ title: '加载中...' });
+
+      // 从后端API获取活动详情
+      const result = await activityAPI.getDetail(id);
+
+      if (result.code !== 0 || !result.data) {
+        wx.hideLoading();
+        wx.showToast({
+          title: result.message || '活动不存在',
+          icon: 'none'
+        });
+        return;
+      }
+
+      const detail = result.data;
 
       // 计算报名截止时间
       const deadline = formatDateCN(detail.registerDeadline);
@@ -131,10 +143,20 @@ Page({
 
       // 检查当前用户是否已报名
       const currentUserId = getCurrentUserId();
-      const userRegs = registrations.filter(
-        r => r.activityId === id && r.userId === currentUserId && r.status !== 'cancelled'
+
+      // 从后端API获取该用户对此活动的报名记录
+      const userRegistrationsResult = await registrationAPI.getByActivity(id, { page: 0, size: 100 });
+      const allRegistrations = userRegistrationsResult.code === 0
+        ? (userRegistrationsResult.data.content || userRegistrationsResult.data || [])
+        : [];
+
+      const userRegs = allRegistrations.filter(
+        r => r.userId === currentUserId && r.status !== 'cancelled'
       );
       const isRegistered = userRegs.length > 0;
+
+      // 存储所有报名记录，用于后续筛选
+      const approvedRegs = allRegistrations.filter(r => r.status === 'approved');
 
       // 判断是否有分组
       const hasGroups = detail.hasGroups && detail.groups && detail.groups.length > 0;
@@ -157,6 +179,8 @@ Page({
         });
       }
 
+      wx.hideLoading();
+
       this.setData({
         id,
         detail,
@@ -166,6 +190,7 @@ Page({
         guidelines,
         isFull,
         isRegistered,
+        allRegistrations: approvedRegs, // 存储已审核通过的报名记录
         customFields,
         formData,
         showGroupSelection
@@ -184,9 +209,10 @@ Page({
   // 加载参与者列表
   async loadParticipants(id, groupId = null) {
     try {
+      const { allRegistrations } = this.data;
+
       // 如果指定了分组ID，只显示该分组的参与者
-      const activityRegs = registrations.filter(r => {
-        if (r.activityId !== id || r.status !== 'approved') return false;
+      const activityRegs = allRegistrations.filter(r => {
         // 如果有分组ID，只显示该分组的参与者
         if (groupId) {
           return r.groupId === groupId;
@@ -205,6 +231,7 @@ Page({
         groupId: reg.groupId
       }));
 
+      console.log(`加载参与者列表: 分组=${groupId || '全部'}, 人数=${participants.length}`);
       this.setData({ participants });
     } catch (err) {
       console.error('加载参与者列表失败:', err);
@@ -236,7 +263,7 @@ Page({
   // 选择分组
   selectGroup(e) {
     const groupId = e.currentTarget.dataset.groupId;
-    const { detail, id } = this.data;
+    const { detail, id, allRegistrations } = this.data;
 
     // 查找分组
     const group = detail.groups.find(g => g.id === groupId);
@@ -252,8 +279,8 @@ Page({
 
     // 检查当前用户是否已报名该分组
     const currentUserId = getCurrentUserId();
-    const userRegInGroup = registrations.find(
-      r => r.activityId === id && r.userId === currentUserId && r.groupId === groupId && r.status !== 'cancelled'
+    const userRegInGroup = allRegistrations.find(
+      r => r.userId === currentUserId && r.groupId === groupId
     );
     const isRegistered = !!userRegInGroup;
 
@@ -567,10 +594,12 @@ Page({
     }
 
     // 否则返回上一页
-    if (getCurrentPages().length > 1) {
+    const pages = getCurrentPages();
+    if (pages.length > 1) {
       wx.navigateBack({ delta: 1 });
     } else {
-      wx.switchTab({ url: '/pages/home/index' });
+      // 没有上一页，跳转到活动列表
+      wx.switchTab({ url: '/pages/activities/list' });
     }
   },
 

@@ -1,5 +1,5 @@
 // pages/activities/create.js
-const { activityAPI } = require('../../utils/api.js');
+const { activityAPI, registrationAPI } = require('../../utils/api.js');
 const { validateActivityForm } = require('../../utils/validator.js');
 const { formatDateTime } = require('../../utils/datetime.js');
 const { parseDate } = require('../../utils/date-helper.js');
@@ -1664,16 +1664,10 @@ Page({
         cancelText: '返回',
         success: (res) => {
           if (res.confirm) {
-            // 用户点击"去登录" - 跳转登录页（如果有登录页）
-            // 注意：目前小程序使用自动登录，这里可以尝试重新触发登录
-            wx.showToast({
-              title: '请退出小程序重新进入',
-              icon: 'none',
-              duration: 3000
+            // 直接跳转到登录页面
+            wx.navigateTo({
+              url: '/pages/auth/login'
             });
-            setTimeout(() => {
-              wx.switchTab({ url: '/pages/home/index' });
-            }, 3000);
           } else {
             // 用户点击"返回"
             wx.switchTab({ url: '/pages/home/index' });
