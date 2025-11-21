@@ -1,5 +1,5 @@
 // pages/my-activities/index.js
-const { activityAPI, registrationAPI } = require('../../utils/api.js');
+const { activityAPI, registrationAPI, reviewAPI } = require('../../utils/api.js');
 const { translateActivityStatus } = require('../../utils/formatter.js');
 const { isBeforeRegisterDeadline } = require('../../utils/datetime.js');
 const { checkManagementPermission } = require('../../utils/activity-management-helper.js');
@@ -25,17 +25,40 @@ Page({
     showReviewModal: false,
     currentActivityId: '',
     currentActivityTitle: '',
+    existingReviewId: null,  // 已有评价的ID（编辑模式）
     rating: 0,
     reviewText: '',
-    hoverRating: 0
+    hoverRating: 0,
+    // 登录状态标识
+    isLoggedIn: false
   },
 
   onLoad() {
-    this.loadActivities();
+    this.checkAndLoadData();
   },
 
   onShow() {
-    this.loadActivities();
+    this.checkAndLoadData();
+  },
+
+  /**
+   * 检查登录状态并加载数据
+   */
+  checkAndLoadData() {
+    const isLoggedIn = app.checkLoginStatus();
+    this.setData({ isLoggedIn });
+
+    if (!isLoggedIn) {
+      // 游客模式：显示游客提示，不加载数据
+      console.log('👤 游客模式：我的活动页面显示游客状态');
+      this.setData({
+        list: [],
+        display: []
+      });
+    } else {
+      // 已登录：加载活动数据
+      this.loadActivities();
+    }
   },
 
   // 加载活动数据
@@ -74,12 +97,19 @@ Page({
 
       // 获取我创建的活动，并翻译状态
       const createdActivities = myActivitiesResult.code === 0
-        ? (myActivitiesResult.data.content || myActivitiesResult.data || []).map(a => ({
-            ...a,
-            status: translateActivityStatus(a.status), // 翻译英文状态为中文
-            role: '我创建的',
-            actions: this.getActionsForActivity(a, 'created')
-          }))
+        ? (myActivitiesResult.data.content || myActivitiesResult.data || []).map(a => {
+            // 【关键修复】先翻译状态，再传入 getActionsForActivity
+            const translatedActivity = {
+              ...a,
+              status: translateActivityStatus(a.status) // 翻译英文状态为中文
+            };
+
+            return {
+              ...translatedActivity,
+              role: '我创建的',
+              actions: this.getActionsForActivity(translatedActivity, 'created') // ✅ 传入翻译后的数据
+            };
+          })
         : [];
 
       // 获取我参加的活动
@@ -94,11 +124,16 @@ Page({
           try {
             const activityResult = await activityAPI.getDetail(reg.activityId);
             if (activityResult.code === 0 && activityResult.data) {
-              return {
+              // 【关键修复】先构建包含翻译后状态的活动对象
+              const translatedActivity = {
                 ...activityResult.data,
-                status: translateActivityStatus(activityResult.data.status), // 翻译英文状态为中文
+                status: translateActivityStatus(activityResult.data.status) // 翻译英文状态为中文
+              };
+
+              return {
+                ...translatedActivity,
                 role: '我参加的',
-                actions: this.getActionsForActivity(activityResult.data, 'joined')
+                actions: this.getActionsForActivity(translatedActivity, 'joined') // ✅ 传入翻译后的数据
               };
             }
           } catch (err) {
@@ -136,6 +171,9 @@ Page({
   getActionsForActivity(activity, role) {
     const actions = [];
 
+    // 【调试日志】打印活动状态，便于排查问题
+    console.log(`[getActionsForActivity] 活动: ${activity.title}, 状态: ${activity.status}, 角色: ${role}`);
+
     if (role === 'created') {
       // 我创建的活动
       if (activity.status === 'scheduled' || activity.status === '预发布') {
@@ -150,8 +188,8 @@ Page({
         actions.push({ label: '编辑', action: 'edit', type: 'primary' });
         actions.push({ label: '详情', action: 'detail', type: 'secondary' });
       } else {
-        // 已结束等其他状态 - 显示查看统计
-        actions.push({ label: '查看统计', action: 'stats', type: 'primary' });
+        // 已结束等其他状态 - 显示管理
+        actions.push({ label: '管理', action: 'manage', type: 'primary' });
         actions.push({ label: '详情', action: 'detail', type: 'secondary' });
       }
       // 所有创建的活动都可以复制
@@ -163,24 +201,29 @@ Page({
         actions.push({ label: '管理', action: 'manage', type: 'primary' });
         actions.push({ label: '详情', action: 'detail', type: 'secondary' });
       } else {
-        // 已结束等其他状态 - 显示查看统计
-        actions.push({ label: '查看统计', action: 'stats', type: 'primary' });
+        // 已结束等其他状态 - 显示管理
+        actions.push({ label: '管理', action: 'manage', type: 'primary' });
         actions.push({ label: '详情', action: 'detail', type: 'secondary' });
       }
       // 管理的活动也可以复制
       actions.push({ label: '复制', action: 'copy', type: 'secondary' });
     } else if (role === 'joined') {
-      // 我参加的活动 - 不显示查看统计按钮
+      // 我参加的活动
       if (activity.status === '进行中') {
+        // 进行中的活动：显示签到按钮
         actions.push({ label: '签到', action: 'checkin', type: 'primary' });
         actions.push({ label: '详情', action: 'detail', type: 'secondary' });
       } else if (activity.status === '即将开始') {
+        // 即将开始的活动：可以取消报名
         actions.push({ label: '详情', action: 'detail', type: 'primary' });
         actions.push({ label: '取消报名', action: 'cancelRegistration', type: 'danger' });
-      } else {
-        // 已结束的活动 - 显示评价按钮，不显示查看统计
+      } else if (activity.status === '已结束') {
+        // 【关键优化】只有已结束的活动才显示评价按钮
         actions.push({ label: '评价', action: 'review', type: 'primary' });
         actions.push({ label: '详情', action: 'detail', type: 'secondary' });
+      } else {
+        // 其他状态（如"报名中"）：只显示详情按钮
+        actions.push({ label: '详情', action: 'detail', type: 'primary' });
       }
     }
 
@@ -223,10 +266,6 @@ Page({
       case 'deleteDraft':
         // 删除草稿
         this.deleteDraft(id);
-        break;
-      case 'stats':
-        // 跳转到活动管理页面查看统计
-        wx.navigateTo({ url: `/pages/management/index?id=${id}` });
         break;
       case 'manage':
         // 跳转到管理页面
@@ -342,6 +381,23 @@ Page({
 
   // 删除草稿
   deleteDraft(draftId) {
+    // 【优先级1】先检查登录状态（双重保护）
+    if (!app.checkLoginStatus()) {
+      wx.showModal({
+        title: '需要登录',
+        content: '删除草稿需要登录后才能操作，是否前往登录？',
+        confirmText: '去登录',
+        cancelText: '暂不',
+        confirmColor: '#3b82f6',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({ url: '/pages/auth/login' });
+          }
+        }
+      });
+      return;
+    }
+
     wx.showModal({
       title: '确认删除',
       content: '确定要删除这个草稿吗？',
@@ -374,6 +430,23 @@ Page({
 
   // 取消报名
   cancelRegistration(id) {
+    // 【优先级1】先检查登录状态
+    if (!app.checkLoginStatus()) {
+      wx.showModal({
+        title: '需要登录',
+        content: '取消报名需要登录后才能操作，是否前往登录？',
+        confirmText: '去登录',
+        cancelText: '暂不',
+        confirmColor: '#3b82f6',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({ url: '/pages/auth/login' });
+          }
+        }
+      });
+      return;
+    }
+
     // 找到对应的活动（id 是原始活动ID）
     const activity = this.data.display.find(item => item.id === id);
     if (!activity) {
@@ -383,7 +456,7 @@ Page({
 
     console.log('取消报名的活动ID:', id, '活动信息:', activity);
 
-    // 校验报名截止时间
+    // 【优先级2】校验报名截止时间
     const deadlineCheck = isBeforeRegisterDeadline(activity.registerDeadline);
     if (!deadlineCheck.valid) {
       wx.showModal({
@@ -434,24 +507,68 @@ Page({
   },
 
   goBack() {
-    if (getCurrentPages().length > 1) {
+    const pages = getCurrentPages();
+
+    if (pages.length > 1) {
       wx.navigateBack({ delta: 1 });
+    } else {
+      // 没有上一页，跳转到"我的"页面
+      wx.switchTab({ url: '/pages/profile/index' });
     }
   },
 
   // 打开评价弹窗
-  openReviewModal(id) {
+  async openReviewModal(id) {
     const activity = this.data.display.find(item => item.id === id);
     if (!activity) return;
 
-    this.setData({
-      showReviewModal: true,
-      currentActivityId: id,
-      currentActivityTitle: activity.title,
-      rating: 0,
-      reviewText: '',
-      hoverRating: 0
-    });
+    // 检查是否已评价，如果已评价则加载已有评价数据
+    try {
+      const result = await reviewAPI.getMyReview(id);
+
+      if (result.code === 0 && result.data) {
+        // 已有评价，进入编辑模式
+        const existingReview = result.data;
+        this.setData({
+          showReviewModal: true,
+          currentActivityId: id,
+          currentActivityTitle: activity.title,
+          existingReviewId: existingReview.id,
+          rating: existingReview.rating || 0,
+          reviewText: existingReview.content || '',
+          hoverRating: 0
+        });
+
+        wx.showToast({
+          title: '您已评价过，可修改',
+          icon: 'none',
+          duration: 2000
+        });
+      } else {
+        // 首次评价
+        this.setData({
+          showReviewModal: true,
+          currentActivityId: id,
+          currentActivityTitle: activity.title,
+          existingReviewId: null,
+          rating: 0,
+          reviewText: '',
+          hoverRating: 0
+        });
+      }
+    } catch (err) {
+      console.error('获取已有评价失败:', err);
+      // 如果获取失败，默认为首次评价
+      this.setData({
+        showReviewModal: true,
+        currentActivityId: id,
+        currentActivityTitle: activity.title,
+        existingReviewId: null,
+        rating: 0,
+        reviewText: '',
+        hoverRating: 0
+      });
+    }
   },
 
   // 关闭评价弹窗
@@ -460,6 +577,7 @@ Page({
       showReviewModal: false,
       currentActivityId: '',
       currentActivityTitle: '',
+      existingReviewId: null,
       rating: 0,
       reviewText: '',
       hoverRating: 0
@@ -494,8 +612,8 @@ Page({
   },
 
   // 提交评价
-  submitReview() {
-    const { rating, reviewText, currentActivityId, currentActivityTitle } = this.data;
+  async submitReview() {
+    const { rating, reviewText, currentActivityId, existingReviewId } = this.data;
 
     // 验证评分
     if (rating === 0) {
@@ -509,27 +627,50 @@ Page({
       return;
     }
 
-    wx.showLoading({ title: '提交中...' });
+    try {
+      // 调用真实API提交评价
+      const requestData = {
+        activityId: currentActivityId,
+        rating: rating,
+        content: reviewText.trim() || null
+      };
 
-    // 模拟提交评价
-    setTimeout(() => {
-      wx.hideLoading();
+      const result = await reviewAPI.createOrUpdate(requestData);
+
+      if (result.code === 0) {
+        wx.showToast({
+          title: existingReviewId ? '评价已更新' : '评价成功',
+          icon: 'success',
+          duration: 2000
+        });
+
+        // 关闭弹窗
+        this.closeReviewModal();
+
+        console.log('评价提交成功:', result.data);
+      } else {
+        wx.showToast({
+          title: result.message || '提交失败',
+          icon: 'none',
+          duration: 2000
+        });
+      }
+    } catch (err) {
+      console.error('提交评价失败:', err);
       wx.showToast({
-        title: '评价成功',
-        icon: 'success',
+        title: err.message || '提交失败，请稍后重试',
+        icon: 'none',
         duration: 2000
       });
+    }
+  },
 
-      // 关闭弹窗
-      this.closeReviewModal();
-
-      // 这里可以调用后端API保存评价
-      console.log('提交评价:', {
-        activityId: currentActivityId,
-        activityTitle: currentActivityTitle,
-        rating,
-        review: reviewText.trim()
-      });
-    }, 1000);
+  /**
+   * 游客点击登录按钮
+   */
+  goLogin() {
+    wx.navigateTo({
+      url: '/pages/auth/login'
+    });
   }
 });

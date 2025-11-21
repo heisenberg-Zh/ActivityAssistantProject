@@ -1,5 +1,34 @@
 <!-- pages/my-activities/index.wxml -->
-<view class="page-container">
+
+<!-- 游客状态提示 -->
+<view wx:if="{{!isLoggedIn}}" class="guest-container">
+  <view class="guest-content">
+    <view class="guest-icon">📝</view>
+    <text class="guest-title">我的活动</text>
+    <text class="guest-desc">登录后查看和管理您的活动</text>
+    <view class="guest-features">
+      <view class="guest-feature-item">
+        <text class="guest-feature-icon">📅</text>
+        <text class="guest-feature-text">查看我创建的活动</text>
+      </view>
+      <view class="guest-feature-item">
+        <text class="guest-feature-icon">👥</text>
+        <text class="guest-feature-text">查看我参加的活动</text>
+      </view>
+      <view class="guest-feature-item">
+        <text class="guest-feature-icon">📋</text>
+        <text class="guest-feature-text">管理活动草稿</text>
+      </view>
+    </view>
+    <view class="guest-login-btn" bindtap="goLogin">
+      <text class="guest-login-icon">🔐</text>
+      <text class="guest-login-text">立即登录</text>
+    </view>
+  </view>
+</view>
+
+<!-- 已登录状态显示活动列表 -->
+<view wx:else class="page-container">
   <view class="filter-section">
     <scroll-view scroll-x class="filter-scroll-view" show-scrollbar="false">
       <view class="filter-tabs">

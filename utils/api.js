@@ -438,11 +438,75 @@ const statisticsAPI = {
   })
 };
 
+// 评价API
+const reviewAPI = {
+  // 创建或更新评价（显示loading）
+  createOrUpdate: (data) => request('/api/reviews', {
+    method: 'POST',
+    data,  // { activityId, rating, content }
+    showLoading: true,
+    loadingText: '提交中...',
+    retryCount: 1
+  }),
+
+  // 更新评价
+  update: (reviewId, data) => request(`/api/reviews/${reviewId}`, {
+    method: 'PUT',
+    data,  // { rating, content }
+    showLoading: true,
+    loadingText: '更新中...'
+  }),
+
+  // 删除评价
+  delete: (reviewId) => request(`/api/reviews/${reviewId}`, {
+    method: 'DELETE',
+    showLoading: true,
+    loadingText: '删除中...'
+  }),
+
+  // 获取我的评价
+  getMyReview: (activityId) => request('/api/reviews/my', {
+    method: 'GET',
+    data: { activityId },
+    useCache: false  // 评价数据实时性要求高，不缓存
+  }),
+
+  // 检查是否已评价
+  checkReviewed: (activityId) => request('/api/reviews/check', {
+    method: 'GET',
+    data: { activityId },
+    useCache: false
+  }),
+
+  // 获取活动评价列表（管理员）
+  getActivityReviews: (activityId, params = {}) => request(`/api/reviews/activity/${activityId}`, {
+    method: 'GET',
+    data: params,  // 支持 rating, sortBy, page, size 参数
+    useCache: false
+  }),
+
+  // 获取评价统计
+  getStatistics: (activityId) => request(`/api/reviews/activity/${activityId}/statistics`, {
+    method: 'GET',
+    useCache: true,
+    cacheMaxAge: 2 * 60 * 1000  // 缓存2分钟
+  }),
+
+  // 管理员删除评价
+  deleteByAdmin: (reviewId, deleteReason) => request(`/api/reviews/${reviewId}/admin`, {
+    method: 'DELETE',
+    data: { deleteReason },
+    showLoading: true,
+    loadingText: '删除中...'
+  })
+};
+
 module.exports = {
   request,
   activityAPI,
   registrationAPI,
   checkinAPI,
   userAPI,
-  statisticsAPI
+  statisticsAPI,
+  reviewAPI
 };

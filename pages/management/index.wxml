@@ -40,7 +40,7 @@
 
       <!-- 数据统计卡片组 -->
       <view class="stats-cards">
-        <view class="stat-card stat-card--primary">
+        <view class="stat-card stat-card--primary" bindtap="openUserListModal" data-type="total">
           <view class="stat-card-icon">👥</view>
           <view class="stat-card-info">
             <text class="stat-card-value">{{totalRegistrations}}</text>
@@ -48,7 +48,7 @@
           </view>
         </view>
 
-        <view class="stat-card stat-card--success">
+        <view class="stat-card stat-card--success" bindtap="openUserListModal" data-type="approved">
           <view class="stat-card-icon">✓</view>
           <view class="stat-card-info">
             <text class="stat-card-value">{{approvedCount}}</text>
@@ -56,7 +56,7 @@
           </view>
         </view>
 
-        <view class="stat-card stat-card--warning">
+        <view class="stat-card stat-card--warning" bindtap="openUserListModal" data-type="pending">
           <view class="stat-card-icon">⏳</view>
           <view class="stat-card-info">
             <text class="stat-card-value">{{pendingCount}}</text>
@@ -66,11 +66,33 @@
           <view wx:if="{{pendingCount > 0}}" class="stat-badge">{{pendingCount}}</view>
         </view>
 
-        <view class="stat-card stat-card--info">
+        <view class="stat-card stat-card--info" bindtap="openUserListModal" data-type="administrators">
           <view class="stat-card-icon">🛡️</view>
           <view class="stat-card-info">
             <text class="stat-card-value">{{administrators.length}}</text>
             <text class="stat-card-label">管理员</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 评价统计行（仅已结束活动显示） -->
+      <view wx:if="{{activity.status === '已结束' && reviewStatistics}}" class="review-stats-section">
+        <view class="review-stats-header">
+          <text class="review-stats-icon">⭐</text>
+          <text class="review-stats-title">活动评价</text>
+        </view>
+        <view class="review-stats-content">
+          <view class="review-stat-item">
+            <text class="review-stat-label">平均评分</text>
+            <view class="review-rating-display">
+              <text class="review-rating-value">{{reviewStatistics.averageRating || 0}}</text>
+              <text class="review-rating-suffix">/5.0</text>
+            </view>
+          </view>
+          <view class="review-stat-divider"></view>
+          <view class="review-stat-item">
+            <text class="review-stat-label">评价总数</text>
+            <text class="review-count-value">{{reviewStatistics.totalReviews || 0}}</text>
           </view>
         </view>
       </view>
@@ -94,6 +116,7 @@
           data-id="{{item.id}}"
           data-path="{{item.path}}"
           data-creator-only="{{item.creatorOnly}}"
+          data-available-when="{{item.availableWhen}}"
         >
           <view class="function-icon-wrapper">
             <text class="function-icon">{{item.icon}}</text>
@@ -110,4 +133,38 @@
 
     <view class="bottom-space"></view>
   </scroll-view>
+
+  <!-- 人员列表弹窗 -->
+  <view wx:if="{{showUserListModal}}" class="modal-overlay" bindtap="closeUserListModal">
+    <view class="modal-content" catchtap>
+      <view class="modal-header">
+        <text class="modal-title">{{modalTitle}}</text>
+        <view class="modal-close" bindtap="closeUserListModal">✕</view>
+      </view>
+
+      <scroll-view class="modal-body" scroll-y>
+        <view wx:if="{{userList.length === 0}}" class="empty-state">
+          <text class="empty-icon">📭</text>
+          <text class="empty-text">暂无数据</text>
+        </view>
+
+        <view wx:else class="user-list">
+          <view wx:for="{{userList}}" wx:key="id" class="user-item">
+            <view class="user-info">
+              <text class="user-name">{{item.name}}</text>
+              <text class="user-id">ID: {{item.id}}</text>
+            </view>
+            <view wx:if="{{item.role}}" class="user-role-tag">{{item.role}}</view>
+            <view wx:if="{{item.status}}" class="user-status-tag user-status-{{item.status}}">
+              {{item.status === 'approved' ? '已通过' : item.status === 'pending' ? '待审核' : '已拒绝'}}
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <view class="modal-footer">
+        <button class="modal-btn" bindtap="closeUserListModal">关闭</button>
+      </view>
+    </view>
+  </view>
 </view>

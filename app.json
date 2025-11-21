@@ -23,7 +23,8 @@
     "pages/management/administrators",
     "pages/management/whitelist",
     "pages/management/blacklist",
-    "pages/management/registrations"
+    "pages/management/registrations",
+    "pages/management/reviews"
   ],
   "window": {
     "navigationBarTitleText": "ActivityAssistant",
