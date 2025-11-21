@@ -1,5 +1,11 @@
 <!-- pages/auth/login.wxml -->
 <view class="login-container">
+  <!-- 返回按钮 -->
+  <view class="back-btn" bindtap="goBack">
+    <view class="back-icon">←</view>
+    <text class="back-text">返回</text>
+  </view>
+
   <view class="login-content">
     <!-- Logo区域 -->
     <view class="logo-section">
@@ -35,14 +41,19 @@
       </button>
 
       <!-- 微信授权登录 -->
-      <button class="login-btn" bindtap="handleLogin">
+      <button class="login-btn" bindtap="handleLogin" disabled="{{!canLogin}}">
         <view class="btn-content">
           <text class="wechat-icon">💬</text>
-          <text class="btn-text">微信授权登录</text>
+          <text class="btn-text">{{canLogin ? '微信授权登录' : '登录中...'}}</text>
         </view>
       </button>
 
       <text class="privacy-tips">登录即表示同意《隐私政策》和《用户协议》</text>
+
+      <!-- 温馨提示 -->
+      <view class="login-tip">
+        <text class="tip-text">💡 提示：如遇登录问题，可使用开发模式登录</text>
+      </view>
     </view>
   </view>
 

@@ -58,8 +58,8 @@ App({
     // 初始化用户信息
     this.initUserInfo();
 
-    // 自动登录（开发环境）
-    this.autoLogin();
+    // 后台静默检查登录状态（不自动登录，允许游客模式）
+    this.checkLoginStatus();
 
     // 检查定时任务
     this.checkScheduledTasks();
@@ -252,22 +252,22 @@ App({
       const response = await this.callLoginAPI(code);
 
       if (response.code === 0 && response.data) {
-        const { token, user } = response.data;
+        const { token, userInfo } = response.data;  // 修正：后端返回 userInfo 而不是 user
 
         // 保存token和用户信息
         wx.setStorageSync('token', token);
         wx.setStorageSync('isLoggedIn', true);
-        setSecureStorage('userInfo', user);
-        setSecureStorage('currentUser', user);
-        setSecureStorage('currentUserId', user.userId);
+        setSecureStorage('userInfo', userInfo);
+        setSecureStorage('currentUser', userInfo);
+        setSecureStorage('currentUserId', userInfo.id);  // 修正：后端返回 id 而不是 userId
 
         // 更新全局数据
         this.globalData.isLoggedIn = true;
-        this.globalData.currentUserId = user.userId;
-        this.globalData.currentUser = user;
-        this.globalData.userInfo = user;
+        this.globalData.currentUserId = userInfo.id;  // 修正：使用 id 而不是 userId
+        this.globalData.currentUser = userInfo;
+        this.globalData.userInfo = userInfo;
 
-        console.log('✅ 自动登录成功:', user.nickname || user.userId);
+        console.log('✅ 自动登录成功:', userInfo.nickname || userInfo.id);
       } else {
         console.warn('⚠️ 自动登录失败:', response.message);
       }
