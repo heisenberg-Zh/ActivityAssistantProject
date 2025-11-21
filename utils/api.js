@@ -541,6 +541,146 @@ const mockRequest = (url, method, data) => {
     };
   }
 
+  // 白名单管理相关接口（临时使用Mock模式）
+  // 获取活动白名单列表
+  if (url.match(/^\/api\/activities\/[^/]+\/whitelist$/) && method === 'GET') {
+    const activityId = url.split('/')[3];
+    const activity = activities.find(a => a.id === activityId);
+
+    if (!activity) {
+      return { code: -1, data: null, message: '活动不存在' };
+    }
+
+    // 返回白名单列表（包含用户详情）
+    const whitelist = (activity.whitelist || []).map(item => {
+      const user = participants.find(p => p.id === item.userId);
+      return {
+        ...item,
+        name: user?.name || '未知用户',
+        avatar: user?.avatar || ''
+      };
+    });
+
+    return { code: 0, data: whitelist, message: 'success' };
+  }
+
+  // 批量添加白名单
+  if (url.match(/^\/api\/activities\/[^/]+\/whitelist$/) && method === 'POST') {
+    const activityId = url.split('/')[3];
+    const { phones, userIds } = data;  // 支持按手机号或用户ID批量添加
+
+    const activity = activities.find(a => a.id === activityId);
+
+    if (!activity) {
+      return { code: -1, data: null, message: '活动不存在' };
+    }
+
+    // 初始化白名单数组
+    if (!activity.whitelist) {
+      activity.whitelist = [];
+    }
+
+    const now = new Date();
+    const addedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const addedBy = 'u1';  // TODO: 应该从当前用户获取
+
+    let addedCount = 0;
+
+    // 按手机号添加
+    if (phones && Array.isArray(phones)) {
+      phones.forEach(phone => {
+        // 检查是否已存在
+        const exists = activity.whitelist.some(w => w.phone === phone);
+        if (!exists) {
+          // 查找对应的用户ID
+          const user = participants.find(p => p.phone === phone || p.mobile === phone);
+          activity.whitelist.push({
+            phone,
+            userId: user?.id || null,
+            addedAt,
+            addedBy
+          });
+          addedCount++;
+        }
+      });
+    }
+
+    // 按用户ID添加
+    if (userIds && Array.isArray(userIds)) {
+      userIds.forEach(userId => {
+        // 检查是否已存在
+        const exists = activity.whitelist.some(w => w.userId === userId);
+        if (!exists) {
+          // 从participants获取用户信息
+          const user = participants.find(p => p.id === userId);
+          activity.whitelist.push({
+            phone: user?.phone || user?.mobile || '',
+            userId,
+            addedAt,
+            addedBy
+          });
+          addedCount++;
+        }
+      });
+    }
+
+    return {
+      code: 0,
+      data: { addedCount },
+      message: `成功添加 ${addedCount} 个条目`
+    };
+  }
+
+  // 移除白名单
+  if (url.match(/^\/api\/activities\/[^/]+\/whitelist\/[^/]+$/) && method === 'DELETE') {
+    const pathParts = url.split('/');
+    const activityId = pathParts[3];
+    const phone = decodeURIComponent(pathParts[5]);  // 手机号可能包含特殊字符，需要解码
+
+    const activity = activities.find(a => a.id === activityId);
+
+    if (!activity) {
+      return { code: -1, data: null, message: '活动不存在' };
+    }
+
+    if (!activity.whitelist) {
+      return { code: -1, data: null, message: '该条目不存在' };
+    }
+
+    // 移除白名单条目
+    const index = activity.whitelist.findIndex(w => w.phone === phone);
+    if (index === -1) {
+      return { code: -1, data: null, message: '该条目不存在' };
+    }
+
+    activity.whitelist.splice(index, 1);
+
+    return { code: 0, data: null, message: '移除成功' };
+  }
+
+  // 获取活动已报名用户列表（用于白名单选择）
+  if (url.match(/^\/api\/activities\/[^/]+\/registered-users$/) && method === 'GET') {
+    const activityId = url.split('/')[3];
+
+    // 获取活动的所有已通过审核的报名记录
+    const activityRegs = registrations.filter(r =>
+      r.activityId === activityId && r.status === 'approved'
+    );
+
+    // 映射为包含用户信息的格式
+    const registeredUsers = activityRegs.map(reg => {
+      const user = participants.find(p => p.id === reg.userId);
+      return {
+        userId: reg.userId,
+        name: reg.name,
+        mobile: reg.mobile || reg.phone || '',
+        avatar: user?.avatar || ''
+      };
+    });
+
+    return { code: 0, data: registeredUsers, message: 'success' };
+  }
+
   return { code: -1, data: null, message: '接口未实现' };
 };
 
@@ -925,6 +1065,42 @@ const administratorAPI = {
   })
 };
 
+// 白名单管理API（临时使用Mock模式，待后端实现后移除 mock: true）
+const whitelistAPI = {
+  // 获取活动白名单列表
+  getWhitelist: (activityId) => request(`/api/activities/${activityId}/whitelist`, {
+    method: 'GET',
+    useCache: false,
+    showLoading: false,
+    mock: true  // 临时启用Mock模式
+  }),
+
+  // 批量添加白名单（支持手机号或用户ID）
+  addBatch: (activityId, data) => request(`/api/activities/${activityId}/whitelist`, {
+    method: 'POST',
+    data,  // { phones: [...] } 或 { userIds: [...] }
+    showLoading: true,
+    loadingText: '添加中...',
+    mock: true  // 临时启用Mock模式
+  }),
+
+  // 移除白名单
+  remove: (activityId, phone) => request(`/api/activities/${activityId}/whitelist/${encodeURIComponent(phone)}`, {
+    method: 'DELETE',
+    showLoading: true,
+    loadingText: '移除中...',
+    mock: true  // 临时启用Mock模式
+  }),
+
+  // 获取活动已报名用户列表（用于选择添加）
+  getRegisteredUsers: (activityId) => request(`/api/activities/${activityId}/registered-users`, {
+    method: 'GET',
+    useCache: false,
+    showLoading: false,
+    mock: true  // 临时启用Mock模式
+  })
+};
+
 module.exports = {
   request,
   activityAPI,
@@ -935,5 +1111,6 @@ module.exports = {
   reviewAPI,
   favoriteAPI,
   messageAPI,
-  administratorAPI
+  administratorAPI,
+  whitelistAPI
 };
