@@ -21,6 +21,7 @@ Page({
     detail: {},
     organizer: {},
     members: [],
+    allRegistrations: [], // 存储所有报名记录，用于分组筛选
     progress: 0,
     feeInfo: '',
     statusInfo: {},
@@ -58,8 +59,13 @@ Page({
     try {
       wx.showLoading({ title: '加载中...' });
 
-      // 获取当前用户ID
-      const currentUserId = app.globalData.currentUserId || 'u1';
+      // ========== 【关键】检查登录状态 ==========
+      // 如果用户未登录，不应该使用默认的 'u1'，而应该使用 null
+      const isLoggedIn = app.checkLoginStatus();
+      const currentUserId = isLoggedIn ? (app.globalData.currentUserId || null) : null;
+
+      console.log('用户登录状态:', isLoggedIn, '当前用户ID:', currentUserId);
+      // ========== 登录状态检查结束 ==========
 
       // 并行请求活动详情和报名记录
       const [detailResult, registrationsResult] = await Promise.all([
@@ -83,11 +89,19 @@ Page({
       console.log('成功加载活动详情:', detail.title);
 
       // ========== 权限检查 ==========
+      // 获取当前用户的报名记录（从活动报名列表中筛选）
+      const allRegistrations = registrationsResult.code === 0
+        ? (registrationsResult.data.content || registrationsResult.data || [])
+        : [];
+      const currentUserRegistrations = allRegistrations.filter(r => r.userId === currentUserId);
+
+      console.log('当前用户的报名记录:', currentUserRegistrations);
+
       // 检查用户是否有权查看此活动（私密活动等）
       const permissionCheck = checkActivityViewPermission(
         detail,
         currentUserId,
-        [], // 后端已处理权限，这里简化处理
+        currentUserRegistrations, // 传入当前用户的报名记录
         this.data.fromShare
       );
 
@@ -132,10 +146,8 @@ Page({
         };
       }
 
-      // 获取参与者列表
-      const activityRegs = registrationsResult.code === 0
-        ? (registrationsResult.data.content || registrationsResult.data || []).filter(r => r.status === 'approved')
-        : [];
+      // 获取参与者列表（使用前面已获取的报名记录）
+      const activityRegs = allRegistrations.filter(r => r.status === 'approved');
 
       // 如果活动有分组，初始显示第一个分组的参与者
       const currentGroupId = detail.hasGroups && detail.groups && detail.groups.length > 0
@@ -152,6 +164,9 @@ Page({
         avatar: `/activityassistant_avatar_0${Math.floor(Math.random() * 4) + 1}.png`,
         groupId: reg.groupId
       }));
+
+      // 存储所有报名记录，用于分组切换时筛选
+      const allApprovedRegs = activityRegs;
 
       // 计算进度
       const progress = Math.min(100, Math.round((detail.joined / detail.total) * 100));
@@ -180,20 +195,30 @@ Page({
       const canCheckin = translatedStatus === '进行中' ||
         (Math.abs(now.getTime() - startTime.getTime()) <= 30 * 60 * 1000);
 
-      // 检查当前用户是否已报名（必须是审核通过的报名）
-      const isRegistered = activityRegs.some(r =>
-        r.userId === currentUserId &&
-        (r.status === 'approved' || r.status === 'pending')
-      );
+      // ========== 【关键】检查当前用户是否已报名 ==========
+      // 如果用户未登录，直接设置为 false，不检查报名记录
+      let isRegistered = false;
+      if (currentUserId) {
+        // 只有登录用户才检查是否已报名
+        isRegistered = activityRegs.some(r =>
+          r.userId === currentUserId &&
+          (r.status === 'approved' || r.status === 'pending')
+        );
+      }
+      console.log('是否已报名:', isRegistered, '(登录状态:', !!currentUserId, ')');
+      // ========== 报名状态检查结束 ==========
 
-      // 检查管理权限
-      const managementPermission = checkManagementPermission(detail, currentUserId);
+      // 检查管理权限（只有登录用户才能管理）
+      const managementPermission = currentUserId
+        ? checkManagementPermission(detail, currentUserId)
+        : { hasPermission: false, role: '' };
 
       // 判断是否可以查看联系方式
       // 规则：已报名且审核通过的用户、管理员、组织者都可以查看
-      const isOrganizer = currentUserId === detail.organizerId;
-      const isAdministrator = detail.administrators && detail.administrators.some(admin => admin.userId === currentUserId);
-      const canViewContact = isRegistered || isOrganizer || isAdministrator || managementPermission.hasPermission;
+      // 游客无法查看联系方式
+      const isOrganizer = currentUserId && currentUserId === detail.organizerId;
+      const isAdministrator = currentUserId && detail.administrators && detail.administrators.some(admin => admin.userId === currentUserId);
+      const canViewContact = currentUserId && (isRegistered || isOrganizer || isAdministrator || managementPermission.hasPermission);
 
       // 检查是否已收藏
       const favoriteIds = wx.getStorageSync('favoriteActivityIds') || [];
@@ -219,6 +244,7 @@ Page({
         detail: translatedDetail,
         organizer: organizerInfo,
         members,
+        allRegistrations: allApprovedRegs, // 存储所有已审核通过的报名记录
         progress,
         feeInfo,
         extra,
@@ -252,7 +278,7 @@ Page({
 
   // 根据分组更新参与成员列表
   updateMembersByGroup(groupIndex) {
-    const { detail, id } = this.data;
+    const { detail, allRegistrations } = this.data;
 
     if (!detail.hasGroups || !detail.groups || detail.groups.length === 0) {
       return;
@@ -261,23 +287,17 @@ Page({
     const currentGroup = detail.groups[groupIndex];
     if (!currentGroup) return;
 
-    // 获取该分组的参与者
-    const activityRegs = registrations.filter(r => {
-      return r.activityId === id &&
-             r.status === 'approved' &&
-             r.groupId === currentGroup.id;
-    });
+    // 从已存储的所有报名记录中筛选该分组的参与者
+    const filteredRegs = allRegistrations.filter(r => r.groupId === currentGroup.id);
 
-    const members = activityRegs.map(reg => {
-      const user = participants.find(p => p.id === reg.userId);
-      return {
-        id: reg.userId,
-        name: reg.name,
-        avatar: user?.avatar || `/activityassistant_avatar_0${Math.floor(Math.random() * 4) + 1}.png`,
-        groupId: reg.groupId
-      };
-    });
+    const members = filteredRegs.map(reg => ({
+      id: reg.userId,
+      name: reg.name,
+      avatar: `/activityassistant_avatar_0${Math.floor(Math.random() * 4) + 1}.png`,
+      groupId: reg.groupId
+    }));
 
+    console.log(`切换到分组: ${currentGroup.name}, 成员数: ${members.length}`);
     this.setData({ members });
   },
 
@@ -285,12 +305,30 @@ Page({
   goRegister() {
     const { id, canRegister, isRegistered, detail } = this.data;
 
+    // 【优先级1】先检查登录状态
+    if (!app.checkLoginStatus()) {
+      wx.showModal({
+        title: '需要登录',
+        content: '报名活动需要登录后才能操作，是否前往登录？',
+        confirmText: '去登录',
+        cancelText: '暂不',
+        confirmColor: '#3b82f6',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({ url: '/pages/auth/login' });
+          }
+        }
+      });
+      return;
+    }
+
+    // 【优先级2】检查是否已报名
     if (isRegistered) {
       wx.showToast({ title: '您已报名', icon: 'none' });
       return;
     }
 
-    // 校验报名截止时间
+    // 【优先级3】校验报名截止时间
     const deadlineCheck = isBeforeRegisterDeadline(detail.registerDeadline);
     if (!deadlineCheck.valid) {
       wx.showToast({
@@ -301,6 +339,7 @@ Page({
       return;
     }
 
+    // 【优先级4】检查是否满员
     if (!canRegister) {
       wx.showToast({ title: '活动已满员', icon: 'none' });
       return;
@@ -313,7 +352,24 @@ Page({
   cancelRegistration() {
     const { id, detail } = this.data;
 
-    // 校验报名截止时间
+    // 【优先级1】先检查登录状态
+    if (!app.checkLoginStatus()) {
+      wx.showModal({
+        title: '需要登录',
+        content: '取消报名需要登录后才能操作，是否前往登录？',
+        confirmText: '去登录',
+        cancelText: '暂不',
+        confirmColor: '#3b82f6',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({ url: '/pages/auth/login' });
+          }
+        }
+      });
+      return;
+    }
+
+    // 【优先级2】校验报名截止时间
     const deadlineCheck = isBeforeRegisterDeadline(detail.registerDeadline);
     if (!deadlineCheck.valid) {
       wx.showModal({
@@ -362,6 +418,24 @@ Page({
   goCheckin() {
     const { id, canCheckin } = this.data;
 
+    // 【优先级1】先检查登录状态
+    if (!app.checkLoginStatus()) {
+      wx.showModal({
+        title: '需要登录',
+        content: '签到功能需要登录后才能使用，是否前往登录？',
+        confirmText: '去登录',
+        cancelText: '暂不',
+        confirmColor: '#3b82f6',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({ url: '/pages/auth/login' });
+          }
+        }
+      });
+      return;
+    }
+
+    // 【优先级2】检查是否在签到时间范围内
     if (!canCheckin) {
       wx.showToast({ title: '不在签到时间范围内', icon: 'none' });
       return;
@@ -472,10 +546,15 @@ Page({
 
   // 返回
   goBack() {
-    if (getCurrentPages().length > 1) {
+    const pages = getCurrentPages();
+
+    if (pages.length > 1) {
+      // 有上一页，返回上一页
       wx.navigateBack({ delta: 1 });
     } else {
-      wx.switchTab({ url: '/pages/home/index' });
+      // 没有上一页（通过分享等方式直接进入），跳转到活动列表
+      // 优先跳转活动列表（因为是活动详情页），如果用户想回首页可以点击TabBar
+      wx.switchTab({ url: '/pages/activities/list' });
     }
   },
 
@@ -594,6 +673,23 @@ Page({
 
   // 切换收藏状态
   toggleFavorite() {
+    // 【优先级1】先检查登录状态
+    if (!app.checkLoginStatus()) {
+      wx.showModal({
+        title: '需要登录',
+        content: '收藏功能需要登录后才能使用，是否前往登录？',
+        confirmText: '去登录',
+        cancelText: '暂不',
+        confirmColor: '#3b82f6',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({ url: '/pages/auth/login' });
+          }
+        }
+      });
+      return;
+    }
+
     const { id, isFavorited } = this.data;
 
     // 获取收藏列表

@@ -1,6 +1,7 @@
 // pages/management/index.js
-const { activities, participants, registrations } = require('../../utils/mock.js');
-const { checkManagementPermission, getAdministratorsWithDetails } = require('../../utils/activity-management-helper.js');
+const { activityAPI, registrationAPI, reviewAPI } = require('../../utils/api.js');
+const { checkManagementPermission } = require('../../utils/activity-management-helper.js');
+const { translateActivityStatus } = require('../../utils/formatter.js');
 const app = getApp();
 
 Page({
@@ -16,6 +17,15 @@ Page({
     navBarHeight: 0,
     scrollHeight: 0,
 
+    // 评价统计（仅已结束活动显示）
+    reviewStatistics: null,  // { totalReviews, averageRating, ratingDistribution }
+
+    // 人员列表弹窗
+    showUserListModal: false,
+    modalTitle: '',
+    userList: [],
+    userListType: '', // 'total', 'approved', 'pending', 'administrators'
+
     // 功能菜单
     menuItems: [
       {
@@ -23,7 +33,8 @@ Page({
         icon: '✏️',
         title: '编辑活动',
         desc: '修改活动基本信息',
-        path: '/pages/activities/create'
+        path: '/pages/activities/create',
+        availableWhen: ['进行中', '即将开始', '报名中'] // 已结束的活动不可编辑
       },
       {
         id: 'administrators',
@@ -41,18 +52,28 @@ Page({
         path: '/pages/management/registrations'
       },
       {
+        id: 'reviews',
+        icon: '⭐',
+        title: '评价管理',
+        desc: '查看和管理活动评价',
+        path: '/pages/management/reviews',
+        availableWhen: ['已结束'] // 仅已结束的活动显示
+      },
+      {
         id: 'whitelist',
         icon: '✅',
         title: '白名单管理',
         desc: '设置自动通过审核的用户',
-        path: '/pages/management/whitelist'
+        path: '/pages/management/whitelist',
+        availableWhen: ['进行中', '即将开始', '报名中'] // 已结束的活动不需要白名单
       },
       {
         id: 'blacklist',
         icon: '🚫',
         title: '黑名单管理',
         desc: '禁止特定用户报名',
-        path: '/pages/management/blacklist'
+        path: '/pages/management/blacklist',
+        availableWhen: ['进行中', '即将开始', '报名中'] // 已结束的活动不需要黑名单
       }
     ]
   },
@@ -68,16 +89,13 @@ Page({
         content: '管理活动需要登录，请先登录后再试',
         confirmText: '去登录',
         cancelText: '返回',
+        confirmColor: '#3b82f6',
         success: (res) => {
           if (res.confirm) {
-            wx.showToast({
-              title: '请退出小程序重新进入',
-              icon: 'none',
-              duration: 3000
+            // 直接跳转到登录页面
+            wx.navigateTo({
+              url: '/pages/auth/login'
             });
-            setTimeout(() => {
-              wx.navigateBack();
-            }, 3000);
           } else {
             wx.navigateBack();
           }
@@ -116,68 +134,146 @@ Page({
   },
 
   // 加载活动数据
-  loadActivityData() {
-    wx.showLoading({ title: '加载中...' });
+  async loadActivityData() {
+    try {
+      wx.showLoading({ title: '加载中...' });
 
-    const { activityId } = this.data;
-    const currentUserId = app.globalData.currentUserId || 'u1';
+      const { activityId } = this.data;
+      const currentUserId = app.globalData.currentUserId || 'u1';
 
-    // 查找活动
-    const activity = activities.find(a => a.id === activityId);
+      // 从后端API获取活动详情
+      const detailResult = await activityAPI.getDetail(activityId);
 
-    if (!activity) {
-      wx.hideLoading();
-      wx.showToast({ title: '活动不存在', icon: 'none' });
-      setTimeout(() => wx.navigateBack(), 1500);
-      return;
-    }
+      if (detailResult.code !== 0) {
+        throw new Error(detailResult.message || '获取活动详情失败');
+      }
 
-    // 检查管理权限
-    const permission = checkManagementPermission(activity, currentUserId);
+      const activity = detailResult.data;
 
-    if (!permission.hasPermission) {
-      wx.hideLoading();
-      wx.showModal({
-        title: '无管理权限',
-        content: '您不是此活动的创建者或管理员，无法访问管理页面。',
-        showCancel: false,
-        success: () => {
-          wx.navigateBack();
-        }
+      if (!activity) {
+        wx.hideLoading();
+        wx.showToast({ title: '活动不存在', icon: 'none' });
+        setTimeout(() => wx.navigateBack(), 1500);
+        return;
+      }
+
+      // 【调试】打印权限检查相关信息
+      console.log('========== 管理权限检查 ==========');
+      console.log('活动ID:', activityId);
+      console.log('活动标题:', activity.title);
+      console.log('活动创建者ID (organizerId):', activity.organizerId);
+      console.log('当前用户ID (currentUserId):', currentUserId);
+      console.log('活动对象:', activity);
+      console.log('==================================');
+
+      // 检查管理权限
+      const permission = checkManagementPermission(activity, currentUserId);
+
+      console.log('权限检查结果:', permission);
+
+      if (!permission.hasPermission) {
+        wx.hideLoading();
+        console.error('权限检查失败！');
+        console.error('  - 活动创建者:', activity.organizerId);
+        console.error('  - 当前用户:', currentUserId);
+        console.error('  - 是否相等:', activity.organizerId === currentUserId);
+        console.error('  - organizerId类型:', typeof activity.organizerId);
+        console.error('  - currentUserId类型:', typeof currentUserId);
+
+        wx.showModal({
+          title: '无管理权限',
+          content: `您不是此活动的创建者或管理员，无法访问管理页面。\n\n调试信息：\n创建者ID: ${activity.organizerId}\n当前用户ID: ${currentUserId}`,
+          showCancel: false,
+          success: () => {
+            wx.navigateBack();
+          }
+        });
+        return;
+      }
+
+      // 获取活动的报名记录
+      const registrationsResult = await registrationAPI.getByActivity(activityId, {
+        page: 0,
+        size: 1000 // 获取所有报名记录
       });
-      return;
+
+      const allRegistrations = registrationsResult.code === 0
+        ? (registrationsResult.data.content || registrationsResult.data || [])
+        : [];
+
+      // 统计数据
+      const totalRegistrations = allRegistrations.length;
+      const approvedCount = allRegistrations.filter(r => r.status === 'approved').length;
+      const pendingCount = allRegistrations.filter(r => r.status === 'pending').length;
+
+      // 获取管理员列表（如果有）
+      const administrators = activity.administrators || [];
+
+      // 【关键修复】翻译活动状态为中文
+      const translatedActivity = {
+        ...activity,
+        status: translateActivityStatus(activity.status)
+      };
+
+      // 如果活动已结束，加载评价统计数据
+      let reviewStatistics = null;
+      if (translatedActivity.status === '已结束') {
+        try {
+          const reviewStatsResult = await reviewAPI.getStatistics(activityId);
+          if (reviewStatsResult.code === 0) {
+            reviewStatistics = reviewStatsResult.data;
+            console.log('评价统计数据:', reviewStatistics);
+          }
+        } catch (reviewErr) {
+          console.warn('获取评价统计失败:', reviewErr);
+          // 不影响主流程，继续执行
+        }
+      }
+
+      this.setData({
+        activity: translatedActivity,
+        hasPermission: true,
+        role: permission.role,
+        administrators,
+        totalRegistrations,
+        approvedCount,
+        pendingCount,
+        reviewStatistics,
+        loading: false
+      });
+
+      wx.hideLoading();
+    } catch (err) {
+      wx.hideLoading();
+      console.error('加载活动数据失败:', err);
+      wx.showToast({
+        title: err.message || '加载失败',
+        icon: 'none',
+        duration: 2000
+      });
+      setTimeout(() => wx.navigateBack(), 2000);
     }
-
-    // 获取管理员详情
-    const administrators = getAdministratorsWithDetails(activity, participants);
-
-    // 统计数据
-    const totalRegistrations = registrations.filter(r => r.activityId === activityId).length;
-    const approvedCount = registrations.filter(r => r.activityId === activityId && r.status === 'approved').length;
-    const pendingCount = registrations.filter(r => r.activityId === activityId && r.status === 'pending').length;
-
-    this.setData({
-      activity,
-      hasPermission: true,
-      role: permission.role,
-      administrators,
-      totalRegistrations,
-      approvedCount,
-      pendingCount,
-      loading: false
-    });
-
-    wx.hideLoading();
   },
 
   // 菜单项点击
   onMenuItemTap(e) {
-    const { id, path, creatorOnly } = e.currentTarget.dataset;
-    const { activityId, role } = this.data;
+    const { id, path, creatorOnly, availableWhen } = e.currentTarget.dataset;
+    const { activityId, role, activity } = this.data;
 
     // 检查是否仅创建者可访问
     if (creatorOnly && role !== 'creator') {
       wx.showToast({ title: '仅创建者可访问此功能', icon: 'none' });
+      return;
+    }
+
+    // 检查活动状态限制
+    if (availableWhen && !availableWhen.includes(activity.status)) {
+      wx.showModal({
+        title: '功能限制',
+        content: `此功能仅在活动状态为"${availableWhen.join('、')}"时可用。\n\n当前活动状态：${activity.status}`,
+        showCancel: false,
+        confirmText: '我知道了'
+      });
       return;
     }
 
@@ -194,6 +290,101 @@ Page({
 
   // 返回
   goBack() {
-    wx.navigateBack();
+    const pages = getCurrentPages();
+
+    if (pages.length > 1) {
+      wx.navigateBack({ delta: 1 });
+    } else {
+      // 没有上一页，跳转到活动列表
+      wx.switchTab({ url: '/pages/activities/list' });
+    }
+  },
+
+  // 打开人员列表弹窗
+  async openUserListModal(e) {
+    const type = e.currentTarget.dataset.type;
+    const { activityId } = this.data;
+
+    let title = '';
+    let userList = [];
+
+    try {
+      wx.showLoading({ title: '加载中...' });
+
+      // 获取报名记录
+      const registrationsResult = await registrationAPI.getByActivity(activityId, {
+        page: 0,
+        size: 1000
+      });
+
+      const allRegistrations = registrationsResult.code === 0
+        ? (registrationsResult.data.content || registrationsResult.data || [])
+        : [];
+
+      switch (type) {
+        case 'total':
+          title = '全部报名人员';
+          userList = allRegistrations.map(r => ({
+            id: r.userId,
+            name: r.name || r.userId,
+            status: r.status
+          }));
+          break;
+        case 'approved':
+          title = '已通过人员';
+          userList = allRegistrations
+            .filter(r => r.status === 'approved')
+            .map(r => ({
+              id: r.userId,
+              name: r.name || r.userId,
+              status: r.status
+            }));
+          break;
+        case 'pending':
+          title = '待审核人员';
+          userList = allRegistrations
+            .filter(r => r.status === 'pending')
+            .map(r => ({
+              id: r.userId,
+              name: r.name || r.userId,
+              status: r.status
+            }));
+          break;
+        case 'administrators':
+          title = '管理员列表';
+          userList = this.data.administrators.map(admin => ({
+            id: admin.userId,
+            name: admin.name || admin.userId,
+            role: admin.userId === this.data.activity.organizerId ? '创建者' : '管理员'
+          }));
+          break;
+      }
+
+      this.setData({
+        showUserListModal: true,
+        modalTitle: title,
+        userList,
+        userListType: type
+      });
+
+      wx.hideLoading();
+    } catch (err) {
+      wx.hideLoading();
+      console.error('加载人员列表失败:', err);
+      wx.showToast({
+        title: '加载失败',
+        icon: 'none'
+      });
+    }
+  },
+
+  // 关闭人员列表弹窗
+  closeUserListModal() {
+    this.setData({
+      showUserListModal: false,
+      modalTitle: '',
+      userList: [],
+      userListType: ''
+    });
   }
 });

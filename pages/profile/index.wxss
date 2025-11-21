@@ -29,6 +29,55 @@
   border: 1rpx solid #e5e7eb;
 }
 
+/* 游客登录提示按钮 */
+.login-prompt-btn {
+  margin-top: 16rpx;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border-radius: 20rpx;
+  padding: 24rpx 32rpx;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  box-shadow: 0 8rpx 24rpx rgba(59, 130, 246, 0.35);
+  transition: all 0.3s ease;
+}
+
+.login-prompt-btn:active {
+  transform: scale(0.98);
+  box-shadow: 0 4rpx 12rpx rgba(59, 130, 246, 0.25);
+}
+
+.login-prompt-icon {
+  font-size: 36rpx;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+.login-prompt-text {
+  flex: 1;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 1rpx;
+}
+
+.login-prompt-arrow {
+  font-size: 32rpx;
+  color: #ffffff;
+  font-weight: bold;
+  animation: slideRight 1.5s ease-in-out infinite;
+}
+
+@keyframes slideRight {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(8rpx); }
+}
+
+
 .section-title { display: block; font-size: 32rpx; font-weight: 600; color: #111827; margin-bottom: 16rpx; }
 
 .stats-card { padding: 24rpx; }
@@ -136,19 +185,13 @@
   left: 0;
   right: 0;
   bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
   z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.feedback-mask {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  padding: 40rpx;
+  box-sizing: border-box;
   animation: fadeIn 0.3s ease;
 }
 
@@ -158,14 +201,16 @@
 }
 
 .feedback-content {
-  position: relative;
-  width: 86%;
+  width: 100%;
   max-width: 600rpx;
   background: #ffffff;
   border-radius: 24rpx;
-  box-shadow: 0 12rpx 48rpx rgba(0, 0, 0, 0.2);
+  box-shadow: 0 12rpx 48rpx rgba(0, 0, 0, 0.3);
   animation: slideUp 0.3s ease;
-  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 @keyframes slideUp {
@@ -185,6 +230,7 @@
   justify-content: space-between;
   padding: 32rpx 32rpx 24rpx 32rpx;
   border-bottom: 1rpx solid #f3f4f6;
+  flex-shrink: 0;
 }
 
 .feedback-title {
@@ -203,6 +249,7 @@
   color: #9ca3af;
   border-radius: 50%;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .feedback-close:active {
@@ -212,7 +259,9 @@
 
 .feedback-body {
   padding: 24rpx 32rpx;
-  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .feedback-hint {
@@ -243,6 +292,11 @@
   border-color: #3b82f6;
 }
 
+.textarea-placeholder {
+  color: #9ca3af;
+  font-size: 28rpx;
+}
+
 .feedback-counter {
   display: block;
   text-align: right;
@@ -256,6 +310,7 @@
   gap: 16rpx;
   padding: 24rpx 32rpx 32rpx 32rpx;
   border-top: 1rpx solid #f3f4f6;
+  flex-shrink: 0;
 }
 
 .feedback-btn {
@@ -267,7 +322,14 @@
   border-radius: 16rpx;
   font-size: 28rpx;
   font-weight: 600;
+  border: none;
+  padding: 0;
+  line-height: 1;
   transition: all 0.2s ease;
+}
+
+.feedback-btn::after {
+  border: none; /* 移除 button 默认边框 */
 }
 
 .feedback-btn--cancel {
@@ -287,4 +349,5 @@
 
 .feedback-btn--submit:active {
   transform: scale(0.98);
+  box-shadow: 0 2rpx 8rpx rgba(59, 130, 246, 0.25);
 }

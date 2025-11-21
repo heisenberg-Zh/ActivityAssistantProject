@@ -1,5 +1,5 @@
 // pages/activities/create.js
-const { activityAPI } = require('../../utils/api.js');
+const { activityAPI, registrationAPI } = require('../../utils/api.js');
 const { validateActivityForm } = require('../../utils/validator.js');
 const { formatDateTime } = require('../../utils/datetime.js');
 const { parseDate } = require('../../utils/date-helper.js');
@@ -1664,16 +1664,10 @@ Page({
         cancelText: '返回',
         success: (res) => {
           if (res.confirm) {
-            // 用户点击"去登录" - 跳转登录页（如果有登录页）
-            // 注意：目前小程序使用自动登录，这里可以尝试重新触发登录
-            wx.showToast({
-              title: '请退出小程序重新进入',
-              icon: 'none',
-              duration: 3000
+            // 直接跳转到登录页面
+            wx.navigateTo({
+              url: '/pages/auth/login'
             });
-            setTimeout(() => {
-              wx.switchTab({ url: '/pages/home/index' });
-            }, 3000);
           } else {
             // 用户点击"返回"
             wx.switchTab({ url: '/pages/home/index' });
@@ -1725,38 +1719,56 @@ Page({
   },
 
   // 加载活动数据用于编辑
-  loadActivityForEdit(activityId) {
-    const currentUserId = app.globalData.currentUserId || 'u1';
+  async loadActivityForEdit(activityId) {
+    try {
+      wx.showLoading({ title: '加载中...' });
 
-    // 查找活动
-    const activity = activities.find(a => a.id === activityId);
+      const currentUserId = app.globalData.currentUserId || 'u1';
 
-    if (!activity) {
-      wx.showModal({
-        title: '活动不存在',
-        content: '未找到要编辑的活动',
-        showCancel: false,
-        success: () => wx.navigateBack()
+      // 从后端API获取活动详情
+      const detailResult = await activityAPI.getDetail(activityId);
+
+      if (detailResult.code !== 0) {
+        throw new Error(detailResult.message || '获取活动详情失败');
+      }
+
+      const activity = detailResult.data;
+
+      if (!activity) {
+        wx.hideLoading();
+        wx.showModal({
+          title: '活动不存在',
+          content: '未找到要编辑的活动',
+          showCancel: false,
+          success: () => wx.navigateBack()
+        });
+        return;
+      }
+
+      // 检查管理权限
+      const permission = checkManagementPermission(activity, currentUserId);
+
+      if (!permission.hasPermission) {
+        wx.hideLoading();
+        wx.showModal({
+          title: '无编辑权限',
+          content: '您不是此活动的创建者或管理员',
+          showCancel: false,
+          success: () => wx.navigateBack()
+        });
+        return;
+      }
+
+      // 获取当前报名数量
+      const registrationsResult = await registrationAPI.getByActivity(activityId, {
+        page: 0,
+        size: 1000
       });
-      return;
-    }
 
-    // 检查管理权限
-    const permission = checkManagementPermission(activity, currentUserId);
-
-    if (!permission.hasPermission) {
-      wx.showModal({
-        title: '无编辑权限',
-        content: '您不是此活动的创建者或管理员',
-        showCancel: false,
-        success: () => wx.navigateBack()
-      });
-      return;
-    }
-
-    // 获取当前报名数量
-    const currentRegs = registrations.filter(r => r.activityId === activityId && r.status === 'approved');
-    const currentRegistrations = currentRegs.length;
+      const allRegs = registrationsResult.code === 0
+        ? (registrationsResult.data.content || registrationsResult.data || [])
+        : [];
+      const currentRegistrations = allRegs.filter(r => r.status === 'approved').length;
 
     // 计算字段可编辑性
     const fieldEditability = {
@@ -1830,83 +1842,120 @@ Page({
       publishButtonText: '重新发布'
     });
 
-    // 标记所有步骤为已完成（因为是编辑现有活动）
-    const steps = this.data.steps.map(s => ({ ...s, completed: true }));
-    this.setData({ steps });
+      // 标记所有步骤为已完成（因为是编辑现有活动）
+      const steps = this.data.steps.map(s => ({ ...s, completed: true }));
+      this.setData({ steps });
 
-    this.checkCanPublish();
+      this.checkCanPublish();
+
+      wx.hideLoading();
+    } catch (err) {
+      wx.hideLoading();
+      console.error('加载活动数据失败:', err);
+      wx.showModal({
+        title: '加载失败',
+        content: err.message || '无法加载活动数据',
+        showCancel: false,
+        success: () => wx.navigateBack()
+      });
+    }
   },
 
   // 加载活动数据用于复制
-  loadActivityForCopy(activityId) {
-    // 查找活动
-    const activity = activities.find(a => a.id === activityId);
+  async loadActivityForCopy(activityId) {
+    try {
+      wx.showLoading({ title: '加载中...' });
 
-    if (!activity) {
-      wx.showToast({ title: '活动不存在', icon: 'none' });
+      // 从后端API获取活动详情
+      const detailResult = await activityAPI.getDetail(activityId);
+
+      if (detailResult.code !== 0) {
+        throw new Error(detailResult.message || '获取活动详情失败');
+      }
+
+      const activity = detailResult.data;
+
+      if (!activity) {
+        wx.hideLoading();
+        wx.showToast({ title: '活动不存在', icon: 'none' });
+        setTimeout(() => {
+          this.showCopySourceDialog();
+        }, 1500);
+        return;
+      }
+
+      // 复制活动数据（但不包括ID和状态）
+      const startDateTime = activity.startTime.split(' ');
+      const endDateTime = activity.endTime.split(' ');
+      const registerDeadline = activity.registerDeadline ? activity.registerDeadline.split(' ') : startDateTime;
+
+      const form = {
+        title: `${activity.title} (副本)`,
+        desc: activity.desc || '',
+        type: activity.type,
+        typeIndex: TYPE_OPTIONS.indexOf(activity.type),
+        isPublic: activity.isPublic !== undefined ? activity.isPublic : true,
+        organizerPhone: activity.organizerPhone || '',
+        organizerWechat: activity.organizerWechat || '',
+        hasGroups: activity.hasGroups || false,
+        groupCount: activity.groups ? activity.groups.length : 2,
+        startDate: startDateTime[0],
+        startTime: startDateTime[1] || '09:00',
+        endDate: endDateTime[0],
+        endTime: endDateTime[1] || '18:00',
+        registerDeadlineDate: registerDeadline[0],
+        registerDeadlineTime: registerDeadline[1] || '09:00',
+        place: activity.place,
+        address: activity.address,
+        latitude: activity.latitude,
+        longitude: activity.longitude,
+        checkinRadius: activity.checkinRadius || 500,
+        total: activity.total,
+        minParticipants: activity.minParticipants || 0,
+        needReview: activity.needReview || false,
+        fee: activity.fee || 0,
+        feeType: activity.feeType || '免费',
+        requirements: activity.requirements || '',
+        description: activity.description || ''
+      };
+
+      // 如果有分组，复制分组数据
+      let groups = [];
+      if (activity.hasGroups && activity.groups) {
+        groups = activity.groups.map(g => ({ ...g }));
+      }
+
+      // 复制白名单和黑名单
+      const copiedWhitelist = activity.whitelist ? [...activity.whitelist] : [];
+      const copiedBlacklist = activity.blacklist ? [...activity.blacklist] : [];
+
+      this.setData({
+        form,
+        groups,
+        copiedWhitelist,
+        copiedBlacklist
+      });
+
+      // 标记所有步骤为已完成
+      const steps = this.data.steps.map(s => ({ ...s, completed: true }));
+      this.setData({ steps });
+
+      this.checkCanPublish();
+
+      wx.hideLoading();
+      wx.showToast({ title: '已加载活动数据', icon: 'success' });
+    } catch (err) {
+      wx.hideLoading();
+      console.error('加载活动数据失败:', err);
+      wx.showToast({
+        title: err.message || '加载失败',
+        icon: 'none',
+        duration: 2000
+      });
       setTimeout(() => {
         this.showCopySourceDialog();
-      }, 1500);
-      return;
+      }, 2000);
     }
-
-    // 复制活动数据（但不包括ID和状态）
-    const startDateTime = activity.startTime.split(' ');
-    const endDateTime = activity.endTime.split(' ');
-    const registerDeadline = activity.registerDeadline ? activity.registerDeadline.split(' ') : startDateTime;
-
-    const form = {
-      title: `${activity.title} (副本)`,
-      desc: activity.desc || '',
-      type: activity.type,
-      typeIndex: TYPE_OPTIONS.indexOf(activity.type),
-      isPublic: activity.isPublic !== undefined ? activity.isPublic : true,
-      hasGroups: activity.hasGroups || false,
-      groupCount: activity.groups ? activity.groups.length : 2,
-      startDate: startDateTime[0],
-      startTime: startDateTime[1] || '09:00',
-      endDate: endDateTime[0],
-      endTime: endDateTime[1] || '18:00',
-      registerDeadlineDate: registerDeadline[0],
-      registerDeadlineTime: registerDeadline[1] || '09:00',
-      place: activity.place,
-      address: activity.address,
-      latitude: activity.latitude,
-      longitude: activity.longitude,
-      checkinRadius: activity.checkinRadius || 500,
-      total: activity.total,
-      minParticipants: activity.minParticipants || 0,
-      needReview: activity.needReview || false,
-      fee: activity.fee || 0,
-      feeType: activity.feeType || '免费',
-      requirements: activity.requirements || '',
-      description: activity.description || ''
-    };
-
-    // 如果有分组，复制分组数据
-    let groups = [];
-    if (activity.hasGroups && activity.groups) {
-      groups = activity.groups.map(g => ({ ...g }));
-    }
-
-    // 复制白名单和黑名单
-    const copiedWhitelist = activity.whitelist ? [...activity.whitelist] : [];
-    const copiedBlacklist = activity.blacklist ? [...activity.blacklist] : [];
-
-    this.setData({
-      form,
-      groups,
-      copiedWhitelist,
-      copiedBlacklist
-    });
-
-    // 标记所有步骤为已完成
-    const steps = this.data.steps.map(s => ({ ...s, completed: true }));
-    this.setData({ steps });
-
-    this.checkCanPublish();
-
-    wx.showToast({ title: '已加载活动数据', icon: 'success' });
   },
 
 

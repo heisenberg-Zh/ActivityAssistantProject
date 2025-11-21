@@ -519,6 +519,13 @@ Page({
 
   // 返回
   goBack() {
-    wx.navigateBack();
+    const pages = getCurrentPages();
+
+    if (pages.length > 1) {
+      wx.navigateBack({ delta: 1 });
+    } else {
+      // 没有上一页，跳转到活动列表
+      wx.switchTab({ url: '/pages/activities/list' });
+    }
   }
 });

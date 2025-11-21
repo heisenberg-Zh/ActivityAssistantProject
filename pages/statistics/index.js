@@ -1,6 +1,5 @@
 // pages/statistics/index.js
-const { activities, registrations } = require('../../utils/mock.js');
-const { parseDate } = require('../../utils/date-helper.js');
+const { statisticsAPI } = require('../../utils/api.js');
 const app = getApp();
 
 Page({
@@ -13,311 +12,162 @@ Page({
     ],
     currentRange: 'year',
     joinedStats: [],
-    createdStats: []
+    createdStats: [],
+    loading: true,
+    isLoggedIn: false  // 添加登录状态标识
   },
 
   /**
    * 生命周期函数--监听页面加载
    */
   onLoad(options) {
-    // 检查登录状态
-    if (!app.checkLoginStatus()) {
-      wx.showModal({
-        title: '提示',
-        content: '请先登录',
-        showCancel: false,
-        success: () => {
-          wx.navigateTo({
-            url: '/pages/auth/login'
-          });
-        }
-      });
-      return;
-    }
-
-    // 加载统计数据
-    this.loadStatistics();
+    this.checkAndLoadData();
   },
 
   /**
    * 生命周期函数--监听页面显示
    */
   onShow() {
-    // 每次显示页面时刷新数据
-    if (app.checkLoginStatus()) {
+    // 每次显示页面时检查登录状态并加载数据
+    this.checkAndLoadData();
+  },
+
+  /**
+   * 检查登录状态并加载数据
+   */
+  checkAndLoadData() {
+    const isLoggedIn = app.checkLoginStatus();
+    this.setData({ isLoggedIn });
+
+    if (!isLoggedIn) {
+      // 游客模式：显示游客提示，不加载数据
+      console.log('👤 游客模式：统计页面显示游客状态');
+      this.setData({
+        loading: false,
+        joinedStats: [],
+        createdStats: []
+      });
+    } else {
+      // 已登录：加载统计数据
       this.loadStatistics();
     }
   },
 
   /**
-   * 加载统计数据
+   * 加载统计数据（从后端API获取）
+   * 注意：当前后端暂不支持时间范围筛选，获取的是全部时间的统计数据
    */
-  loadStatistics() {
-    const currentUserId = app.globalData.currentUserId || 'u1';
-    const timeRange = this.data.currentRange;
+  async loadStatistics() {
+    try {
+      this.setData({ loading: true });
 
-    // 计算已参加活动的统计数据
-    const joinedStats = this.calculateJoinedStats(currentUserId, timeRange);
+      // 从后端API获取统计数据
+      // 注意：后端API暂不支持timeRange参数，此参数将被忽略
+      const response = await statisticsAPI.getMyStatistics();
 
-    // 计算已创建活动的统计数据
-    const createdStats = this.calculateCreatedStats(currentUserId, timeRange);
+      if (response && response.data) {
+        const data = response.data;
 
-    this.setData({
-      joinedStats,
-      createdStats
-    });
-  },
+        // 计算签到率格式
+        const checkinRateValue = data.checkinRate !== undefined
+          ? `${Math.round(data.checkinRate)}%`
+          : '0%';
 
-  /**
-   * 计算已参加活动的统计数据
-   */
-  calculateJoinedStats(userId, timeRange) {
-    // 获取用户参加的所有活动（status=approved且未取消）
-    const userRegistrations = registrations.filter(r =>
-      r.userId === userId &&
-      r.status === 'approved'
-    );
+        // 设置已参加活动的统计数据
+        const joinedStats = [
+          {
+            label: '参加活动数',
+            value: data.participatedActivities || 0,
+            icon: '📅',
+            bg: '#dbeafe',
+            color: '#1d4ed8'
+          },
+          {
+            label: '签到次数',
+            value: data.totalCheckins || 0,
+            icon: '✅',
+            bg: '#dcfce7',
+            color: '#047857'
+          },
+          {
+            label: '签到率',
+            value: checkinRateValue,
+            icon: '📊',
+            bg: '#fde68a',
+            color: '#b45309'
+          },
+          {
+            label: '迟到次数',
+            value: data.lateCount || 0,
+            icon: '🎯',
+            bg: '#ede9fe',
+            color: '#6d28d9'
+          }
+        ];
 
-    // 根据时间范围筛选
-    const filteredRegistrations = this.filterByTimeRange(userRegistrations, timeRange);
+        // 设置已创建活动的统计数据
+        const createdStats = [
+          {
+            label: '创建活动数',
+            value: data.createdActivities || 0,
+            icon: '🎉',
+            bg: '#dbeafe',
+            color: '#1d4ed8'
+          },
+          {
+            label: '总报名人数',
+            value: data.totalRegistrations || 0,
+            icon: '👥',
+            bg: '#dcfce7',
+            color: '#047857'
+          },
+          {
+            label: '无效签到',
+            value: data.invalidCheckinCount || 0,
+            icon: '📈',
+            bg: '#fde68a',
+            color: '#b45309'
+          },
+          {
+            label: '待后端支持',
+            value: '-',
+            icon: '✨',
+            bg: '#ede9fe',
+            color: '#6d28d9'
+          }
+        ];
 
-    // 统计参加活动数
-    const totalJoined = filteredRegistrations.length;
-
-    // 统计签到次数
-    const checkedCount = filteredRegistrations.filter(r => r.checkinStatus === 'checked').length;
-
-    // 计算签到率（保留一位小数）
-    const checkinRate = totalJoined > 0 ? ((checkedCount / totalJoined) * 100).toFixed(1) : '0.0';
-
-    // 统计活动类型分布
-    const typeDistribution = this.calculateTypeDistribution(filteredRegistrations);
-
-    return [
-      {
-        label: '参加活动数',
-        value: totalJoined,
-        icon: '📅',
-        bg: '#dbeafe',
-        color: '#1d4ed8'
-      },
-      {
-        label: '签到次数',
-        value: checkedCount,
-        icon: '✅',
-        bg: '#dcfce7',
-        color: '#047857'
-      },
-      {
-        label: '签到率',
-        value: `${checkinRate}%`,
-        icon: '📊',
-        bg: '#fde68a',
-        color: '#b45309'
-      },
-      {
-        label: typeDistribution.label,
-        value: typeDistribution.value,
-        icon: '🎯',
-        bg: '#ede9fe',
-        color: '#6d28d9'
+        this.setData({
+          joinedStats,
+          createdStats,
+          loading: false
+        });
+      } else {
+        throw new Error('数据格式错误');
       }
-    ];
-  },
+    } catch (error) {
+      console.error('加载统计数据失败:', error);
+      this.setData({ loading: false });
 
-  /**
-   * 计算已创建活动的统计数据
-   */
-  calculateCreatedStats(userId, timeRange) {
-    // 获取用户创建的所有活动（未删除）
-    const userActivities = activities.filter(a =>
-      a.organizerId === userId &&
-      !a.isDeleted
-    );
-
-    // 根据时间范围筛选
-    const filteredActivities = this.filterActivitiesByTimeRange(userActivities, timeRange);
-
-    // 统计创建活动数
-    const totalCreated = filteredActivities.length;
-
-    // 统计总报名人数
-    const totalJoined = filteredActivities.reduce((sum, a) => sum + a.joined, 0);
-
-    // 计算平均报名率（保留一位小数）
-    let avgRegistrationRate = '0.0';
-    if (totalCreated > 0) {
-      const totalRate = filteredActivities.reduce((sum, a) => {
-        return sum + (a.total > 0 ? (a.joined / a.total) * 100 : 0);
-      }, 0);
-      avgRegistrationRate = (totalRate / totalCreated).toFixed(1);
+      wx.showToast({
+        title: '加载统计数据失败',
+        icon: 'none',
+        duration: 2000
+      });
     }
-
-    // 计算活动完成率（保留一位小数）
-    const completedCount = filteredActivities.filter(a => a.status === '已结束').length;
-    const completionRate = totalCreated > 0 ? ((completedCount / totalCreated) * 100).toFixed(1) : '0.0';
-
-    return [
-      {
-        label: '创建活动数',
-        value: totalCreated,
-        icon: '🎉',
-        bg: '#dbeafe',
-        color: '#1d4ed8'
-      },
-      {
-        label: '总报名人数',
-        value: totalJoined,
-        icon: '👥',
-        bg: '#dcfce7',
-        color: '#047857'
-      },
-      {
-        label: '平均报名率',
-        value: `${avgRegistrationRate}%`,
-        icon: '📈',
-        bg: '#fde68a',
-        color: '#b45309'
-      },
-      {
-        label: '活动完成率',
-        value: `${completionRate}%`,
-        icon: '✨',
-        bg: '#ede9fe',
-        color: '#6d28d9'
-      }
-    ];
-  },
-
-  /**
-   * 根据时间范围筛选报名记录
-   */
-  filterByTimeRange(registrations, range) {
-    if (range === 'all') {
-      return registrations;
-    }
-
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
-    const currentDate = now.getDate();
-
-    return registrations.filter(r => {
-      const regDate = parseDate(r.registeredAt);
-      const regYear = regDate.getFullYear();
-      const regMonth = regDate.getMonth();
-      const regDateNum = regDate.getDate();
-
-      switch (range) {
-        case 'week':
-          // 计算本周（周一到周日）
-          const dayOfWeek = now.getDay() || 7; // 周日为0，转为7
-          const mondayDate = new Date(now);
-          mondayDate.setDate(currentDate - dayOfWeek + 1);
-          mondayDate.setHours(0, 0, 0, 0);
-
-          const sundayDate = new Date(mondayDate);
-          sundayDate.setDate(mondayDate.getDate() + 6);
-          sundayDate.setHours(23, 59, 59, 999);
-
-          return regDate >= mondayDate && regDate <= sundayDate;
-
-        case 'month':
-          // 本月
-          return regYear === currentYear && regMonth === currentMonth;
-
-        case 'year':
-          // 本年
-          return regYear === currentYear;
-
-        default:
-          return true;
-      }
-    });
-  },
-
-  /**
-   * 根据时间范围筛选活动
-   */
-  filterActivitiesByTimeRange(activities, range) {
-    if (range === 'all') {
-      return activities;
-    }
-
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
-    const currentDate = now.getDate();
-
-    return activities.filter(a => {
-      const createDate = parseDate(a.createdAt);
-      const createYear = createDate.getFullYear();
-      const createMonth = createDate.getMonth();
-
-      switch (range) {
-        case 'week':
-          const dayOfWeek = now.getDay() || 7;
-          const mondayDate = new Date(now);
-          mondayDate.setDate(currentDate - dayOfWeek + 1);
-          mondayDate.setHours(0, 0, 0, 0);
-
-          const sundayDate = new Date(mondayDate);
-          sundayDate.setDate(mondayDate.getDate() + 6);
-          sundayDate.setHours(23, 59, 59, 999);
-
-          return createDate >= mondayDate && createDate <= sundayDate;
-
-        case 'month':
-          return createYear === currentYear && createMonth === currentMonth;
-
-        case 'year':
-          return createYear === currentYear;
-
-        default:
-          return true;
-      }
-    });
-  },
-
-  /**
-   * 计算活动类型分布
-   */
-  calculateTypeDistribution(registrations) {
-    if (registrations.length === 0) {
-      return { label: '暂无数据', value: '-' };
-    }
-
-    // 统计各类型活动数量
-    const typeCount = {};
-    registrations.forEach(r => {
-      const activity = activities.find(a => a.id === r.activityId);
-      if (activity) {
-        const type = activity.type;
-        typeCount[type] = (typeCount[type] || 0) + 1;
-      }
-    });
-
-    // 找出最多的类型
-    let maxType = '';
-    let maxCount = 0;
-    for (const type in typeCount) {
-      if (typeCount[type] > maxCount) {
-        maxCount = typeCount[type];
-        maxType = type;
-      }
-    }
-
-    const percentage = ((maxCount / registrations.length) * 100).toFixed(0);
-    return {
-      label: `${maxType}`,
-      value: `${percentage}%`
-    };
   },
 
   /**
    * 时间筛选器点击事件
+   * 注意：后端暂不支持时间范围筛选，此功能待后续实现
    */
   onRangeTap(e) {
+    // 游客模式下不允许操作
+    if (!this.data.isLoggedIn) {
+      this.showLoginGuide();
+      return;
+    }
+
     const key = e.currentTarget.dataset.key;
     const updated = this.data.ranges.map(item => ({
       ...item,
@@ -329,20 +179,25 @@ Page({
       currentRange: key
     });
 
-    // 重新加载统计数据
-    this.loadStatistics();
-
+    // 暂时提示功能待支持
     wx.showToast({
-      title: `已切换到${updated.find(item => item.active).label}`,
+      title: '时间筛选功能待后端支持',
       icon: 'none',
-      duration: 1500
+      duration: 2000
     });
+
+    // 注释：等后端支持时间筛选后，取消下面的注释并移除上面的提示
+    // this.loadStatistics();
   },
 
   /**
    * 跳转到已参加活动列表
    */
   goToJoinedList() {
+    if (!this.data.isLoggedIn) {
+      this.showLoginGuide();
+      return;
+    }
     wx.navigateTo({
       url: '/pages/my-activities/joined-list'
     });
@@ -352,6 +207,10 @@ Page({
    * 跳转到已参加活动统计详情
    */
   goToJoinedDetail() {
+    if (!this.data.isLoggedIn) {
+      this.showLoginGuide();
+      return;
+    }
     wx.navigateTo({
       url: '/pages/statistics/joined-detail'
     });
@@ -361,6 +220,10 @@ Page({
    * 跳转到已创建活动列表
    */
   goToCreatedList() {
+    if (!this.data.isLoggedIn) {
+      this.showLoginGuide();
+      return;
+    }
     wx.navigateTo({
       url: '/pages/my-activities/created-list'
     });
@@ -370,8 +233,41 @@ Page({
    * 跳转到已创建活动统计详情
    */
   goToCreatedDetail() {
+    if (!this.data.isLoggedIn) {
+      this.showLoginGuide();
+      return;
+    }
     wx.navigateTo({
       url: '/pages/statistics/created-detail'
+    });
+  },
+
+  /**
+   * 显示登录引导
+   */
+  showLoginGuide() {
+    wx.showModal({
+      title: '需要登录',
+      content: '该功能需要登录后才能使用，是否前往登录？',
+      confirmText: '去登录',
+      cancelText: '暂不',
+      confirmColor: '#3b82f6',
+      success: (res) => {
+        if (res.confirm) {
+          wx.navigateTo({
+            url: '/pages/auth/login'
+          });
+        }
+      }
+    });
+  },
+
+  /**
+   * 游客点击登录按钮
+   */
+  goLogin() {
+    wx.navigateTo({
+      url: '/pages/auth/login'
     });
   }
 });

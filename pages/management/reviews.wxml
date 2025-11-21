@@ -1,0 +1,211 @@
+<!-- pages/management/reviews.wxml -->
+<view class="reviews-page">
+  <!-- 顶部标题栏 -->
+  <view class="top-bar top-bar--fixed" style="padding-top: {{statusBarHeight}}px;">
+    <view class="top-bar__group">
+      <view class="icon-btn icon-btn--back" bindtap="goBack">
+        <text class="back-icon">‹</text>
+      </view>
+      <text class="text-lg" style="margin-left: 16rpx;">评价管理</text>
+    </view>
+  </view>
+
+  <!-- 滚动容器 -->
+  <scroll-view
+    class="page-scroll"
+    scroll-y
+    bindscrolltolower="onScrollToLower"
+    refresher-enabled
+    refresher-triggered="{{loading}}"
+    bindrefresherrefresh="onRefresh"
+    enable-back-to-top
+    enhanced
+    show-scrollbar="{{false}}"
+    style="top: {{navBarHeight}}px; height: {{scrollHeight}}px;"
+  >
+    <!-- 统计卡片 -->
+    <view wx:if="{{statistics}}" class="statistics-section">
+      <view class="stat-card">
+        <view class="stat-header">
+          <text class="stat-icon">⭐</text>
+          <text class="stat-title">评价概览</text>
+        </view>
+        <view class="stat-body">
+          <view class="stat-item stat-item--primary">
+            <text class="stat-value">{{statistics.averageRating || 0}}</text>
+            <text class="stat-label">平均评分</text>
+          </view>
+          <view class="stat-divider"></view>
+          <view class="stat-item stat-item--secondary">
+            <text class="stat-value">{{statistics.totalReviews || 0}}</text>
+            <text class="stat-label">评价总数</text>
+          </view>
+        </view>
+
+        <!-- 评分分布 -->
+        <view class="rating-distribution">
+          <view
+            wx:for="{{[5,4,3,2,1]}}"
+            wx:key="*this"
+            class="rating-bar-row"
+          >
+            <text class="rating-label">{{item}}星</text>
+            <view class="rating-bar-container">
+              <view
+                class="rating-bar-fill"
+                style="width: {{statistics.totalReviews > 0 ? (statistics.ratingDistribution[item] / statistics.totalReviews * 100) : 0}}%;"
+              ></view>
+            </view>
+            <text class="rating-count">{{statistics.ratingDistribution[item] || 0}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 筛选和排序栏 -->
+    <view class="filter-section">
+      <view class="filter-group">
+        <text class="filter-label">筛选：</text>
+        <view class="filter-chips">
+          <view
+            class="filter-chip {{filterRating === null ? 'filter-chip--active' : ''}}"
+            bindtap="onFilterChange"
+            data-rating="{{null}}"
+          >
+            全部
+          </view>
+          <view
+            wx:for="{{[5,4,3,2,1]}}"
+            wx:key="*this"
+            class="filter-chip {{filterRating === item ? 'filter-chip--active' : ''}}"
+            bindtap="onFilterChange"
+            data-rating="{{item}}"
+          >
+            {{item}}星
+          </view>
+        </view>
+      </view>
+
+      <view class="sort-group">
+        <text class="sort-label">排序：</text>
+        <view class="sort-buttons">
+          <view
+            class="sort-btn {{sortBy === 'latest' ? 'sort-btn--active' : ''}}"
+            bindtap="onSortChange"
+            data-sort="latest"
+          >
+            最新
+          </view>
+          <view
+            class="sort-btn {{sortBy === 'rating' ? 'sort-btn--active' : ''}}"
+            bindtap="onSortChange"
+            data-sort="rating"
+          >
+            评分
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 评价列表 -->
+    <view class="reviews-list">
+      <!-- 加载中 -->
+      <view wx:if="{{loading}}" class="loading-container">
+        <text class="loading-text">加载中...</text>
+      </view>
+
+      <!-- 空状态 -->
+      <view wx:elif="{{reviews.length === 0}}" class="empty-state">
+        <text class="empty-icon">📝</text>
+        <text class="empty-text">暂无评价</text>
+        <text class="empty-hint">活动结束后，参与者可以提交评价</text>
+      </view>
+
+      <!-- 评价卡片 -->
+      <view wx:else>
+        <view wx:for="{{reviews}}" wx:key="id" class="review-card">
+          <!-- 用户信息 -->
+          <view class="review-header">
+            <image
+              class="user-avatar"
+              src="{{item.userAvatar || '/activityassistant_avatar_01.png'}}"
+              mode="aspectFill"
+            />
+            <view class="user-info">
+              <text class="user-name">{{item.userName || '匿名用户'}}</text>
+              <text class="review-time">{{item.formattedTime}}</text>
+            </view>
+            <!-- 删除按钮 -->
+            <view
+              class="delete-btn"
+              bindtap="openDeleteModal"
+              data-review-id="{{item.id}}"
+              data-user-name="{{item.userName}}"
+            >
+              删除
+            </view>
+          </view>
+
+          <!-- 评分 -->
+          <view class="review-rating">
+            <view wx:for="{{item.stars}}" wx:key="index" class="star">
+              <text class="star-icon {{item.filled ? 'star-filled' : 'star-empty'}}">★</text>
+            </view>
+          </view>
+
+          <!-- 评价内容 -->
+          <view wx:if="{{item.content}}" class="review-content">
+            <text class="content-text">{{item.content}}</text>
+          </view>
+        </view>
+
+        <!-- 加载更多 -->
+        <view wx:if="{{hasMore}}" class="load-more">
+          <text class="load-more-text">{{loadingMore ? '加载中...' : '下拉加载更多'}}</text>
+        </view>
+
+        <!-- 没有更多 -->
+        <view wx:else class="no-more">
+          <text class="no-more-text">没有更多了</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="bottom-space"></view>
+  </scroll-view>
+
+  <!-- 删除确认弹窗 -->
+  <view wx:if="{{showDeleteModal}}" class="modal-overlay" bindtap="closeDeleteModal">
+    <view class="modal-content" catchtap>
+      <view class="modal-header">
+        <text class="modal-title">删除评价</text>
+        <view class="modal-close" bindtap="closeDeleteModal">✕</view>
+      </view>
+
+      <view class="modal-body">
+        <view class="warning-box">
+          <text class="warning-icon">⚠️</text>
+          <text class="warning-text">确定要删除 {{deleteTarget.userName}} 的评价吗？</text>
+        </view>
+
+        <view class="form-field">
+          <text class="field-label">删除原因 <text class="required">*</text></text>
+          <textarea
+            class="field-textarea"
+            placeholder="请输入删除原因（必填）"
+            value="{{deleteReason}}"
+            bindinput="onDeleteReasonInput"
+            maxlength="200"
+            auto-height
+          />
+          <text class="field-hint">此操作不可撤销</text>
+        </view>
+      </view>
+
+      <view class="modal-footer">
+        <button class="modal-btn modal-btn--cancel" bindtap="closeDeleteModal">取消</button>
+        <button class="modal-btn modal-btn--danger" bindtap="confirmDelete">确认删除</button>
+      </view>
+    </view>
+  </view>
+</view>

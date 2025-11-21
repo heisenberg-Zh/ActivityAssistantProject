@@ -1,4 +1,6 @@
 // pages/settings/index.js
+const app = getApp();
+
 Page({
   data: {
     form: { push: true, remind: true, notify: true },
@@ -21,7 +23,48 @@ Page({
       { key: 'version', label: '版本信息', icon: '版', bg: '#dbeafe', color: '#1d4ed8', extra: 'v1.0.0' },
       { key: 'agreement', label: '用户协议', icon: '协', bg: '#ede9fe', color: '#6d28d9' },
       { key: 'privacy', label: '隐私政策', icon: '隐', bg: '#dcfce7', color: '#047857' }
-    ]
+    ],
+    isLoggedIn: false  // 添加登录状态标识
+  },
+
+  onLoad() {
+    this.checkLoginStatus();
+  },
+
+  onShow() {
+    this.checkLoginStatus();
+  },
+
+  /**
+   * 检查登录状态
+   */
+  checkLoginStatus() {
+    const isLoggedIn = app.checkLoginStatus();
+    this.setData({ isLoggedIn });
+
+    if (!isLoggedIn) {
+      // 游客模式：不允许访问设置页面，直接返回并提示
+      console.log('👤 游客模式：设置页面需要登录');
+      wx.showModal({
+        title: '需要登录',
+        content: '设置页面需要登录后才能访问，是否前往登录？',
+        confirmText: '去登录',
+        cancelText: '返回',
+        confirmColor: '#3b82f6',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({
+              url: '/pages/auth/login'
+            });
+          } else {
+            wx.navigateBack();
+          }
+        },
+        fail: () => {
+          wx.navigateBack();
+        }
+      });
+    }
   },
 
   toggle(e) {
@@ -56,8 +99,13 @@ Page({
   },
 
   goBack() {
-    if (getCurrentPages().length > 1) {
+    const pages = getCurrentPages();
+
+    if (pages.length > 1) {
       wx.navigateBack({ delta: 1 });
+    } else {
+      // 没有上一页，跳转到"我的"页面
+      wx.switchTab({ url: '/pages/profile/index' });
     }
   }
 });

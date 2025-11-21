@@ -103,6 +103,8 @@ const messageData = [
   }
 ];
 
+const app = getApp();
+
 Page({
   data: {
     filters: [
@@ -114,15 +116,36 @@ Page({
     ],
     activeFilter: 'all',
     allMessages: [],
-    messages: []
+    messages: [],
+    isLoggedIn: false  // 添加登录状态标识
   },
 
   onLoad() {
-    this.loadMessages();
+    this.checkAndLoadData();
   },
 
   onShow() {
-    this.loadMessages();
+    this.checkAndLoadData();
+  },
+
+  /**
+   * 检查登录状态并加载数据
+   */
+  checkAndLoadData() {
+    const isLoggedIn = app.checkLoginStatus();
+    this.setData({ isLoggedIn });
+
+    if (!isLoggedIn) {
+      // 游客模式：显示游客提示，不加载消息
+      console.log('👤 游客模式：消息中心页面显示游客状态');
+      this.setData({
+        allMessages: [],
+        messages: []
+      });
+    } else {
+      // 已登录：加载消息数据
+      this.loadMessages();
+    }
   },
 
   // 加载消息列表
@@ -244,8 +267,153 @@ Page({
   },
 
   goBack() {
-    if (getCurrentPages().length > 1) {
+    const pages = getCurrentPages();
+
+    if (pages.length > 1) {
       wx.navigateBack({ delta: 1 });
+    } else {
+      // 没有上一页，跳转到"我的"页面
+      wx.switchTab({ url: '/pages/profile/index' });
     }
+  },
+
+  // 点击消息卡片
+  onMessageTap(e) {
+    const { id, activityId } = e.currentTarget.dataset;
+
+    if (!id) {
+      console.error('消息ID不存在');
+      return;
+    }
+
+    // 检查消息是否为示例数据（ID以'm'开头）
+    const isExampleData = id.startsWith('m');
+
+    if (isExampleData) {
+      // 示例数据，只显示提示，不执行实际操作
+      wx.showToast({
+        title: '这是示例消息',
+        icon: 'none',
+        duration: 2000
+      });
+
+      // 如果有关联的活动ID，仍然可以跳转
+      if (activityId) {
+        setTimeout(() => {
+          wx.navigateTo({
+            url: `/pages/activities/detail?id=${activityId}`
+          });
+        }, 500);
+      }
+      return;
+    }
+
+    // 标记消息为已读
+    const success = notification.markAsRead(id);
+
+    if (success) {
+      // 重新加载消息列表以更新UI
+      this.loadMessages();
+
+      // 显示轻提示
+      wx.showToast({
+        title: '已标记为已读',
+        icon: 'success',
+        duration: 1500
+      });
+
+      // 如果有关联的活动ID，跳转到活动详情页
+      if (activityId) {
+        setTimeout(() => {
+          wx.navigateTo({
+            url: `/pages/activities/detail?id=${activityId}`
+          });
+        }, 500);
+      }
+    } else {
+      wx.showToast({
+        title: '操作失败',
+        icon: 'error',
+        duration: 1500
+      });
+    }
+  },
+
+  // 全部标记为已读
+  markAllRead() {
+    // 游客模式下不允许操作
+    if (!this.data.isLoggedIn) {
+      this.showLoginGuide();
+      return;
+    }
+
+    // 检查是否有真实消息
+    const notifications = notification.getAllNotifications();
+
+    if (notifications.length === 0) {
+      // 没有真实消息，当前显示的都是示例数据
+      wx.showToast({
+        title: '当前无真实消息',
+        icon: 'none',
+        duration: 2000
+      });
+      return;
+    }
+
+    wx.showModal({
+      title: '提示',
+      content: `确定要将所有消息（${notifications.length}条）标记为已读吗？`,
+      confirmText: '确定',
+      cancelText: '取消',
+      success: (res) => {
+        if (res.confirm) {
+          const success = notification.markAllAsRead();
+
+          if (success) {
+            this.loadMessages();
+            wx.showToast({
+              title: '全部已读',
+              icon: 'success',
+              duration: 1500
+            });
+          } else {
+            wx.showToast({
+              title: '操作失败',
+              icon: 'error',
+              duration: 1500
+            });
+          }
+        }
+      }
+    });
+  },
+
+  /**
+   * 显示登录引导
+   */
+  showLoginGuide() {
+    wx.showModal({
+      title: '需要登录',
+      content: '该功能需要登录后才能使用，是否前往登录？',
+      confirmText: '去登录',
+      cancelText: '暂不',
+      confirmColor: '#3b82f6',
+      success: (res) => {
+        if (res.confirm) {
+          wx.navigateTo({
+            url: '/pages/auth/login'
+          });
+        }
+      }
+    });
+  },
+
+  /**
+   * 游客点击登录按钮
+   */
+  goLogin() {
+    wx.navigateTo({
+      url: '/pages/auth/login'
+    });
   }
 });

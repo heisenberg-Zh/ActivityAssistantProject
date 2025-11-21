@@ -1,20 +1,55 @@
 <!-- pages/messages/index.wxml -->
-<view class="page-container">
-  <view class="filter-section">
-    <scroll-view scroll-x class="filter-scroll-view" show-scrollbar="false">
-      <view class="filter-tabs">
-        <block wx:for="{{filters}}" wx:key="key" wx:for-item="item">
-          <view class="filter-tab {{item.active ? 'filter-tab--active' : ''}}" bindtap="onFilterTap" data-key="{{item.key}}">
-            {{item.name}}
-          </view>
-        </block>
+
+<!-- 游客状态提示 -->
+<view wx:if="{{!isLoggedIn}}" class="guest-container">
+  <view class="guest-content">
+    <view class="guest-icon">💬</view>
+    <text class="guest-title">消息中心</text>
+    <text class="guest-desc">登录后查看您的消息通知</text>
+    <view class="guest-features">
+      <view class="guest-feature-item">
+        <text class="guest-feature-icon">📢</text>
+        <text class="guest-feature-text">接收活动发布通知</text>
       </view>
-    </scroll-view>
+      <view class="guest-feature-item">
+        <text class="guest-feature-icon">🔔</text>
+        <text class="guest-feature-text">查看活动提醒</text>
+      </view>
+      <view class="guest-feature-item">
+        <text class="guest-feature-icon">📬</text>
+        <text class="guest-feature-text">管理消息状态</text>
+      </view>
+    </view>
+    <view class="guest-login-btn" bindtap="goLogin">
+      <text class="guest-login-icon">🔐</text>
+      <text class="guest-login-text">立即登录</text>
+    </view>
+  </view>
+</view>
+
+<!-- 已登录状态显示消息列表 -->
+<view wx:else class="page-container">
+  <view class="filter-section">
+    <view class="filter-header">
+      <scroll-view scroll-x class="filter-scroll-view" show-scrollbar="false">
+        <view class="filter-tabs">
+          <block wx:for="{{filters}}" wx:key="key" wx:for-item="item">
+            <view class="filter-tab {{item.active ? 'filter-tab--active' : ''}}" bindtap="onFilterTap" data-key="{{item.key}}">
+              {{item.name}}
+            </view>
+          </block>
+        </view>
+      </scroll-view>
+      <view class="mark-all-btn" bindtap="markAllRead">
+        <text class="icon">✓</text>
+        <text>全部已读</text>
+      </view>
+    </view>
   </view>
 
   <view class="content-section">
     <block wx:for="{{messages}}" wx:key="id">
-      <view class="message-card card shadow-card">
+      <view class="message-card card shadow-card" bindtap="onMessageTap" data-id="{{item.id}}" data-activity-id="{{item.activityId}}">
         <view class="row gap-16 items-start">
           <view class="message-icon" style="background: {{item.iconBg}}; color: {{item.iconColor}};">{{item.iconText}}</view>
           <view class="flex-col message-body">
