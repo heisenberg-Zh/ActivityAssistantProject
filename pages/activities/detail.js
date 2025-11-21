@@ -1,5 +1,5 @@
 // pages/activities/detail.js
-const { activityAPI, registrationAPI, userAPI } = require('../../utils/api.js');
+const { activityAPI, registrationAPI, userAPI, favoriteAPI } = require('../../utils/api.js');
 const { parseDate } = require('../../utils/date-helper.js');
 const {
   formatMoney,
@@ -220,9 +220,18 @@ Page({
       const isAdministrator = currentUserId && detail.administrators && detail.administrators.some(admin => admin.userId === currentUserId);
       const canViewContact = currentUserId && (isRegistered || isOrganizer || isAdministrator || managementPermission.hasPermission);
 
-      // 检查是否已收藏
-      const favoriteIds = wx.getStorageSync('favoriteActivityIds') || [];
-      const isFavorited = favoriteIds.includes(id);
+      // 检查是否已收藏（从后端API获取）
+      let isFavorited = false;
+      if (currentUserId) {
+        try {
+          const favoriteResult = await favoriteAPI.checkFavorited(id);
+          if (favoriteResult.code === 0) {
+            isFavorited = favoriteResult.data?.favorited || false;
+          }
+        } catch (err) {
+          console.warn('检查收藏状态失败，使用默认值false:', err);
+        }
+      }
 
       // 组装 extra 额外信息对象
       const extra = {
@@ -671,8 +680,8 @@ Page({
     });
   },
 
-  // 切换收藏状态
-  toggleFavorite() {
+  // 切换收藏状态（使用后端API）
+  async toggleFavorite() {
     // 【优先级1】先检查登录状态
     if (!app.checkLoginStatus()) {
       wx.showModal({
@@ -692,28 +701,43 @@ Page({
 
     const { id, isFavorited } = this.data;
 
-    // 获取收藏列表
-    let favoriteIds = wx.getStorageSync('favoriteActivityIds') || [];
-
-    if (isFavorited) {
-      // 取消收藏
-      favoriteIds = favoriteIds.filter(fid => fid !== id);
-      wx.setStorageSync('favoriteActivityIds', favoriteIds);
-      this.setData({ isFavorited: false });
-      wx.showToast({
-        title: '已取消收藏',
-        icon: 'success'
-      });
-    } else {
-      // 添加收藏
-      if (!favoriteIds.includes(id)) {
-        favoriteIds.push(id);
-        wx.setStorageSync('favoriteActivityIds', favoriteIds);
+    try {
+      if (isFavorited) {
+        // 取消收藏
+        const result = await favoriteAPI.remove(id);
+        if (result.code === 0) {
+          this.setData({ isFavorited: false });
+          wx.showToast({
+            title: '已取消收藏',
+            icon: 'success'
+          });
+        } else {
+          wx.showToast({
+            title: result.message || '取消收藏失败',
+            icon: 'none'
+          });
+        }
+      } else {
+        // 添加收藏
+        const result = await favoriteAPI.add(id);
+        if (result.code === 0) {
+          this.setData({ isFavorited: true });
+          wx.showToast({
+            title: '收藏成功',
+            icon: 'success'
+          });
+        } else {
+          wx.showToast({
+            title: result.message || '收藏失败',
+            icon: 'none'
+          });
+        }
       }
-      this.setData({ isFavorited: true });
+    } catch (err) {
+      console.error('收藏操作失败:', err);
       wx.showToast({
-        title: '收藏成功',
-        icon: 'success'
+        title: '操作失败，请重试',
+        icon: 'none'
       });
     }
   }

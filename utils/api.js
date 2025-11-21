@@ -7,6 +7,72 @@ const { transformResponse, transformRequest } = require('./data-adapter.js');
 // 模拟网络延迟
 const delay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Mock收藏数据管理（使用本地存储持久化）
+const MockFavoriteStorage = {
+  KEY: 'mock_favorites_data',
+
+  // 加载收藏数据
+  load() {
+    try {
+      const data = wx.getStorageSync(this.KEY);
+      return data || [];
+    } catch (err) {
+      console.error('加载Mock收藏数据失败:', err);
+      return [];
+    }
+  },
+
+  // 保存收藏数据
+  save(favorites) {
+    try {
+      wx.setStorageSync(this.KEY, favorites);
+    } catch (err) {
+      console.error('保存Mock收藏数据失败:', err);
+    }
+  },
+
+  // 添加收藏
+  add(activityId, userId = 'u1') {
+    const favorites = this.load();
+    const existing = favorites.find(f => f.activityId === activityId && f.userId === userId);
+
+    if (existing) {
+      return existing;
+    }
+
+    const newFavorite = {
+      id: 'fav' + Date.now(),
+      activityId,
+      userId,
+      createdAt: new Date().toISOString()
+    };
+
+    favorites.push(newFavorite);
+    this.save(favorites);
+    return newFavorite;
+  },
+
+  // 移除收藏
+  remove(activityId, userId = 'u1') {
+    const favorites = this.load();
+    const filtered = favorites.filter(f => !(f.activityId === activityId && f.userId === userId));
+    this.save(filtered);
+    return filtered.length < favorites.length;
+  },
+
+  // 获取用户的收藏列表
+  getByUser(userId = 'u1') {
+    const favorites = this.load();
+    return favorites.filter(f => f.userId === userId);
+  },
+
+  // 检查是否已收藏
+  isFavorited(activityId, userId = 'u1') {
+    const favorites = this.load();
+    return favorites.some(f => f.activityId === activityId && f.userId === userId);
+  }
+};
+
 // 通用请求封装（支持超时、重试、缓存）
 const request = async (url, options = {}) => {
   // 从全局配置获取useMock设置
@@ -33,9 +99,20 @@ const request = async (url, options = {}) => {
   }
 
   // 真实API调用
+  // 过滤掉值为 null 或 undefined 的参数（针对 GET 请求）
+  let cleanedData = data;
+  if (method === 'GET' && data && typeof data === 'object') {
+    cleanedData = Object.keys(data).reduce((acc, key) => {
+      if (data[key] !== null && data[key] !== undefined) {
+        acc[key] = data[key];
+      }
+      return acc;
+    }, {});
+  }
+
   // 如果是GET请求且启用缓存，先尝试从缓存获取
   if (method === 'GET' && useCache) {
-    const cacheKey = requestCache.generateKey(url, data);
+    const cacheKey = requestCache.generateKey(url, cleanedData);
     const cached = requestCache.get(cacheKey);
     if (cached) {
       return cached;
@@ -49,7 +126,7 @@ const request = async (url, options = {}) => {
       const apiBase = app?.globalData?.apiBase || '';
 
       // 转换请求数据（前端格式 -> 后端格式）
-      const transformedData = transformRequest(data, url, method);
+      const transformedData = transformRequest(cleanedData, url, method);
 
       wx.request({
         url: `${apiBase}${url}`,
@@ -77,7 +154,7 @@ const request = async (url, options = {}) => {
 
               // 如果是GET请求且启用缓存，保存到缓存
               if (method === 'GET' && useCache) {
-                const cacheKey = requestCache.generateKey(url, data);
+                const cacheKey = requestCache.generateKey(url, cleanedData);
                 requestCache.set(cacheKey, result);
               }
 
@@ -223,6 +300,245 @@ const mockRequest = (url, method, data) => {
   // 用户相关接口
   if (url === '/api/user/profile' && method === 'GET') {
     return { code: 0, data: participants[0], message: 'success' };
+  }
+
+  // 收藏相关接口（使用本地存储持久化）
+  if (url === '/api/favorites' && method === 'POST') {
+    // 添加收藏
+    const { activityId } = data;
+    const newFavorite = MockFavoriteStorage.add(activityId);
+    return { code: 0, data: newFavorite, message: '收藏成功' };
+  }
+
+  if (url.startsWith('/api/favorites/') && method === 'DELETE') {
+    // 取消收藏
+    const activityId = url.split('/').pop();
+    const removed = MockFavoriteStorage.remove(activityId);
+
+    return {
+      code: 0,
+      data: null,
+      message: removed ? '取消收藏成功' : '未找到收藏记录'
+    };
+  }
+
+  if (url === '/api/favorites/my' && method === 'GET') {
+    // 获取我的收藏列表
+    const userFavorites = MockFavoriteStorage.getByUser();
+    const favoritesWithActivities = userFavorites.map(favorite => {
+      const activity = activities.find(a => a.id === favorite.activityId);
+      return {
+        ...favorite,
+        activity: activity || null
+      };
+    }).filter(f => f.activity !== null); // 过滤掉活动不存在的收藏
+
+    return {
+      code: 0,
+      data: favoritesWithActivities,
+      message: 'success'
+    };
+  }
+
+  if (url === '/api/favorites/check' && method === 'GET') {
+    // 检查是否已收藏
+    const { activityId } = data;
+    const favorited = MockFavoriteStorage.isFavorited(activityId);
+
+    return {
+      code: 0,
+      data: { favorited },
+      message: 'success'
+    };
+  }
+
+  // 消息相关接口（使用本地存储持久化，兼容 notification.js）
+  if (url === '/api/messages/my' && method === 'GET') {
+    // 获取我的消息列表（使用与 notification.js 相同的存储key）
+    const messages = wx.getStorageSync('notifications') || [];
+
+    // 按时间倒序排列
+    messages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    return {
+      code: 0,
+      data: messages,
+      message: 'success'
+    };
+  }
+
+  if (url.startsWith('/api/messages/') && url.endsWith('/read') && method === 'PUT') {
+    // 标记消息已读
+    const messageId = url.split('/')[3];
+    const messages = wx.getStorageSync('notifications') || [];
+    const message = messages.find(m => m.id === messageId);
+
+    if (message) {
+      message.isRead = true;
+      wx.setStorageSync('notifications', messages);
+      return { code: 0, data: message, message: '标记成功' };
+    }
+
+    return { code: -1, data: null, message: '消息不存在' };
+  }
+
+  if (url.startsWith('/api/messages/') && method === 'DELETE') {
+    // 删除消息
+    const messageId = url.split('/')[3];
+    let messages = wx.getStorageSync('notifications') || [];
+    const originalLength = messages.length;
+
+    messages = messages.filter(m => m.id !== messageId);
+    wx.setStorageSync('notifications', messages);
+
+    if (messages.length < originalLength) {
+      return { code: 0, data: null, message: '删除成功' };
+    }
+
+    return { code: -1, data: null, message: '消息不存在' };
+  }
+
+  // 批量标记消息已读
+  if (url === '/api/messages/mark-all-read' && method === 'PUT') {
+    const messages = wx.getStorageSync('notifications') || [];
+    messages.forEach(m => m.isRead = true);
+    wx.setStorageSync('notifications', messages);
+    return { code: 0, data: null, message: '全部已读' };
+  }
+
+  // 管理员管理相关接口（临时使用Mock模式）
+  // 获取活动管理员列表
+  if (url.match(/^\/api\/activities\/[^/]+\/administrators$/) && method === 'GET') {
+    const activityId = url.split('/')[3];
+    const activity = activities.find(a => a.id === activityId);
+
+    if (!activity) {
+      return { code: -1, data: null, message: '活动不存在' };
+    }
+
+    // 返回管理员列表（包含用户详情）
+    const administrators = (activity.administrators || []).map(admin => {
+      const user = participants.find(p => p.id === admin.userId);
+      return {
+        ...admin,
+        userName: user?.name || '未知用户',
+        userAvatar: user?.avatar || '',
+        userPhone: user?.phone || ''
+      };
+    });
+
+    return { code: 0, data: administrators, message: 'success' };
+  }
+
+  // 添加管理员
+  if (url.match(/^\/api\/activities\/[^/]+\/administrators$/) && method === 'POST') {
+    const activityId = url.split('/')[3];
+    const { userId } = data;
+
+    const activity = activities.find(a => a.id === activityId);
+
+    if (!activity) {
+      return { code: -1, data: null, message: '活动不存在' };
+    }
+
+    // 检查用户是否存在
+    const user = participants.find(p => p.id === userId);
+    if (!user) {
+      return { code: -1, data: null, message: '用户不存在' };
+    }
+
+    // 初始化管理员列表
+    if (!activity.administrators) {
+      activity.administrators = [];
+    }
+
+    // 检查是否已经是管理员
+    const isAlreadyAdmin = activity.administrators.some(admin => admin.userId === userId);
+    if (isAlreadyAdmin) {
+      return { code: -1, data: null, message: '该用户已经是管理员' };
+    }
+
+    // 添加管理员
+    const now = new Date();
+    const addedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    const newAdmin = {
+      userId,
+      addedAt,
+      addedBy: 'u1'  // TODO: 应该从当前用户获取
+    };
+
+    activity.administrators.push(newAdmin);
+
+    return {
+      code: 0,
+      data: {
+        ...newAdmin,
+        userName: user.name,
+        userAvatar: user.avatar || '',
+        userPhone: user.phone || ''
+      },
+      message: '添加成功'
+    };
+  }
+
+  // 移除管理员
+  if (url.match(/^\/api\/activities\/[^/]+\/administrators\/[^/]+$/) && method === 'DELETE') {
+    const pathParts = url.split('/');
+    const activityId = pathParts[3];
+    const userId = pathParts[5];
+
+    const activity = activities.find(a => a.id === activityId);
+
+    if (!activity) {
+      return { code: -1, data: null, message: '活动不存在' };
+    }
+
+    if (!activity.administrators) {
+      return { code: -1, data: null, message: '该用户不是管理员' };
+    }
+
+    // 移除管理员
+    const index = activity.administrators.findIndex(admin => admin.userId === userId);
+    if (index === -1) {
+      return { code: -1, data: null, message: '该用户不是管理员' };
+    }
+
+    activity.administrators.splice(index, 1);
+
+    return { code: 0, data: null, message: '移除成功' };
+  }
+
+  // 获取可添加为管理员的用户列表
+  if (url === '/api/users/available-administrators' && method === 'GET') {
+    const { activityId } = data;
+
+    if (!activityId) {
+      return { code: -1, data: null, message: '活动ID不能为空' };
+    }
+
+    const activity = activities.find(a => a.id === activityId);
+
+    if (!activity) {
+      return { code: -1, data: null, message: '活动不存在' };
+    }
+
+    // 排除创建者和已有管理员
+    const adminUserIds = (activity.administrators || []).map(admin => admin.userId);
+    const availableUsers = participants.filter(p => {
+      return p.id !== activity.organizerId && !adminUserIds.includes(p.id);
+    });
+
+    return {
+      code: 0,
+      data: availableUsers.map(user => ({
+        id: user.id,
+        name: user.name,
+        avatar: user.avatar || '',
+        phone: user.phone || ''
+      })),
+      message: 'success'
+    };
   }
 
   return { code: -1, data: null, message: '接口未实现' };
@@ -501,6 +817,114 @@ const reviewAPI = {
   })
 };
 
+// 收藏API（临时使用Mock模式，待后端实现后移除 mock: true）
+const favoriteAPI = {
+  // 添加收藏
+  add: (activityId) => request('/api/favorites', {
+    method: 'POST',
+    data: { activityId },
+    showLoading: false,
+    showError: true,
+    mock: true  // 临时启用Mock模式
+  }),
+
+  // 取消收藏
+  remove: (activityId) => request(`/api/favorites/${activityId}`, {
+    method: 'DELETE',
+    showLoading: false,
+    showError: true,
+    mock: true  // 临时启用Mock模式
+  }),
+
+  // 获取我的收藏列表（支持分页）
+  getMyFavorites: (params = {}) => request('/api/favorites/my', {
+    method: 'GET',
+    data: params,  // 支持 page, size 参数
+    useCache: false,  // 收藏数据实时性要求高，不缓存
+    showLoading: false,
+    mock: true  // 临时启用Mock模式
+  }),
+
+  // 检查是否已收藏
+  checkFavorited: (activityId) => request('/api/favorites/check', {
+    method: 'GET',
+    data: { activityId },
+    useCache: false,
+    showLoading: false,
+    mock: true  // 临时启用Mock模式
+  })
+};
+
+// 消息API（临时使用Mock模式，待后端实现后移除 mock: true）
+const messageAPI = {
+  // 获取我的消息列表
+  getMyMessages: (params = {}) => request('/api/messages/my', {
+    method: 'GET',
+    data: params,  // 支持 page, size, category 参数
+    useCache: false,  // 消息数据实时性要求高，不缓存
+    showLoading: false,
+    mock: true  // 临时启用Mock模式
+  }),
+
+  // 标记消息已读
+  markAsRead: (messageId) => request(`/api/messages/${messageId}/read`, {
+    method: 'PUT',
+    showLoading: false,
+    mock: true  // 临时启用Mock模式
+  }),
+
+  // 标记所有消息已读
+  markAllAsRead: () => request('/api/messages/mark-all-read', {
+    method: 'PUT',
+    showLoading: false,
+    mock: true  // 临时启用Mock模式
+  }),
+
+  // 删除消息
+  delete: (messageId) => request(`/api/messages/${messageId}`, {
+    method: 'DELETE',
+    showLoading: false,
+    mock: true  // 临时启用Mock模式
+  })
+};
+
+// 管理员管理API（临时使用Mock模式，待后端实现后移除 mock: true）
+const administratorAPI = {
+  // 获取活动管理员列表
+  getAdministrators: (activityId) => request(`/api/activities/${activityId}/administrators`, {
+    method: 'GET',
+    useCache: false,
+    showLoading: false,
+    mock: true  // 临时启用Mock模式
+  }),
+
+  // 添加管理员
+  addAdministrator: (activityId, userId) => request(`/api/activities/${activityId}/administrators`, {
+    method: 'POST',
+    data: { userId },
+    showLoading: true,
+    loadingText: '添加中...',
+    mock: true  // 临时启用Mock模式
+  }),
+
+  // 移除管理员
+  removeAdministrator: (activityId, userId) => request(`/api/activities/${activityId}/administrators/${userId}`, {
+    method: 'DELETE',
+    showLoading: true,
+    loadingText: '移除中...',
+    mock: true  // 临时启用Mock模式
+  }),
+
+  // 获取可添加为管理员的用户列表
+  getAvailableUsers: (activityId) => request('/api/users/available-administrators', {
+    method: 'GET',
+    data: { activityId },
+    useCache: false,
+    showLoading: false,
+    mock: true  // 临时启用Mock模式
+  })
+};
+
 module.exports = {
   request,
   activityAPI,
@@ -508,5 +932,8 @@ module.exports = {
   checkinAPI,
   userAPI,
   statisticsAPI,
-  reviewAPI
+  reviewAPI,
+  favoriteAPI,
+  messageAPI,
+  administratorAPI
 };

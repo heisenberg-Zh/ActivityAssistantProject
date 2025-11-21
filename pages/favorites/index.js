@@ -1,5 +1,5 @@
 // pages/favorites/index.js
-const { activityAPI } = require('../../utils/api.js');
+const { activityAPI, favoriteAPI } = require('../../utils/api.js');
 const { enrichActivityWithTags } = require('../../utils/activity-helper.js');
 const { translateActivityStatus } = require('../../utils/formatter.js');
 const app = getApp();
@@ -40,51 +40,31 @@ Page({
     }
   },
 
-  // 加载收藏列表
+  // 加载收藏列表（从后端API获取）
   async loadFavorites() {
     try {
       this.setData({ loading: true });
       wx.showLoading({ title: '加载中...' });
 
-      // 从本地存储获取收藏的活动ID列表
-      const favoriteIds = wx.getStorageSync('favoriteActivityIds') || [];
+      const currentUserId = app.globalData.currentUserId || null;
 
-      if (favoriteIds.length === 0) {
-        this.setData({ favoriteActivities: [], loading: false });
-        wx.hideLoading();
-        return;
+      // 从后端API获取收藏列表
+      const result = await favoriteAPI.getMyFavorites({ page: 0, size: 100 });
+
+      if (result.code !== 0) {
+        throw new Error(result.message || '获取收藏列表失败');
       }
 
-      const currentUserId = app.globalData.currentUserId || 'u1';
+      // 获取收藏的活动列表
+      const favoritesData = result.data?.content || result.data || [];
 
-      // 并行请求所有收藏的活动详情
-      const promises = favoriteIds.map(id =>
-        activityAPI.getDetail(id).catch(err => {
-          console.error(`获取活动 ${id} 失败:`, err);
-          return null; // 如果某个活动获取失败，返回 null
-        })
-      );
-
-      const results = await Promise.all(promises);
-
-      // 过滤掉获取失败的活动，并提取有效数据
-      const favoriteActivities = results
-        .filter(result => result && result.code === 0 && result.data)
-        .map(result => {
-          const activity = enrichActivityWithTags(result.data, currentUserId);
-          // 翻译状态为中文
-          activity.status = translateActivityStatus(activity.status);
-          return activity;
-        });
-
-      // 如果有活动获取失败，更新本地存储（移除不存在的活动ID）
-      const validIds = favoriteActivities.map(activity => activity.id);
-      const invalidIds = favoriteIds.filter(id => !validIds.includes(id));
-
-      if (invalidIds.length > 0) {
-        console.log('发现无效的收藏ID，已自动清理:', invalidIds);
-        wx.setStorageSync('favoriteActivityIds', validIds);
-      }
+      // 处理活动数据
+      const favoriteActivities = favoritesData.map(favorite => {
+        const activity = enrichActivityWithTags(favorite.activity || favorite, currentUserId);
+        // 翻译状态为中文
+        activity.status = translateActivityStatus(activity.status);
+        return activity;
+      });
 
       this.setData({
         favoriteActivities,
@@ -103,8 +83,8 @@ Page({
     }
   },
 
-  // 取消收藏
-  removeFavorite(e) {
+  // 取消收藏（使用后端API）
+  async removeFavorite(e) {
     // 【优先级1】先检查登录状态（双重保护）
     if (!app.checkLoginStatus()) {
       wx.showModal({
@@ -127,20 +107,38 @@ Page({
     wx.showModal({
       title: '取消收藏',
       content: '确定要取消收藏该活动吗？',
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          // 从本地存储中移除
-          const favoriteIds = wx.getStorageSync('favoriteActivityIds') || [];
-          const newFavoriteIds = favoriteIds.filter(fid => fid !== id);
-          wx.setStorageSync('favoriteActivityIds', newFavoriteIds);
+          try {
+            wx.showLoading({ title: '处理中...' });
 
-          // 重新加载列表
-          this.loadFavorites();
+            // 调用后端API取消收藏
+            const result = await favoriteAPI.remove(id);
 
-          wx.showToast({
-            title: '已取消收藏',
-            icon: 'success'
-          });
+            wx.hideLoading();
+
+            if (result.code === 0) {
+              // 重新加载列表
+              this.loadFavorites();
+
+              wx.showToast({
+                title: '已取消收藏',
+                icon: 'success'
+              });
+            } else {
+              wx.showToast({
+                title: result.message || '取消失败',
+                icon: 'none'
+              });
+            }
+          } catch (err) {
+            wx.hideLoading();
+            console.error('取消收藏失败:', err);
+            wx.showToast({
+              title: '操作失败，请重试',
+              icon: 'none'
+            });
+          }
         }
       }
     });

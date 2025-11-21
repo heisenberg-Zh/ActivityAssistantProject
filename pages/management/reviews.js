@@ -45,8 +45,8 @@ Page({
     // 获取状态栏高度
     const statusBarHeight = app.globalData.statusBarHeight || 0;
     const navBarHeight = statusBarHeight + 44;
-    const systemInfo = wx.getSystemInfoSync();
-    const scrollHeight = systemInfo.windowHeight - navBarHeight;
+    const windowInfo = wx.getWindowInfo();
+    const scrollHeight = windowInfo.windowHeight - navBarHeight;
 
     this.setData({
       activityId,

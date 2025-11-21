@@ -19,7 +19,7 @@
     enable-back-to-top
     enhanced
     show-scrollbar="{{false}}"
-    style="top: {{navBarHeight}}px; height: {{scrollHeight}}px;"
+    style="top: {{navBarHeight}}px; bottom: 0;"
   >
     <!-- 活动概览卡片 - 全新设计 -->
     <view class="activity-overview">
@@ -77,22 +77,16 @@
 
       <!-- 评价统计行（仅已结束活动显示） -->
       <view wx:if="{{activity.status === '已结束' && reviewStatistics}}" class="review-stats-section">
-        <view class="review-stats-header">
-          <text class="review-stats-icon">⭐</text>
-          <text class="review-stats-title">活动评价</text>
-        </view>
-        <view class="review-stats-content">
-          <view class="review-stat-item">
-            <text class="review-stat-label">平均评分</text>
-            <view class="review-rating-display">
-              <text class="review-rating-value">{{reviewStatistics.averageRating || 0}}</text>
-              <text class="review-rating-suffix">/5.0</text>
-            </view>
+        <view class="review-stats-row">
+          <view class="review-left">
+            <text class="review-icon">⭐</text>
+            <text class="review-title">活动评价</text>
           </view>
-          <view class="review-stat-divider"></view>
-          <view class="review-stat-item">
-            <text class="review-stat-label">评价总数</text>
-            <text class="review-count-value">{{reviewStatistics.totalReviews || 0}}</text>
+          <view class="review-right">
+            <text class="review-rating-text">{{reviewStatistics.averageRating || 0}}</text>
+            <text class="review-suffix-text">/5.0</text>
+            <text class="review-divider-text">·</text>
+            <text class="review-count-text">{{reviewStatistics.totalReviews || 0}}条评价</text>
           </view>
         </view>
       </view>
@@ -103,7 +97,6 @@
   <view class="management-grid">
     <view class="grid-header">
       <text class="grid-title">管理功能</text>
-      <text class="grid-subtitle">快速访问管理工具</text>
     </view>
 
     <view class="function-grid">

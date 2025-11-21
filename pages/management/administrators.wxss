@@ -8,9 +8,7 @@
 
 /* 提示信息区域 */
 .notice-section {
-  padding-left: 24rpx;
-  padding-right: 24rpx;
-  padding-bottom: 16rpx;
+  padding: 16rpx 24rpx;
 }
 
 .section-title {

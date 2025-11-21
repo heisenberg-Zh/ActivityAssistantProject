@@ -14,7 +14,7 @@
   </view>
 
   <!-- 状态筛选标签 -->
-  <view class="filter-tabs" style="padding-top: {{navBarHeight + 8}}px;">
+  <view class="filter-tabs">
     <view
       class="filter-tab {{statusFilter === 'all' ? 'filter-tab--active' : ''}}"
       bindtap="switchFilter"

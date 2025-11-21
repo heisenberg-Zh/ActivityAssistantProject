@@ -1,5 +1,6 @@
 // pages/management/whitelist.js
-const { activities, participants, registrations } = require('../../utils/mock.js');
+const { activityAPI } = require('../../utils/api.js');
+const { participants, registrations } = require('../../utils/mock.js');
 const {
   checkManagementPermission,
   parseBatchPhoneNumbers
@@ -56,61 +57,83 @@ Page({
   },
 
   // 加载数据
-  loadData() {
+  async loadData() {
     const { activityId } = this.data;
     const currentUserId = app.globalData.currentUserId || 'u1';
 
-    // 查找活动
-    const activity = activities.find(a => a.id === activityId);
+    try {
+      wx.showLoading({ title: '加载中...' });
 
-    if (!activity) {
-      wx.showToast({ title: '活动不存在', icon: 'none' });
-      setTimeout(() => wx.navigateBack(), 1500);
-      return;
-    }
+      // 从后端API获取活动详情
+      const result = await activityAPI.getDetail(activityId);
 
-    // 检查管理权限
-    const permission = checkManagementPermission(activity, currentUserId);
+      wx.hideLoading();
 
-    if (!permission.hasPermission) {
-      wx.showModal({
-        title: '无权限',
-        content: '您不是此活动的创建者或管理员',
-        showCancel: false,
-        success: () => wx.navigateBack()
+      if (result.code !== 0) {
+        wx.showToast({ title: result.message || '获取活动详情失败', icon: 'none' });
+        setTimeout(() => wx.navigateBack(), 1500);
+        return;
+      }
+
+      const activity = result.data;
+
+      if (!activity) {
+        wx.showToast({ title: '活动不存在', icon: 'none' });
+        setTimeout(() => wx.navigateBack(), 1500);
+        return;
+      }
+
+      // 检查管理权限
+      const permission = checkManagementPermission(activity, currentUserId);
+
+      if (!permission.hasPermission) {
+        wx.showModal({
+          title: '无权限',
+          content: '您不是此活动的创建者或管理员',
+          showCancel: false,
+          success: () => wx.navigateBack()
+        });
+        return;
+      }
+
+      // 获取白名单（包含用户详情）
+      const whitelist = (activity.whitelist || []).map(item => {
+        const user = participants.find(p => p.id === item.userId);
+        return {
+          ...item,
+          name: user?.name || '未知用户',
+          avatar: user?.avatar || ''
+        };
       });
-      return;
+
+      // 获取已报名用户（用于选择添加）
+      const activityRegs = registrations.filter(r => r.activityId === activityId && r.status === 'approved');
+      const registeredUsers = activityRegs.map(reg => {
+        const user = participants.find(p => p.id === reg.userId);
+        return {
+          userId: reg.userId,
+          name: reg.name,
+          mobile: reg.mobile,
+          avatar: user?.avatar || '',
+          // 检查是否已在白名单
+          inWhitelist: whitelist.some(w => w.userId === reg.userId || w.phone === reg.mobile)
+        };
+      });
+
+      this.setData({
+        activity,
+        whitelist,
+        registeredUsers
+      });
+    } catch (err) {
+      wx.hideLoading();
+      console.error('加载活动数据失败:', err);
+      wx.showToast({
+        title: err.message || '加载失败，请稍后重试',
+        icon: 'none'
+      });
+      setTimeout(() => wx.navigateBack(), 1500);
     }
-
-    // 获取白名单（包含用户详情）
-    const whitelist = (activity.whitelist || []).map(item => {
-      const user = participants.find(p => p.id === item.userId);
-      return {
-        ...item,
-        name: user?.name || '未知用户',
-        avatar: user?.avatar || ''
-      };
-    });
-
-    // 获取已报名用户（用于选择添加）
-    const activityRegs = registrations.filter(r => r.activityId === activityId && r.status === 'approved');
-    const registeredUsers = activityRegs.map(reg => {
-      const user = participants.find(p => p.id === reg.userId);
-      return {
-        userId: reg.userId,
-        name: reg.name,
-        mobile: reg.mobile,
-        avatar: user?.avatar || '',
-        // 检查是否已在白名单
-        inWhitelist: whitelist.some(w => w.userId === reg.userId || w.phone === reg.mobile)
-      };
-    });
-
-    this.setData({
-      activity,
-      whitelist,
-      registeredUsers
-    });
   },
 
   // 显示添加对话框

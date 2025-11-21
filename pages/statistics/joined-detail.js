@@ -23,8 +23,8 @@ Page({
     console.log('📊 [joined-detail] 页面加载，使用 wx-charts');
 
     // 获取系统信息以设置 canvas 尺寸
-    const systemInfo = wx.getSystemInfoSync();
-    const windowWidth = systemInfo.windowWidth;
+    const windowInfo = wx.getWindowInfo();
+    const windowWidth = windowInfo.windowWidth;
     const canvasWidth = windowWidth - 40; // 减去左右 padding
     const canvasHeight = 260; // 图表高度
 

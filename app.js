@@ -74,9 +74,18 @@ App({
   // 获取系统信息
   getSystemInfo() {
     try {
-      const systemInfo = wx.getSystemInfoSync();
+      // 使用新的API替代已废弃的 wx.getSystemInfoSync
+      const windowInfo = wx.getWindowInfo();
+      const deviceInfo = wx.getDeviceInfo();
+
+      // 保留向后兼容性：合并为 systemInfo 对象
+      const systemInfo = {
+        ...windowInfo,
+        ...deviceInfo
+      };
+
       this.globalData.systemInfo = systemInfo;
-      this.globalData.statusBarHeight = systemInfo.statusBarHeight || 0;
+      this.globalData.statusBarHeight = windowInfo.statusBarHeight || 0;
       console.log('系统状态栏高度:', this.globalData.statusBarHeight);
     } catch (err) {
       console.error('获取系统信息失败:', err);
