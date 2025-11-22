@@ -8,7 +8,7 @@
  *
  * 切换方式：修改下方的 CURRENT_ENV 变量
  */
-const CURRENT_ENV = 'development'; // 可选值: 'development' | 'production' | 'mock'
+const CURRENT_ENV = 'mock'; // 可选值: 'development' | 'production' | 'mock'
 
 // 不同环境的API配置
 const ENV_CONFIG = {

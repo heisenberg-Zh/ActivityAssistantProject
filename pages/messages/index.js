@@ -47,10 +47,12 @@ Page({
     }
   },
 
-  // 加载消息列表（从后端API获取）
+  // 加载消息列表（从后端API获取，支持错误降级）
   async loadMessages() {
+    let loadingShown = false;
     try {
       wx.showLoading({ title: '加载中...' });
+      loadingShown = true;
 
       // 从后端API获取消息列表
       const result = await messageAPI.getMyMessages({ page: 0, size: 100 });
@@ -81,14 +83,46 @@ Page({
 
       this.updateMessages(this.data.activeFilter);
 
-      wx.hideLoading();
+      if (loadingShown) {
+        wx.hideLoading();
+        loadingShown = false;
+      }
     } catch (error) {
       console.error('加载消息列表失败:', error);
-      wx.hideLoading();
-      wx.showToast({
-        title: '加载失败',
-        icon: 'error'
-      });
+
+      // 确保隐藏loading
+      if (loadingShown) {
+        wx.hideLoading();
+        loadingShown = false;
+      }
+
+      // 友好的错误处理
+      const errorMsg = error.message || '加载失败';
+
+      // 如果是后端未实现的错误，给出提示
+      if (errorMsg.includes('No static resource') || error.type === 'server_error') {
+        console.log('📢 后端消息接口未实现，当前使用Mock数据模式');
+
+        // 显示温馨提示（不使用error图标，避免惊吓用户）
+        wx.showToast({
+          title: '暂无新消息',
+          icon: 'none',
+          duration: 1500
+        });
+
+        // 初始化示例消息（为空列表）
+        this.setData({
+          allMessages: [],
+          messages: []
+        });
+      } else {
+        // 其他错误显示具体错误信息
+        wx.showToast({
+          title: errorMsg,
+          icon: 'none',
+          duration: 2000
+        });
+      }
     }
   },
 

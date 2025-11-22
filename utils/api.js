@@ -1318,30 +1318,34 @@ const favoriteAPI = {
 
 // 消息API
 const messageAPI = {
-  // 获取我的消息列表
+  // 获取我的消息列表（减少重试次数，避免大量错误日志）
   getMyMessages: (params = {}) => request('/api/messages/my', {
     method: 'GET',
     data: params,  // 支持 page, size, category 参数
     useCache: false,  // 消息数据实时性要求高，不缓存
-    showLoading: false
+    showLoading: false,
+    retryCount: 0  // 消息接口失败不重试，直接显示空列表或降级
   }),
 
   // 标记消息已读
   markAsRead: (messageId) => request(`/api/messages/${messageId}/read`, {
     method: 'PUT',
-    showLoading: false
+    showLoading: false,
+    retryCount: 1  // 只重试1次
   }),
 
   // 标记所有消息已读
   markAllAsRead: () => request('/api/messages/mark-all-read', {
     method: 'PUT',
-    showLoading: false
+    showLoading: false,
+    retryCount: 1  // 只重试1次
   }),
 
   // 删除消息
   delete: (messageId) => request(`/api/messages/${messageId}`, {
     method: 'DELETE',
-    showLoading: false
+    showLoading: false,
+    retryCount: 1  // 只重试1次
   })
 };
 
