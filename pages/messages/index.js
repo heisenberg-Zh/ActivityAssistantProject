@@ -59,7 +59,7 @@ Page({
         throw new Error(result.message || '获取消息列表失败');
       }
 
-      const notifications = result.data || [];
+      let notifications = result.data || [];  // 改为 let，允许重新赋值
 
       // 如果是第一次使用且没有消息，初始化一些示例消息
       if (notifications.length === 0) {
