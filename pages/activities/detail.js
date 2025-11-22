@@ -515,22 +515,50 @@ Page({
 
   // 取消活动（仅组织者）
   cancelActivity() {
+    const { id } = this.data;
+
     wx.showModal({
       title: '取消活动',
-      content: '确定要取消这个活动吗？',
-      confirmText: '确定',
+      content: '确定要取消这个活动吗？取消后无法恢复',
+      confirmText: '确定取消',
       confirmColor: '#ef4444',
       success: async (res) => {
         if (res.confirm) {
-          wx.showLoading({ title: '处理中...' });
-          // 这里应该调用API取消活动
-          setTimeout(() => {
+          try {
+            wx.showLoading({ title: '处理中...' });
+
+            // 调用API取消活动
+            const result = await activityAPI.cancel(id);
+
             wx.hideLoading();
-            wx.showToast({ title: '活动已取消', icon: 'success' });
-            setTimeout(() => {
-              wx.navigateBack({ delta: 1 });
-            }, 1500);
-          }, 1000);
+
+            if (result.code === 0) {
+              wx.showToast({
+                title: '活动已取消',
+                icon: 'success',
+                duration: 2000
+              });
+
+              // 延迟返回，让用户看到提示
+              setTimeout(() => {
+                wx.navigateBack({ delta: 1 });
+              }, 1500);
+            } else {
+              wx.showToast({
+                title: result.message || '取消失败',
+                icon: 'none',
+                duration: 2000
+              });
+            }
+          } catch (err) {
+            wx.hideLoading();
+            console.error('取消活动失败:', err);
+            wx.showToast({
+              title: '操作失败，请重试',
+              icon: 'none',
+              duration: 2000
+            });
+          }
         }
       }
     });

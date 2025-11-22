@@ -1288,7 +1288,6 @@ const favoriteAPI = {
   add: (activityId) => request('/api/favorites', {
     method: 'POST',
     data: { activityId },
-    mock: true,  // 临时使用Mock数据（后端API未实现或测试中）
     showLoading: false,
     showError: true
   }),
@@ -1296,7 +1295,6 @@ const favoriteAPI = {
   // 取消收藏
   remove: (activityId) => request(`/api/favorites/${activityId}`, {
     method: 'DELETE',
-    mock: true,  // 临时使用Mock数据（后端API未实现或测试中）
     showLoading: false,
     showError: true
   }),
@@ -1305,7 +1303,6 @@ const favoriteAPI = {
   getMyFavorites: (params = {}) => request('/api/favorites/my', {
     method: 'GET',
     data: params,  // 支持 page, size 参数
-    mock: true,  // 临时使用Mock数据（后端API未实现或测试中）
     useCache: false,  // 收藏数据实时性要求高，不缓存
     showLoading: false
   }),
@@ -1314,7 +1311,6 @@ const favoriteAPI = {
   checkFavorited: (activityId) => request('/api/favorites/check', {
     method: 'GET',
     data: { activityId },
-    mock: true,  // 临时使用Mock数据（后端API未实现或测试中）
     useCache: false,
     showLoading: false
   })
@@ -1326,7 +1322,6 @@ const messageAPI = {
   getMyMessages: (params = {}) => request('/api/messages/my', {
     method: 'GET',
     data: params,  // 支持 page, size, category 参数
-    mock: true,  // 临时使用Mock数据（后端API未实现）
     useCache: false,  // 消息数据实时性要求高，不缓存
     showLoading: false
   }),
@@ -1334,21 +1329,18 @@ const messageAPI = {
   // 标记消息已读
   markAsRead: (messageId) => request(`/api/messages/${messageId}/read`, {
     method: 'PUT',
-    mock: true,  // 临时使用Mock数据（后端API未实现）
     showLoading: false
   }),
 
   // 标记所有消息已读
   markAllAsRead: () => request('/api/messages/mark-all-read', {
     method: 'PUT',
-    mock: true,  // 临时使用Mock数据（后端API未实现）
     showLoading: false
   }),
 
   // 删除消息
   delete: (messageId) => request(`/api/messages/${messageId}`, {
     method: 'DELETE',
-    mock: true,  // 临时使用Mock数据（后端API未实现）
     showLoading: false
   })
 };
@@ -1358,7 +1350,6 @@ const administratorAPI = {
   // 获取活动管理员列表
   getAdministrators: (activityId) => request(`/api/activities/${activityId}/administrators`, {
     method: 'GET',
-    mock: true,  // 临时使用Mock数据（后端API未实现或测试中）
     useCache: false,
     showLoading: false
   }),
@@ -1367,7 +1358,6 @@ const administratorAPI = {
   addAdministrator: (activityId, userId) => request(`/api/activities/${activityId}/administrators`, {
     method: 'POST',
     data: { userId },
-    mock: true,  // 临时使用Mock数据（后端API未实现或测试中）
     showLoading: true,
     loadingText: '添加中...'
   }),
@@ -1375,7 +1365,6 @@ const administratorAPI = {
   // 移除管理员
   removeAdministrator: (activityId, userId) => request(`/api/activities/${activityId}/administrators/${userId}`, {
     method: 'DELETE',
-    mock: true,  // 临时使用Mock数据（后端API未实现或测试中）
     showLoading: true,
     loadingText: '移除中...'
   }),
@@ -1384,7 +1373,6 @@ const administratorAPI = {
   getAvailableUsers: (activityId) => request('/api/users/available-administrators', {
     method: 'GET',
     data: { activityId },
-    mock: true,  // 临时使用Mock数据（后端API未实现或测试中）
     useCache: false,
     showLoading: false
   })
@@ -1395,7 +1383,6 @@ const whitelistAPI = {
   // 获取活动白名单列表
   getWhitelist: (activityId) => request(`/api/activities/${activityId}/whitelist`, {
     method: 'GET',
-    mock: true,  // 临时使用Mock数据（后端API未实现或测试中）
     useCache: false,
     showLoading: false
   }),
@@ -1404,7 +1391,6 @@ const whitelistAPI = {
   addBatch: (activityId, data) => request(`/api/activities/${activityId}/whitelist`, {
     method: 'POST',
     data,  // { phones: [...] } 或 { userIds: [...] }
-    mock: true,  // 临时使用Mock数据（后端API未实现或测试中）
     showLoading: true,
     loadingText: '添加中...'
   }),
@@ -1412,7 +1398,6 @@ const whitelistAPI = {
   // 移除白名单
   remove: (activityId, phone) => request(`/api/activities/${activityId}/whitelist/${encodeURIComponent(phone)}`, {
     method: 'DELETE',
-    mock: true,  // 临时使用Mock数据（后端API未实现或测试中）
     showLoading: true,
     loadingText: '移除中...'
   }),
@@ -1420,7 +1405,6 @@ const whitelistAPI = {
   // 获取活动已报名用户列表（用于选择添加）
   getRegisteredUsers: (activityId) => request(`/api/activities/${activityId}/registered-users`, {
     method: 'GET',
-    mock: true,  // 临时使用Mock数据（后端API未实现或测试中）
     useCache: false,
     showLoading: false
   })
@@ -1431,7 +1415,6 @@ const blacklistAPI = {
   // 获取活动黑名单列表
   getBlacklist: (activityId) => request(`/api/activities/${activityId}/blacklist`, {
     method: 'GET',
-    mock: true,  // 临时使用Mock数据（后端API未实现或测试中）
     useCache: false,
     showLoading: false
   }),
@@ -1440,7 +1423,6 @@ const blacklistAPI = {
   addBatch: (activityId, data) => request(`/api/activities/${activityId}/blacklist`, {
     method: 'POST',
     data,  // { phones: [...], reason: '...', expiryDays: 30 }
-    mock: true,  // 临时使用Mock数据（后端API未实现或测试中）
     showLoading: true,
     loadingText: '添加中...'
   }),
@@ -1448,7 +1430,6 @@ const blacklistAPI = {
   // 移除黑名单
   remove: (activityId, phone) => request(`/api/activities/${activityId}/blacklist/${encodeURIComponent(phone)}`, {
     method: 'DELETE',
-    mock: true,  // 临时使用Mock数据（后端API未实现或测试中）
     showLoading: true,
     loadingText: '移除中...'
   }),
@@ -1456,7 +1437,6 @@ const blacklistAPI = {
   // 切换黑名单启用/禁用状态
   toggleActive: (activityId, phone) => request(`/api/activities/${activityId}/blacklist/${encodeURIComponent(phone)}/toggle`, {
     method: 'PUT',
-    mock: true,  // 临时使用Mock数据（后端API未实现或测试中）
     showLoading: true,
     loadingText: '处理中...'
   })
@@ -1468,7 +1448,6 @@ const feedbackAPI = {
   submit: (data) => request('/api/feedback', {
     method: 'POST',
     data,  // { content: '反馈内容', contactInfo: '联系方式（可选）' }
-    mock: true,  // 临时使用Mock数据（后端API未实现或测试中）
     showLoading: true,
     loadingText: '提交中...'
   })

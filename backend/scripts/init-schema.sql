@@ -10,6 +10,8 @@
 USE activity_assistant;
 
 -- 删除已存在的表（谨慎！会删除所有数据）
+DROP TABLE IF EXISTS feedbacks;
+DROP TABLE IF EXISTS favorites;
 DROP TABLE IF EXISTS messages;
 DROP TABLE IF EXISTS checkins;
 DROP TABLE IF EXISTS registrations;
@@ -187,6 +189,42 @@ CREATE TABLE messages (
     INDEX idx_user_read (user_id, is_read),
     INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='消息表';
+
+-- ============================================
+-- 6. 收藏表 (favorites)
+-- ============================================
+CREATE TABLE favorites (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '收藏ID（自增）',
+    user_id VARCHAR(36) NOT NULL COMMENT '用户ID',
+    activity_id VARCHAR(36) NOT NULL COMMENT '活动ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '收藏时间',
+
+    -- 外键和索引
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE,
+    UNIQUE KEY uk_user_activity (user_id, activity_id),
+    INDEX idx_user (user_id),
+    INDEX idx_activity (activity_id),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='收藏表';
+
+-- ============================================
+-- 7. 用户反馈表 (feedbacks)
+-- ============================================
+CREATE TABLE feedbacks (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '反馈ID（自增）',
+    user_id VARCHAR(36) DEFAULT NULL COMMENT '用户ID（允许匿名）',
+    content TEXT NOT NULL COMMENT '反馈内容',
+    contact_info VARCHAR(200) DEFAULT NULL COMMENT '联系方式',
+    type VARCHAR(50) DEFAULT NULL COMMENT '反馈类型：bug/suggestion/other',
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' COMMENT '处理状态：pending/processing/resolved/closed',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+
+    -- 索引
+    INDEX idx_user (user_id),
+    INDEX idx_status (status),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户反馈表';
 
 -- ============================================
 -- 完成提示

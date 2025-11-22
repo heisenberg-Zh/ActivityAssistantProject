@@ -1,5 +1,5 @@
 // pages/management/registrations.js
-const { activityAPI, registrationAPI } = require('../../utils/api.js');
+const { activityAPI, registrationAPI, blacklistAPI } = require('../../utils/api.js');
 const {
   checkManagementPermission
 } = require('../../utils/activity-management-helper.js');
@@ -160,11 +160,11 @@ Page({
 
   // 显示移除对话框
   showRemoveDialog(e) {
-    const { userId, name, mobile } = e.currentTarget.dataset;
+    const { id, userId, name, mobile } = e.currentTarget.dataset;
 
     this.setData({
       showRemoveDialog: true,
-      removeTarget: { userId, name, mobile },
+      removeTarget: { id, userId, name, mobile },
       addToBlacklist: false,
       removeReason: ''
     });
@@ -191,9 +191,8 @@ Page({
   },
 
   // 确认移除
-  confirmRemove() {
-    const { removeTarget, addToBlacklist, removeReason, activityId, activity } = this.data;
-    const currentUserId = app.globalData.currentUserId || 'u1';
+  async confirmRemove() {
+    const { removeTarget, addToBlacklist, removeReason, activityId } = this.data;
 
     if (!removeTarget) return;
 
@@ -209,43 +208,27 @@ Page({
       }
     }
 
-    wx.showLoading({ title: '处理中...' });
+    try {
+      wx.showLoading({ title: '处理中...' });
 
-    // 模拟API调用 - 实际修改mock数据
-    setTimeout(() => {
-      // 从 registrations 数组中移除该报名记录
-      const regIndex = registrations.findIndex(
-        r => r.activityId === activityId && r.userId === removeTarget.userId
-      );
+      // 1. 先移除报名记录
+      const removeResult = await registrationAPI.remove(removeTarget.id);
 
-      if (regIndex > -1) {
-        registrations.splice(regIndex, 1);
+      if (removeResult.code !== 0) {
+        throw new Error(removeResult.message || '移除报名失败');
       }
 
-      // 如果选择加入黑名单，添加到活动的黑名单
-      if (addToBlacklist && activity) {
-        if (!activity.blacklist) {
-          activity.blacklist = [];
-        }
+      // 2. 如果选择加入黑名单，添加到黑名单
+      if (addToBlacklist && removeTarget.mobile) {
+        const blacklistResult = await blacklistAPI.addBatch(activityId, {
+          phones: [removeTarget.mobile],
+          reason: removeReason.trim() || '从报名管理移除',
+          expiryDays: null  // 永久
+        });
 
-        // 检查是否已在黑名单
-        const existsInBlacklist = activity.blacklist.some(
-          b => b.userId === removeTarget.userId || b.phone === removeTarget.mobile
-        );
-
-        if (!existsInBlacklist) {
-          const now = new Date();
-          const addedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-          activity.blacklist.push({
-            phone: removeTarget.mobile,
-            userId: removeTarget.userId,
-            expiresAt: null, // 永久
-            isActive: true,
-            reason: removeReason.trim() || '从报名管理移除',
-            addedAt: addedAt,
-            addedBy: currentUserId
-          });
+        if (blacklistResult.code !== 0) {
+          console.error('添加黑名单失败:', blacklistResult.message);
+          // 不中断流程，仅记录错误
         }
       }
 
@@ -266,42 +249,59 @@ Page({
       setTimeout(() => {
         this.loadData();
       }, 800);
-    }, 800);
+    } catch (err) {
+      wx.hideLoading();
+      console.error('移除报名失败:', err);
+      wx.showToast({
+        title: err.message || '操作失败，请重试',
+        icon: 'none',
+        duration: 2000
+      });
+    }
   },
 
   // 审核通过
   approveRegistration(e) {
-    const { userId, name } = e.currentTarget.dataset;
-    const { activityId } = this.data;
+    const { id, name } = e.currentTarget.dataset;
 
     wx.showModal({
       title: '通过审核',
       content: `确定通过"${name}"的报名申请吗？`,
       confirmText: '确定通过',
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          wx.showLoading({ title: '处理中...' });
+          try {
+            wx.showLoading({ title: '处理中...' });
 
-          // 模拟API调用 - 实际修改mock数据
-          setTimeout(() => {
-            // 找到对应的报名记录并修改状态
-            const reg = registrations.find(
-              r => r.activityId === activityId && r.userId === userId
-            );
-
-            if (reg) {
-              reg.status = 'approved';
-              const now = new Date();
-              reg.approvedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-            }
+            // 调用后端API审核通过
+            const result = await registrationAPI.approve(id, {
+              status: 'approved'
+            });
 
             wx.hideLoading();
-            wx.showToast({ title: '已通过', icon: 'success', duration: 2000 });
 
-            setTimeout(() => {
-              this.loadData();
-            }, 800);
-          }, 800);
+            if (result.code === 0) {
+              wx.showToast({ title: '已通过', icon: 'success', duration: 2000 });
+
+              setTimeout(() => {
+                this.loadData();
+              }, 800);
+            } else {
+              wx.showToast({
+                title: result.message || '审核失败',
+                icon: 'none',
+                duration: 2000
+              });
+            }
+          } catch (err) {
+            wx.hideLoading();
+            console.error('审核通过失败:', err);
+            wx.showToast({
+              title: '操作失败，请重试',
+              icon: 'none',
+              duration: 2000
+            });
+          }
         }
       }
     });
@@ -309,38 +309,47 @@ Page({
 
   // 审核拒绝
   rejectRegistration(e) {
-    const { userId, name } = e.currentTarget.dataset;
-    const { activityId } = this.data;
+    const { id, name } = e.currentTarget.dataset;
 
     wx.showModal({
       title: '拒绝审核',
       content: `确定拒绝"${name}"的报名申请吗？`,
       confirmText: '确定拒绝',
       confirmColor: '#ef4444',
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          wx.showLoading({ title: '处理中...' });
+          try {
+            wx.showLoading({ title: '处理中...' });
 
-          // 模拟API调用 - 实际修改mock数据
-          setTimeout(() => {
-            // 找到对应的报名记录并修改状态
-            const reg = registrations.find(
-              r => r.activityId === activityId && r.userId === userId
-            );
-
-            if (reg) {
-              reg.status = 'rejected';
-              const now = new Date();
-              reg.rejectedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-            }
+            // 调用后端API审核拒绝
+            const result = await registrationAPI.approve(id, {
+              status: 'rejected'
+            });
 
             wx.hideLoading();
-            wx.showToast({ title: '已拒绝', icon: 'success', duration: 2000 });
 
-            setTimeout(() => {
-              this.loadData();
-            }, 800);
-          }, 800);
+            if (result.code === 0) {
+              wx.showToast({ title: '已拒绝', icon: 'success', duration: 2000 });
+
+              setTimeout(() => {
+                this.loadData();
+              }, 800);
+            } else {
+              wx.showToast({
+                title: result.message || '审核失败',
+                icon: 'none',
+                duration: 2000
+              });
+            }
+          } catch (err) {
+            wx.hideLoading();
+            console.error('审核拒绝失败:', err);
+            wx.showToast({
+              title: '操作失败，请重试',
+              icon: 'none',
+              duration: 2000
+            });
+          }
         }
       }
     });

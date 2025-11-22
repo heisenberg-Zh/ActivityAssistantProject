@@ -1,6 +1,5 @@
 // pages/checkin/index.js
-const { activityAPI } = require('../../utils/api.js');
-const { checkinAPI } = require('../../utils/api.js');
+const { activityAPI, checkinAPI, registrationAPI } = require('../../utils/api.js');
 const { validateCheckinLocation, formatDistance } = require('../../utils/location.js');
 const { isInCheckinWindow, isLate, formatDateTime } = require('../../utils/datetime.js');
 const { formatCheckinStatus, translateActivityStatus } = require('../../utils/formatter.js');
@@ -12,6 +11,8 @@ Page({
     activityId: '',
     activity: null,
     activityStatusClass: '', // 活动状态的CSS类名
+    registrationId: '', // 用户的报名ID
+    hasRegistered: false, // 是否已报名
     checked: false,
     checkTime: '',
     currentLocation: null,
@@ -73,6 +74,7 @@ Page({
     console.log('处理后的活动 ID:', activityId, '类型:', typeof activityId);
     this.setData({ activityId });
     this.loadActivity(activityId);
+    this.loadRegistration(activityId); // 加载用户报名信息
     this.loadCheckinRecords(activityId);
     this.checkCurrentLocation();
   },
@@ -130,6 +132,50 @@ Page({
       wx.showToast({
         title: '加载失败',
         icon: 'error'
+      });
+    }
+  },
+
+  // 加载用户报名信息
+  async loadRegistration(activityId) {
+    try {
+      const currentUserId = getCurrentUserId();
+
+      // 调用API获取用户在此活动的报名记录
+      const result = await registrationAPI.getByActivity(activityId, {
+        page: 0,
+        size: 100
+      });
+
+      if (result.code === 0) {
+        const registrations = result.data.content || result.data || [];
+
+        // 查找当前用户的报名记录（status为approved）
+        const myRegistration = registrations.find(r =>
+          r.userId === currentUserId && r.status === 'approved'
+        );
+
+        if (myRegistration) {
+          this.setData({
+            registrationId: myRegistration.id,
+            hasRegistered: true
+          });
+          console.log('找到报名记录，registrationId:', myRegistration.id);
+        } else {
+          this.setData({
+            registrationId: '',
+            hasRegistered: false,
+            canCheckin: false,
+            checkinMessage: '您还未报名此活动，无法签到'
+          });
+          console.warn('未找到报名记录或报名未通过审核');
+        }
+      }
+    } catch (err) {
+      console.error('加载报名信息失败:', err);
+      this.setData({
+        registrationId: '',
+        hasRegistered: false
       });
     }
   },
@@ -264,7 +310,17 @@ Page({
 
   // 提交签到
   async submitCheckin() {
-    const { activityId, activity, currentLocation, distance } = this.data;
+    const { activityId, activity, currentLocation, distance, hasRegistered, registrationId } = this.data;
+
+    // 检查是否已报名
+    if (!hasRegistered || !registrationId) {
+      wx.showToast({
+        title: '您还未报名此活动，无法签到',
+        icon: 'none',
+        duration: 2000
+      });
+      return;
+    }
 
     // 防重复提交：使用活动ID作为锁定标识
     const lockKey = `checkin:${activityId}`;
@@ -284,7 +340,7 @@ Page({
           const result = await checkinAPI.create({
             activityId,
             userId: currentUserId,
-            registrationId: 'r1', // TODO: 应从报名记录获取
+            registrationId, // 使用从报名记录中获取的registrationId
             latitude: currentLocation?.latitude || activity.latitude,
             longitude: currentLocation?.longitude || activity.longitude,
             address: activity.address,

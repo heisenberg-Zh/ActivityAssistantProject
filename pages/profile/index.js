@@ -1,5 +1,5 @@
 // pages/profile/index.js
-const { userAPI, statisticsAPI } = require('../../utils/api.js');
+const { userAPI, statisticsAPI, feedbackAPI } = require('../../utils/api.js');
 const { sanitizeInput } = require('../../utils/security.js');
 const app = getApp();
 
@@ -376,19 +376,48 @@ Page({
   },
 
   // 提交反馈
-  submitFeedback() {
+  async submitFeedback() {
     const { feedbackContent } = this.data;
+
     if (!feedbackContent.trim()) {
       wx.showToast({ title: '请输入反馈内容', icon: 'none' });
       return;
     }
 
-    // 模拟提交（后续需要接入真实API）
-    console.log('用户反馈内容:', feedbackContent);
+    if (feedbackContent.trim().length < 5) {
+      wx.showToast({ title: '反馈内容至少5个字', icon: 'none' });
+      return;
+    }
 
-    // 关闭弹窗并提示成功
-    this.setData({ showFeedbackModal: false });
-    wx.showToast({ title: '提交成功，感谢您的反馈！', icon: 'success', duration: 2000 });
+    try {
+      // 调用后端API提交反馈
+      const result = await feedbackAPI.submit({
+        content: feedbackContent.trim()
+      });
+
+      if (result.code === 0) {
+        // 关闭弹窗并提示成功
+        this.setData({ showFeedbackModal: false });
+        wx.showToast({
+          title: result.message || '提交成功，感谢您的反馈！',
+          icon: 'success',
+          duration: 2000
+        });
+      } else {
+        wx.showToast({
+          title: result.message || '提交失败，请重试',
+          icon: 'none',
+          duration: 2000
+        });
+      }
+    } catch (err) {
+      console.error('提交反馈失败:', err);
+      wx.showToast({
+        title: '提交失败，请稍后重试',
+        icon: 'none',
+        duration: 2000
+      });
+    }
   },
 
   /**
