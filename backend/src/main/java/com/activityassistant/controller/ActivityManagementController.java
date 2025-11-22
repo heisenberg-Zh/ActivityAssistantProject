@@ -63,7 +63,7 @@ public class ActivityManagementController {
 
         String currentUserId = SecurityUtils.getCurrentUserId();
         activityManagementService.addAdministrator(activityId, request.getUserId(), currentUserId);
-        return ApiResponse.success(null, "添加管理员成功");
+        return ApiResponse.success("添加管理员成功", null);
     }
 
     /**
@@ -79,7 +79,7 @@ public class ActivityManagementController {
 
         String currentUserId = SecurityUtils.getCurrentUserId();
         activityManagementService.removeAdministrator(activityId, userId, currentUserId);
-        return ApiResponse.success(null, "移除管理员成功");
+        return ApiResponse.success("移除管理员成功", null);
     }
 
     // ============================================
@@ -112,7 +112,7 @@ public class ActivityManagementController {
 
         String currentUserId = SecurityUtils.getCurrentUserId();
         activityManagementService.addToWhitelist(activityId, request.getPhones(), request.getUserIds(), currentUserId);
-        return ApiResponse.success(null, "添加白名单成功");
+        return ApiResponse.success("添加白名单成功", null);
     }
 
     /**
@@ -128,7 +128,7 @@ public class ActivityManagementController {
 
         String currentUserId = SecurityUtils.getCurrentUserId();
         activityManagementService.removeFromWhitelist(activityId, phone, currentUserId);
-        return ApiResponse.success(null, "移除白名单成功");
+        return ApiResponse.success("移除白名单成功", null);
     }
 
     // ============================================
@@ -167,7 +167,7 @@ public class ActivityManagementController {
                 request.getExpiryDays(),
                 currentUserId
         );
-        return ApiResponse.success(null, "添加黑名单成功");
+        return ApiResponse.success("添加黑名单成功", null);
     }
 
     /**
@@ -183,6 +183,6 @@ public class ActivityManagementController {
 
         String currentUserId = SecurityUtils.getCurrentUserId();
         activityManagementService.removeFromBlacklist(activityId, phone, currentUserId);
-        return ApiResponse.success(null, "移除黑名单成功");
+        return ApiResponse.success("移除黑名单成功", null);
     }
 }

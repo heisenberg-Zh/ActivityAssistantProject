@@ -46,7 +46,7 @@ public class FavoriteController {
         log.info("添加收藏，userId={}, activityId={}", userId, request.getActivityId());
 
         favoriteService.addFavorite(userId, request.getActivityId());
-        return ApiResponse.success(null, "收藏成功");
+        return ApiResponse.success("收藏成功", null);
     }
 
     /**
@@ -65,7 +65,7 @@ public class FavoriteController {
         log.info("取消收藏，userId={}, activityId={}", userId, activityId);
 
         favoriteService.removeFavorite(userId, activityId);
-        return ApiResponse.success(null, "取消收藏成功");
+        return ApiResponse.success("取消收藏成功", null);
     }
 
     /**

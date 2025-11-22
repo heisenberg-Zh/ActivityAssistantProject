@@ -37,7 +37,7 @@ public class MessageController {
      * @return 消息分页列表
      */
     @GetMapping("/my")
-    @Operation(summary = "获取我的消息列表", description = "获取当前用户的消息列表，支持分页和分类筛选")
+    @Operation(summary = "获取我的消息列表", description = "获取当前用户的消息列表，支持分页和分类筛选（游客访问返回空列表）")
     public ApiResponse<Page<MessageVO>> getMyMessages(
             @Parameter(description = "页码（从0开始）", example = "0")
             @RequestParam(value = "page", defaultValue = "0") int page,
@@ -46,7 +46,7 @@ public class MessageController {
             @Parameter(description = "消息类别（可选）", example = "all")
             @RequestParam(value = "category", required = false) String category) {
 
-        String userId = SecurityUtils.getCurrentUserId();
+        String userId = SecurityUtils.getCurrentUserIdOrNull();  // 允许游客访问
         log.info("获取用户消息列表，userId={}, page={}, size={}, category={}", userId, page, size, category);
 
         Page<MessageVO> messages = messageService.getMyMessages(userId, page, size, category);
@@ -69,7 +69,7 @@ public class MessageController {
         log.info("标记消息为已读，messageId={}, userId={}", messageId, userId);
 
         messageService.markAsRead(messageId, userId);
-        return ApiResponse.success(null, "标记成功");
+        return ApiResponse.success("标记成功", null);
     }
 
     /**
@@ -84,7 +84,7 @@ public class MessageController {
         log.info("批量标记所有消息为已读，userId={}", userId);
 
         int count = messageService.markAllAsRead(userId);
-        return ApiResponse.success(null, "已标记" + count + "条消息为已读");
+        return ApiResponse.success("已标记" + count + "条消息为已读", null);
     }
 
     /**
@@ -103,7 +103,7 @@ public class MessageController {
         log.info("删除消息，messageId={}, userId={}", messageId, userId);
 
         messageService.deleteMessage(messageId, userId);
-        return ApiResponse.success(null, "删除成功");
+        return ApiResponse.success("删除成功", null);
     }
 
     /**

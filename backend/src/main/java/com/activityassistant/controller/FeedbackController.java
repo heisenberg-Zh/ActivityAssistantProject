@@ -56,6 +56,6 @@ public class FeedbackController {
                 request.getType()
         );
 
-        return ApiResponse.success(null, "感谢您的反馈！我们会尽快处理");
+        return ApiResponse.success("感谢您的反馈！我们会尽快处理", null);
     }
 }

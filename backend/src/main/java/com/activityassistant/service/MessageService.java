@@ -29,7 +29,7 @@ public class MessageService {
     /**
      * 获取用户消息列表（分页）
      *
-     * @param userId   用户ID
+     * @param userId   用户ID（可能为null，游客访问）
      * @param page     页码
      * @param size     每页数量
      * @param category 消息类别（可选，如果为空则返回所有）
@@ -37,6 +37,12 @@ public class MessageService {
      */
     public Page<MessageVO> getMyMessages(String userId, int page, int size, String category) {
         log.info("获取用户消息列表，userId={}, page={}, size={}, category={}", userId, page, size, category);
+
+        // 游客访问：返回空分页列表
+        if (userId == null || userId.isEmpty()) {
+            log.info("游客访问消息列表，返回空列表");
+            return Page.empty();
+        }
 
         Pageable pageable = PageRequest.of(page, size);
         Page<Message> messagePage;

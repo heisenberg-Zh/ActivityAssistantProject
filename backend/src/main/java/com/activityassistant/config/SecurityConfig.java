@@ -73,6 +73,9 @@ public class SecurityConfig {
                         // 用户信息公开接口（游客可查看他人公开信息，脱敏）
                         .requestMatchers(HttpMethod.GET, "/api/user/*").permitAll()
 
+                        // 消息相关接口（游客可访问，未登录返回空列表）
+                        .requestMatchers("/api/messages/**").permitAll()
+
                         // 其他所有接口都需要认证
                         .anyRequest().authenticated()
                 )
