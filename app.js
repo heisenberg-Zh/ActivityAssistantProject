@@ -347,51 +347,47 @@ App({
     scheduler.cleanupOldTasks(7);
   },
 
-  // 模拟发布预发布活动
-  publishScheduledActivity(activityId) {
+  // 发布预发布活动
+  async publishScheduledActivity(activityId) {
     console.log('[定时发布] 开始发布活动:', activityId);
 
     try {
-      // 模拟API调用发布活动（实际应调用后端API）
-      // 这里只是模拟，真实环境需要调用 activityAPI.publish(activityId)
+      // 导入 activityAPI
+      const { activityAPI } = require('./utils/api.js');
 
-      const { activities } = require('./utils/mock.js');
-      const activity = activities.find(a => a.id === activityId);
+      // 获取活动详情（确认活动存在）
+      const detailResult = await activityAPI.getDetail(activityId);
 
-      if (!activity) {
+      if (detailResult.code !== 0 || !detailResult.data) {
         console.error('[定时发布] 活动不存在:', activityId);
         scheduler.updateTaskStatus(activityId, 'failed', '活动不存在');
         notification.sendPublishFailedNotification(activityId, '未知活动', '活动不存在');
         return;
       }
 
-      // 模拟发布过程
-      setTimeout(() => {
-        // 随机模拟成功或失败（90%成功率）
-        const success = Math.random() > 0.1;
+      const activity = detailResult.data;
+      console.log('[定时发布] 活动信息:', activity.title);
 
-        if (success) {
-          console.log('[定时发布] 发布成功:', activity.title);
+      // 调用发布API
+      const publishResult = await activityAPI.publish(activityId);
 
-          // 更新任务状态
-          scheduler.updateTaskStatus(activityId, 'published');
+      if (publishResult.code === 0) {
+        console.log('[定时发布] 发布成功:', activity.title);
 
-          // 发送成功通知
-          notification.sendPublishSuccessNotification(activityId, activity.title);
+        // 更新任务状态为已发布
+        scheduler.updateTaskStatus(activityId, 'published');
 
-          // 实际环境中，这里应该更新活动状态为 'published'
-          // activity.status = 'published';
-          // activity.actualPublishTime = new Date().toISOString();
-        } else {
-          console.error('[定时发布] 发布失败:', activity.title);
+        // 发送成功通知
+        notification.sendPublishSuccessNotification(activityId, activity.title);
+      } else {
+        console.error('[定时发布] 发布失败:', publishResult.message);
 
-          // 更新任务状态为失败
-          scheduler.updateTaskStatus(activityId, 'failed', '网络错误');
+        // 更新任务状态为失败
+        scheduler.updateTaskStatus(activityId, 'failed', publishResult.message || '发布失败');
 
-          // 发送失败通知
-          notification.sendPublishFailedNotification(activityId, activity.title, '网络错误');
-        }
-      }, 500); // 模拟网络延迟
+        // 发送失败通知
+        notification.sendPublishFailedNotification(activityId, activity.title, publishResult.message || '发布失败');
+      }
     } catch (err) {
       console.error('[定时发布] 发布异常:', err);
       scheduler.updateTaskStatus(activityId, 'failed', err.message || '未知错误');

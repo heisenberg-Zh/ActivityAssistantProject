@@ -1,11 +1,12 @@
 // pages/my-activities/created-list.js
-const { activities: allActivities } = require('../../utils/mock.js');
+const { activityAPI } = require('../../utils/api.js');
 const { parseDate } = require('../../utils/date-helper.js');
 const app = getApp();
 
 Page({
   data: {
-    activities: []
+    activities: [],
+    loading: true
   },
 
   /**
@@ -18,43 +19,63 @@ Page({
   /**
    * 加载已创建的活动列表
    */
-  loadActivities() {
-    const currentUserId = app.globalData.currentUserId || 'u1';
+  async loadActivities() {
+    try {
+      this.setData({ loading: true });
+      wx.showLoading({ title: '加载中...' });
 
-    // 获取用户创建的所有活动（未删除）
-    const createdActivities = allActivities.filter(a =>
-      a.organizerId === currentUserId &&
-      !a.isDeleted
-    );
+      const currentUserId = app.globalData.currentUserId || 'u1';
 
-    // 处理活动数据
-    const processedActivities = createdActivities.map(activity => {
-      // 处理状态
-      let statusClass = 'ended';
-      if (activity.status === '进行中') {
-        statusClass = 'ongoing';
-      } else if (activity.status === '即将开始') {
-        statusClass = 'upcoming';
+      // 从后端API获取我创建的活动列表
+      const result = await activityAPI.getMyActivities({ page: 0, size: 1000 });
+
+      if (result.code !== 0) {
+        throw new Error(result.message || '获取活动列表失败');
       }
 
-      return {
-        id: activity.id,
-        title: activity.title,
-        date: activity.date,
-        status: activity.status,
-        statusClass: statusClass,
-        createdAt: activity.createdAt
-      };
-    });
+      const createdActivities = result.data.content || result.data || [];
 
-    // 按创建时间倒序排列
-    processedActivities.sort((a, b) => {
-      return parseDate(b.createdAt) - parseDate(a.createdAt);
-    });
+      // 处理活动数据
+      const processedActivities = createdActivities.map(activity => {
+        // 处理状态
+        let statusClass = 'ended';
+        if (activity.status === '进行中') {
+          statusClass = 'ongoing';
+        } else if (activity.status === '即将开始') {
+          statusClass = 'upcoming';
+        }
 
-    this.setData({
-      activities: processedActivities
-    });
+        return {
+          id: activity.id,
+          title: activity.title,
+          date: activity.date,
+          status: activity.status,
+          statusClass: statusClass,
+          createdAt: activity.createdAt
+        };
+      });
+
+      // 按创建时间倒序排列
+      processedActivities.sort((a, b) => {
+        return parseDate(b.createdAt) - parseDate(a.createdAt);
+      });
+
+      this.setData({
+        activities: processedActivities,
+        loading: false
+      });
+
+      wx.hideLoading();
+    } catch (err) {
+      console.error('加载活动列表失败:', err);
+      wx.hideLoading();
+      wx.showToast({
+        title: err.message || '加载失败',
+        icon: 'none',
+        duration: 2000
+      });
+      this.setData({ loading: false });
+    }
   },
 
   /**

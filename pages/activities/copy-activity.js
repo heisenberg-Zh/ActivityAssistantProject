@@ -1,5 +1,5 @@
 // pages/activities/copy-activity.js
-const { activities } = require('../../utils/mock.js');
+const { activityAPI } = require('../../utils/api.js');
 const app = getApp();
 
 Page({
@@ -16,38 +16,72 @@ Page({
   },
 
   // 加载活动和草稿列表
-  loadActivities() {
-    const currentUserId = app.globalData.currentUserId || 'u1';
+  async loadActivities() {
+    try {
+      wx.showLoading({ title: '加载中...' });
 
-    // 获取草稿列表
-    const drafts = wx.getStorageSync('activity_drafts') || [];
-    const draftList = drafts.map(draft => ({
-      id: draft.draftId,
-      title: draft.form.title,
-      type: draft.form.type || '未分类',
-      time: draft.form.startDate || '待设置',
-      activityId: draft.draftId,
-      isDraft: true
-    }));
+      const currentUserId = app.globalData.currentUserId || 'u1';
 
-    // 获取用户创建的活动
-    const createdActivities = activities.filter(a => !a.isDeleted && a.organizerId === currentUserId);
-    const activityList = createdActivities.map(a => ({
-      id: a.id,
-      title: a.title,
-      type: a.type,
-      time: a.startTime.split(' ')[0],
-      activityId: a.id,
-      isDraft: false
-    }));
+      // 获取草稿列表（从本地存储）
+      const drafts = wx.getStorageSync('activity_drafts') || [];
+      const draftList = drafts.map(draft => ({
+        id: draft.draftId,
+        title: draft.form.title,
+        type: draft.form.type || '未分类',
+        time: draft.form.startDate || '待设置',
+        activityId: draft.draftId,
+        isDraft: true
+      }));
 
-    // 合并列表（草稿在前）
-    const allItems = [...draftList, ...activityList];
+      // 从后端API获取用户创建的活动
+      const result = await activityAPI.getMyActivities({ page: 0, size: 1000 });
 
-    this.setData({
-      activities: allItems,
-      activitiesFiltered: allItems
-    });
+      if (result.code !== 0) {
+        throw new Error(result.message || '获取活动列表失败');
+      }
+
+      const createdActivities = result.data.content || result.data || [];
+      const activityList = createdActivities.map(a => ({
+        id: a.id,
+        title: a.title,
+        type: a.type,
+        time: (a.startTime || a.date || '').split(' ')[0],  // 兼容不同字段名
+        activityId: a.id,
+        isDraft: false
+      }));
+
+      // 合并列表（草稿在前）
+      const allItems = [...draftList, ...activityList];
+
+      this.setData({
+        activities: allItems,
+        activitiesFiltered: allItems
+      });
+
+      wx.hideLoading();
+    } catch (err) {
+      console.error('加载活动列表失败:', err);
+      wx.hideLoading();
+      wx.showToast({
+        title: err.message || '加载失败',
+        icon: 'none',
+        duration: 2000
+      });
+      // 发生错误时，至少显示草稿列表
+      const drafts = wx.getStorageSync('activity_drafts') || [];
+      const draftList = drafts.map(draft => ({
+        id: draft.draftId,
+        title: draft.form.title,
+        type: draft.form.type || '未分类',
+        time: draft.form.startDate || '待设置',
+        activityId: draft.draftId,
+        isDraft: true
+      }));
+      this.setData({
+        activities: draftList,
+        activitiesFiltered: draftList
+      });
+    }
   },
 
   // 选择活动/草稿
