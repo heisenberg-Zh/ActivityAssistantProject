@@ -1,6 +1,6 @@
 // pages/statistics/joined-detail.js
 const wxCharts = require('../../utils/wxcharts/wxcharts-full.js');
-const { activities, registrations } = require('../../utils/mock.js');
+const { registrationAPI, activityAPI } = require('../../utils/api.js');
 const { parseDate } = require('../../utils/date-helper.js');
 const app = getApp();
 
@@ -9,6 +9,8 @@ let barChart = null;
 
 Page({
   data: {
+    registrations: [],  // 存储从后端获取的报名记录
+    activities: [],     // 存储对应的活动信息（用于类型统计）
     totalJoined: 0,
     checkedCount: 0,
     checkinRate: '0.0',
@@ -23,8 +25,8 @@ Page({
     console.log('📊 [joined-detail] 页面加载，使用 wx-charts');
 
     // 获取系统信息以设置 canvas 尺寸
-    const systemInfo = wx.getSystemInfoSync();
-    const windowWidth = systemInfo.windowWidth;
+    const windowInfo = wx.getWindowInfo();
+    const windowWidth = windowInfo.windowWidth;
     const canvasWidth = windowWidth - 40; // 减去左右 padding
     const canvasHeight = 260; // 图表高度
 
@@ -52,29 +54,64 @@ Page({
   /**
    * 加载统计数据
    */
-  loadStatistics() {
-    const currentUserId = app.globalData.currentUserId || 'u1';
-    console.log('👤 [joined-detail] 当前用户ID:', currentUserId);
+  async loadStatistics() {
+    try {
+      wx.showLoading({ title: '加载中...' });
 
-    // 获取用户参加的所有活动
-    const userRegistrations = registrations.filter(r =>
-      r.userId === currentUserId &&
-      r.status === 'approved'
-    );
+      const currentUserId = app.globalData.currentUserId || 'u1';
+      console.log('👤 [joined-detail] 当前用户ID:', currentUserId);
 
-    console.log('📋 [joined-detail] 找到报名记录:', userRegistrations.length, '条');
+      // 从后端API获取我的报名记录
+      const result = await registrationAPI.getMyRegistrations({ page: 0, size: 1000 });
 
-    const totalJoined = userRegistrations.length;
-    const checkedCount = userRegistrations.filter(r => r.checkinStatus === 'checked').length;
-    const checkinRate = totalJoined > 0 ? ((checkedCount / totalJoined) * 100).toFixed(1) : '0.0';
+      if (result.code !== 0) {
+        throw new Error(result.message || '获取报名列表失败');
+      }
 
-    console.log('📊 [joined-detail] 统计数据:', { totalJoined, checkedCount, checkinRate });
+      const allRegistrations = result.data.content || result.data || [];
 
-    this.setData({
-      totalJoined,
-      checkedCount,
-      checkinRate
-    });
+      // 筛选已通过审核的报名
+      const userRegistrations = allRegistrations.filter(r => r.status === 'approved');
+
+      console.log('📋 [joined-detail] 找到报名记录:', userRegistrations.length, '条');
+
+      // 获取对应的活动信息（用于类型统计）
+      const activitiesMap = {};
+      for (const registration of userRegistrations) {
+        try {
+          const activityResult = await activityAPI.getDetail(registration.activityId);
+          if (activityResult.code === 0 && activityResult.data) {
+            activitiesMap[registration.activityId] = activityResult.data;
+          }
+        } catch (err) {
+          console.warn('获取活动详情失败:', registration.activityId, err);
+        }
+      }
+
+      const totalJoined = userRegistrations.length;
+      const checkedCount = userRegistrations.filter(r => r.checkinStatus === 'checked').length;
+      const checkinRate = totalJoined > 0 ? ((checkedCount / totalJoined) * 100).toFixed(1) : '0.0';
+
+      console.log('📊 [joined-detail] 统计数据:', { totalJoined, checkedCount, checkinRate });
+
+      this.setData({
+        registrations: userRegistrations,
+        activities: Object.values(activitiesMap),  // 转换为数组
+        totalJoined,
+        checkedCount,
+        checkinRate
+      });
+
+      wx.hideLoading();
+    } catch (err) {
+      console.error('加载统计数据失败:', err);
+      wx.hideLoading();
+      wx.showToast({
+        title: err.message || '加载失败',
+        icon: 'none',
+        duration: 2000
+      });
+    }
   },
 
   /**
@@ -83,11 +120,9 @@ Page({
   initPieChart() {
     console.log('🥧 [joined-detail] 初始化饼图');
 
-    const currentUserId = app.globalData.currentUserId || 'u1';
-    const userRegistrations = registrations.filter(r =>
-      r.userId === currentUserId &&
-      r.status === 'approved'
-    );
+    // 从页面数据中获取报名记录和活动列表
+    const userRegistrations = this.data.registrations;
+    const activities = this.data.activities;
 
     console.log('📋 [饼图] 找到报名记录:', userRegistrations.length, '条');
 
@@ -138,11 +173,8 @@ Page({
   initBarChart() {
     console.log('📊 [joined-detail] 初始化柱状图');
 
-    const currentUserId = app.globalData.currentUserId || 'u1';
-    const userRegistrations = registrations.filter(r =>
-      r.userId === currentUserId &&
-      r.status === 'approved'
-    );
+    // 从页面数据中获取报名记录
+    const userRegistrations = this.data.registrations;
 
     console.log('📋 [柱状图] 找到报名记录:', userRegistrations.length, '条');
 
@@ -164,7 +196,7 @@ Page({
 
     // 统计每月参加活动数
     userRegistrations.forEach(r => {
-      const regDate = parseDate(r.registeredAt);
+      const regDate = parseDate(r.registeredAt || r.createdAt);
       const month = regDate.getMonth() + 1;
       const label = `${month}月`;
       if (monthData.hasOwnProperty(label)) {

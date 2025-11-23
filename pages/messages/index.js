@@ -1,107 +1,5 @@
 // pages/messages/index.js
-const notification = require('../../utils/notification.js');
-
-// 示例假数据（当本地没有消息时显示）
-const messageData = [
-  {
-    id: 'm1',
-    title: '系统通知',
-    time: '2分钟前',
-    content: '欢迎使用活动助手！您已成功注册，现在可以开始创建和参与精彩活动了。',
-    category: 'system',
-    iconText: '铃',
-    iconBg: '#DBEAFE',
-    iconColor: '#2563eb',
-    tags: [
-      { name: '系统', bg: 'rgba(59,130,246,0.15)', color: '#1d4ed8' },
-      { name: '未读', bg: '#ef4444', color: '#ffffff' }
-    ]
-  },
-  {
-    id: 'm2',
-    title: '活动提醒',
-    time: '1小时前',
-    content: '您参与的活动“产品设计分享会”将在2小时后开始，请提前做好准备。',
-    category: 'activity',
-    iconText: '约',
-    iconBg: '#DCFCE7',
-    iconColor: '#047857',
-    tags: [
-      { name: '活动', bg: 'rgba(16,185,129,0.15)', color: '#047857' },
-      { name: '未读', bg: '#ef4444', color: '#ffffff' }
-    ]
-  },
-  {
-    id: 'm3',
-    title: '报名成功',
-    time: '今天 10:20',
-    content: '您已成功报名“周末聚餐活动”，期待与您相见。',
-    category: 'signup',
-    iconText: '报',
-    iconBg: '#FEF3C7',
-    iconColor: '#B45309',
-    tags: [
-      { name: '报名', bg: 'rgba(234,179,8,0.18)', color: '#B45309' },
-      { name: '已读', bg: '#e5e7eb', color: '#4b5563' }
-    ]
-  },
-  {
-    id: 'm4',
-    title: '签到提醒',
-    time: '今天 09:00',
-    content: '请在18:00前到达签到地点“海底捞火锅（朝阳店）”。',
-    category: 'activity',
-    iconText: '签',
-    iconBg: '#E0E7FF',
-    iconColor: '#4338CA',
-    tags: [
-      { name: '签到', bg: 'rgba(99,102,241,0.18)', color: '#4338CA' },
-      { name: '未读', bg: '#ef4444', color: '#ffffff' }
-    ]
-  },
-  {
-    id: 'm5',
-    title: '活动变更',
-    time: '昨天',
-    content: '您创建的活动“周末登山活动”时间调整为12月20日 08:00，请及时通知参与者。',
-    category: 'activity',
-    iconText: '变',
-    iconBg: '#FEE2E2',
-    iconColor: '#B91C1C',
-    tags: [
-      { name: '变更', bg: 'rgba(239,68,68,0.15)', color: '#B91C1C' },
-      { name: '已读', bg: '#e5e7eb', color: '#4b5563' }
-    ]
-  },
-  {
-    id: 'm6',
-    title: '活动评价',
-    time: '2天前',
-    content: '活动“技术分享会”已结束，请为本次活动进行评价，帮助我们改进服务质量。',
-    category: 'activity',
-    iconText: '评',
-    iconBg: '#FEF3C7',
-    iconColor: '#B45309',
-    tags: [
-      { name: '评价', bg: 'rgba(234,179,8,0.18)', color: '#B45309' },
-      { name: '已读', bg: '#e5e7eb', color: '#4b5563' }
-    ]
-  },
-  {
-    id: 'm7',
-    title: '新功能上线',
-    time: '3天前',
-    content: '活动助手新增数据统计功能，现在可以查看详细的活动数据分析报告。',
-    category: 'system',
-    iconText: '新',
-    iconBg: '#E0E7FF',
-    iconColor: '#4338CA',
-    tags: [
-      { name: '功能', bg: 'rgba(99,102,241,0.18)', color: '#4338CA' },
-      { name: '已读', bg: '#e5e7eb', color: '#4b5563' }
-    ]
-  }
-];
+const { messageAPI } = require('../../utils/api.js');
 
 const app = getApp();
 
@@ -148,75 +46,135 @@ Page({
     }
   },
 
-  // 加载消息列表
-  loadMessages() {
-    const notifications = notification.getAllNotifications();
+  // 加载消息列表（从后端API获取）
+  async loadMessages() {
+    let loadingShown = false;
+    try {
+      wx.showLoading({ title: '加载中...' });
+      loadingShown = true;
 
-    // 转换为页面所需的格式
-    const formattedMessages = notifications.map(notif => {
-      let category = 'system';
-      let iconText = '消';
-      let iconBg = '#DBEAFE';
-      let iconColor = '#2563eb';
-      let tags = [];
+      // 从后端API获取消息列表
+      const result = await messageAPI.getMyMessages({ page: 0, size: 100 });
 
-      // 根据消息类型设置样式
-      if (notif.type === 'publish_success') {
-        category = 'publish';
-        iconText = '发';
-        iconBg = '#DCFCE7';
-        iconColor = '#047857';
-        tags.push({ name: '发布成功', bg: 'rgba(16,185,129,0.15)', color: '#047857' });
-      } else if (notif.type === 'publish_failed') {
-        category = 'publish';
-        iconText = '失';
-        iconBg = '#FEE2E2';
-        iconColor: '#B91C1C';
-        tags.push({ name: '发布失败', bg: 'rgba(239,68,68,0.15)', color: '#B91C1C' });
-      } else if (notif.type === 'activity_reminder') {
-        category = 'activity';
-        iconText = '约';
-        iconBg = '#DCFCE7';
-        iconColor = '#047857';
-        tags.push({ name: '活动提醒', bg: 'rgba(16,185,129,0.15)', color: '#047857' });
-      } else if (notif.type === 'system') {
-        category = 'system';
-        iconText = '铃';
-        iconBg = '#DBEAFE';
-        iconColor = '#2563eb';
-        tags.push({ name: '系统通知', bg: 'rgba(59,130,246,0.15)', color: '#1d4ed8' });
+      if (result.code !== 0) {
+        throw new Error(result.message || '获取消息列表失败');
       }
 
-      // 添加已读/未读标签
-      if (notif.isRead) {
-        tags.push({ name: '已读', bg: '#e5e7eb', color: '#4b5563' });
-      } else {
-        tags.push({ name: '未读', bg: '#ef4444', color: '#ffffff' });
+      // 兼容多种后端数据格式
+      let notifications = [];
+
+      if (result.data) {
+        if (Array.isArray(result.data)) {
+          // 格式1: { code: 0, data: [...] }
+          notifications = result.data;
+        } else if (result.data.content && Array.isArray(result.data.content)) {
+          // 格式2: { code: 0, data: { content: [...], totalElements: ... } } (分页格式)
+          notifications = result.data.content;
+        } else if (result.data.list && Array.isArray(result.data.list)) {
+          // 格式3: { code: 0, data: { list: [...] } }
+          notifications = result.data.list;
+        } else if (typeof result.data === 'object' && result.data.id) {
+          // 格式4: 单个对象，转换为数组
+          notifications = [result.data];
+        }
       }
 
-      return {
-        id: notif.id,
-        title: notif.title,
-        time: this.formatTime(notif.createdAt),
-        content: notif.content,
-        category,
-        iconText,
-        iconBg,
-        iconColor,
-        tags,
-        activityId: notif.activityId
-      };
-    });
+      // 转换为页面所需的格式
+      const formattedMessages = notifications.map(notif => {
+        return this.formatMessage(notif);
+      });
 
-    // 如果没有消息，使用示例数据
-    const messagesToDisplay = formattedMessages.length > 0 ? formattedMessages : messageData;
+      this.setData({
+        allMessages: formattedMessages,
+        messages: formattedMessages
+      });
 
-    this.setData({
-      allMessages: messagesToDisplay,
-      messages: messagesToDisplay
-    });
+      this.updateMessages(this.data.activeFilter);
 
-    this.updateMessages(this.data.activeFilter);
+      if (loadingShown) {
+        wx.hideLoading();
+        loadingShown = false;
+      }
+    } catch (error) {
+      console.error('加载消息列表失败:', error);
+
+      // 确保隐藏loading
+      if (loadingShown) {
+        wx.hideLoading();
+        loadingShown = false;
+      }
+
+      // 显示空状态
+      this.setData({
+        allMessages: [],
+        messages: []
+      });
+
+      // 友好的错误提示
+      const errorMsg = error.message || '加载失败';
+
+      wx.showToast({
+        title: errorMsg.includes('No static resource') ? '暂无消息' : errorMsg,
+        icon: 'none',
+        duration: 2000
+      });
+    }
+  },
+
+  // 格式化消息为页面所需的格式
+  formatMessage(notif) {
+    let category = 'system';
+    let iconText = '消';
+    let iconBg = '#DBEAFE';
+    let iconColor = '#2563eb';
+    let tags = [];
+
+    // 根据消息类型设置样式
+    if (notif.type === 'publish_success') {
+      category = 'publish';
+      iconText = '发';
+      iconBg = '#DCFCE7';
+      iconColor = '#047857';
+      tags.push({ name: '发布成功', bg: 'rgba(16,185,129,0.15)', color: '#047857' });
+    } else if (notif.type === 'publish_failed') {
+      category = 'publish';
+      iconText = '失';
+      iconBg = '#FEE2E2';
+      iconColor = '#B91C1C';
+      tags.push({ name: '发布失败', bg: 'rgba(239,68,68,0.15)', color: '#B91C1C' });
+    } else if (notif.type === 'activity_reminder') {
+      category = 'activity';
+      iconText = '约';
+      iconBg = '#DCFCE7';
+      iconColor = '#047857';
+      tags.push({ name: '活动提醒', bg: 'rgba(16,185,129,0.15)', color: '#047857' });
+    } else if (notif.type === 'system') {
+      category = 'system';
+      iconText = '铃';
+      iconBg = '#DBEAFE';
+      iconColor = '#2563eb';
+      tags.push({ name: '系统通知', bg: 'rgba(59,130,246,0.15)', color: '#1d4ed8' });
+    }
+
+    // 添加已读/未读标签
+    if (notif.isRead) {
+      tags.push({ name: '已读', bg: '#e5e7eb', color: '#4b5563' });
+    } else {
+      tags.push({ name: '未读', bg: '#ef4444', color: '#ffffff' });
+    }
+
+    return {
+      id: notif.id,
+      title: notif.title,
+      time: this.formatTime(notif.createdAt),
+      content: notif.content,
+      category,
+      iconText,
+      iconBg,
+      iconColor,
+      tags,
+      activityId: notif.activityId
+    };
   },
 
   // 格式化时间
@@ -254,8 +212,11 @@ Page({
     const filters = this.data.filters.map(filter => Object.assign({}, filter, { active: filter.key === activeKey }));
     this.setData({ messages, filters, activeFilter: activeKey });
 
-    // 更新未读消息数量（可选，用于显示在 tabBar 上）
-    const unreadCount = notification.getUnreadCount();
+    // 更新未读消息数量（从当前消息列表中计算）
+    const unreadCount = this.data.allMessages.filter(m => {
+      return m.tags.some(tag => tag.name === '未读');
+    }).length;
+
     if (unreadCount > 0) {
       wx.setTabBarBadge({
         index: 3, // 假设消息中心是第4个tab（索引从0开始）
@@ -278,7 +239,7 @@ Page({
   },
 
   // 点击消息卡片
-  onMessageTap(e) {
+  async onMessageTap(e) {
     const { id, activityId } = e.currentTarget.dataset;
 
     if (!id) {
@@ -286,74 +247,53 @@ Page({
       return;
     }
 
-    // 检查消息是否为示例数据（ID以'm'开头）
-    const isExampleData = id.startsWith('m');
+    try {
+      // 调用后端API标记消息为已读
+      const result = await messageAPI.markAsRead(id);
 
-    if (isExampleData) {
-      // 示例数据，只显示提示，不执行实际操作
+      if (result.code === 0) {
+        // 重新加载消息列表以更新UI
+        await this.loadMessages();
+
+        // 如果有关联的活动ID，跳转到活动详情页
+        if (activityId) {
+          wx.navigateTo({
+            url: `/pages/activities/detail?id=${activityId}`
+          });
+        }
+      } else {
+        wx.showToast({
+          title: result.message || '操作失败',
+          icon: 'none',
+          duration: 1500
+        });
+      }
+    } catch (error) {
+      console.error('标记已读失败:', error);
       wx.showToast({
-        title: '这是示例消息',
+        title: '操作失败，请稍后重试',
         icon: 'none',
-        duration: 2000
-      });
-
-      // 如果有关联的活动ID，仍然可以跳转
-      if (activityId) {
-        setTimeout(() => {
-          wx.navigateTo({
-            url: `/pages/activities/detail?id=${activityId}`
-          });
-        }, 500);
-      }
-      return;
-    }
-
-    // 标记消息为已读
-    const success = notification.markAsRead(id);
-
-    if (success) {
-      // 重新加载消息列表以更新UI
-      this.loadMessages();
-
-      // 显示轻提示
-      wx.showToast({
-        title: '已标记为已读',
-        icon: 'success',
-        duration: 1500
-      });
-
-      // 如果有关联的活动ID，跳转到活动详情页
-      if (activityId) {
-        setTimeout(() => {
-          wx.navigateTo({
-            url: `/pages/activities/detail?id=${activityId}`
-          });
-        }, 500);
-      }
-    } else {
-      wx.showToast({
-        title: '操作失败',
-        icon: 'error',
         duration: 1500
       });
     }
   },
 
   // 全部标记为已读
-  markAllRead() {
+  async markAllRead() {
     // 游客模式下不允许操作
     if (!this.data.isLoggedIn) {
       this.showLoginGuide();
       return;
     }
 
-    // 检查是否有真实消息
-    const notifications = notification.getAllNotifications();
+    // 检查是否有未读消息
+    const unreadMessages = this.data.allMessages.filter(m => {
+      return m.tags.some(tag => tag.name === '未读');
+    });
 
-    if (notifications.length === 0) {
-      // 没有真实消息，当前显示的都是示例数据
+    if (unreadMessages.length === 0) {
       wx.showToast({
-        title: '当前无真实消息',
+        title: '暂无未读消息',
         icon: 'none',
         duration: 2000
       });
@@ -362,24 +302,41 @@ Page({
 
     wx.showModal({
       title: '提示',
-      content: `确定要将所有消息（${notifications.length}条）标记为已读吗？`,
+      content: `确定要将所有消息（${unreadMessages.length}条未读）标记为已读吗？`,
       confirmText: '确定',
       cancelText: '取消',
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          const success = notification.markAllAsRead();
+          try {
+            wx.showLoading({ title: '处理中...' });
 
-          if (success) {
-            this.loadMessages();
+            // 调用后端API批量标记已读
+            const result = await messageAPI.markAllAsRead();
+
+            wx.hideLoading();
+
+            if (result.code === 0) {
+              // 重新加载消息列表
+              await this.loadMessages();
+
+              wx.showToast({
+                title: '全部已读',
+                icon: 'success',
+                duration: 1500
+              });
+            } else {
+              wx.showToast({
+                title: result.message || '操作失败',
+                icon: 'none',
+                duration: 1500
+              });
+            }
+          } catch (error) {
+            wx.hideLoading();
+            console.error('批量标记已读失败:', error);
             wx.showToast({
-              title: '全部已读',
-              icon: 'success',
-              duration: 1500
-            });
-          } else {
-            wx.showToast({
-              title: '操作失败',
-              icon: 'error',
+              title: '操作失败，请稍后重试',
+              icon: 'none',
               duration: 1500
             });
           }

@@ -8,7 +8,7 @@
 
 /* 信息横幅 */
 .info-banner {
-  margin: 0 24rpx 20rpx 24rpx;
+  margin: 16rpx 24rpx 20rpx 24rpx;
   padding: 24rpx;
   background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
   border-radius: 20rpx;

@@ -113,8 +113,8 @@ Page({
     const navBarHeight = statusBarHeight + 44;
 
     // 计算滚动区域高度 = 窗口高度 - 导航栏高度
-    const systemInfo = wx.getSystemInfoSync();
-    const scrollHeight = systemInfo.windowHeight - navBarHeight;
+    const windowInfo = wx.getWindowInfo();
+    const scrollHeight = windowInfo.windowHeight - navBarHeight;
 
     this.setData({
       statusBarHeight,

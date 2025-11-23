@@ -63,6 +63,7 @@ public class ErrorCode {
     public static final int ACTIVITY_INVALID_STATUS = 2010;
     public static final int ACTIVITY_GROUP_NOT_FOUND = 2011;
     public static final int ACTIVITY_GROUP_FULL = 2012;
+    public static final int FAVORITE_ALREADY_EXISTS = 2013;
 
     // ============================================
     // 报名相关错误码（3000-3999）

@@ -21,7 +21,7 @@
     enable-back-to-top
     enhanced
     show-scrollbar="{{false}}"
-    style="top: {{navBarHeight}}px; height: {{scrollHeight}}px;"
+    style="top: {{navBarHeight}}px; bottom: 0;"
   >
     <!-- 统计卡片 -->
     <view wx:if="{{statistics}}" class="statistics-section">

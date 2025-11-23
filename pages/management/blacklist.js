@@ -1,5 +1,5 @@
 // pages/management/blacklist.js
-const { activities, participants, registrations } = require('../../utils/mock.js');
+const { activityAPI, blacklistAPI } = require('../../utils/api.js');
 const {
   checkManagementPermission,
   parseBatchPhoneNumbers
@@ -50,63 +50,88 @@ Page({
   },
 
   // 加载数据
-  loadData() {
+  async loadData() {
     const { activityId } = this.data;
     const currentUserId = app.globalData.currentUserId || 'u1';
 
-    // 查找活动
-    const activity = activities.find(a => a.id === activityId);
+    try {
+      wx.showLoading({ title: '加载中...' });
 
-    if (!activity) {
-      wx.showToast({ title: '活动不存在', icon: 'none' });
-      setTimeout(() => wx.navigateBack(), 1500);
-      return;
-    }
+      // 并行请求：活动详情和黑名单列表
+      const [activityResult, blacklistResult] = await Promise.all([
+        activityAPI.getDetail(activityId),
+        blacklistAPI.getBlacklist(activityId)
+      ]);
 
-    // 检查管理权限
-    const permission = checkManagementPermission(activity, currentUserId);
+      wx.hideLoading();
 
-    if (!permission.hasPermission) {
-      wx.showModal({
-        title: '无权限',
-        content: '您不是此活动的创建者或管理员',
-        showCancel: false,
-        success: () => wx.navigateBack()
-      });
-      return;
-    }
-
-    // 获取黑名单（包含用户详情和状态）
-    const blacklist = (activity.blacklist || []).map(item => {
-      const user = participants.find(p => p.id === item.userId);
-
-      // 计算是否已过期
-      let isExpired = false;
-      let remainingDays = null;
-      if (item.expiresAt) {
-        const now = new Date();
-        const expiryDate = new Date(item.expiresAt);
-        isExpired = now > expiryDate;
-        if (!isExpired) {
-          const diffTime = expiryDate.getTime() - now.getTime();
-          remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        }
+      // 检查活动详情
+      if (activityResult.code !== 0) {
+        wx.showToast({ title: activityResult.message || '获取活动详情失败', icon: 'none' });
+        setTimeout(() => wx.navigateBack(), 1500);
+        return;
       }
 
-      return {
-        ...item,
-        name: user?.name || '未知用户',
-        avatar: user?.avatar || '',
-        isExpired,
-        remainingDays,
-        statusText: this.getStatusText(item, isExpired)
-      };
-    });
+      const activity = activityResult.data;
 
-    this.setData({
-      activity,
-      blacklist
-    });
+      if (!activity) {
+        wx.showToast({ title: '活动不存在', icon: 'none' });
+        setTimeout(() => wx.navigateBack(), 1500);
+        return;
+      }
+
+      // 检查管理权限
+      const permission = checkManagementPermission(activity, currentUserId);
+
+      if (!permission.hasPermission) {
+        wx.showModal({
+          title: '无权限',
+          content: '您不是此活动的创建者或管理员',
+          showCancel: false,
+          success: () => wx.navigateBack()
+        });
+        return;
+      }
+
+      // 获取黑名单（从API返回的数据已包含用户详情）
+      const blacklistData = blacklistResult.code === 0 ? (blacklistResult.data || []) : [];
+
+      // 处理黑名单数据，计算过期状态
+      const blacklist = blacklistData.map(item => {
+        // 计算是否已过期
+        let isExpired = false;
+        let remainingDays = null;
+        if (item.expiresAt) {
+          const now = new Date();
+          const expiryDate = new Date(item.expiresAt);
+          isExpired = now > expiryDate;
+          if (!isExpired) {
+            const diffTime = expiryDate.getTime() - now.getTime();
+            remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          }
+        }
+
+        return {
+          ...item,
+          isExpired,
+          remainingDays,
+          statusText: this.getStatusText(item, isExpired)
+        };
+      });
+
+      this.setData({
+        activity,
+        blacklist
+      });
+    } catch (err) {
+      wx.hideLoading();
+      console.error('加载活动数据失败:', err);
+      wx.showToast({
+        title: err.message || '加载失败，请稍后重试',
+        icon: 'none'
+      });
+      setTimeout(() => wx.navigateBack(), 1500);
+    }
   },
 
   // 获取状态文本
@@ -304,8 +329,8 @@ Page({
   },
 
   // 确认添加
-  confirmAdd() {
-    const { phoneValidation, blockReason, isPermanent, expiryDays } = this.data;
+  async confirmAdd() {
+    const { phoneValidation, blockReason, isPermanent, expiryDays, activityId } = this.data;
 
     // 验证手机号
     if (phoneValidation.validCount === 0) {
@@ -331,26 +356,46 @@ Page({
       return;
     }
 
-    wx.showLoading({ title: '添加中...' });
-
-    // 模拟API调用
-    setTimeout(() => {
-      wx.hideLoading();
-      wx.showToast({
-        title: `成功添加${phonesToAdd.length}个黑名单`,
-        icon: 'success'
+    try {
+      // 调用后端API批量添加黑名单
+      const result = await blacklistAPI.addBatch(activityId, {
+        phones: phonesToAdd,
+        reason: blockReason.trim(),
+        expiryDays: isPermanent ? null : parseInt(expiryDays)
       });
 
-      this.closeAddDialog();
-      setTimeout(() => {
-        this.loadData();
-      }, 1500);
-    }, 1000);
+      if (result.code === 0) {
+        wx.showToast({
+          title: result.message || `成功添加 ${phonesToAdd.length} 个黑名单`,
+          icon: 'success',
+          duration: 2000
+        });
+
+        this.closeAddDialog();
+        setTimeout(() => {
+          this.loadData();
+        }, 800);
+      } else {
+        wx.showToast({
+          title: result.message || '添加失败',
+          icon: 'none',
+          duration: 2000
+        });
+      }
+    } catch (err) {
+      console.error('添加黑名单失败:', err);
+      wx.showToast({
+        title: '操作失败，请重试',
+        icon: 'none',
+        duration: 2000
+      });
+    }
   },
 
   // 切换激活状态
   toggleActive(e) {
     const { phone, name, isActive } = e.currentTarget.dataset;
+    const { activityId } = this.data;
 
     const action = isActive ? '禁用' : '启用';
 
@@ -358,19 +403,33 @@ Page({
       title: `${action}黑名单`,
       content: `确定要${action}"${name || phone}"的黑名单状态吗？`,
       confirmText: `确定${action}`,
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          wx.showLoading({ title: '处理中...' });
+          try {
+            // 调用后端API切换状态
+            const result = await blacklistAPI.toggleActive(activityId, phone);
 
-          // 模拟API调用
-          setTimeout(() => {
-            wx.hideLoading();
-            wx.showToast({ title: `已${action}`, icon: 'success' });
+            if (result.code === 0) {
+              wx.showToast({ title: `已${action}`, icon: 'success' });
 
-            setTimeout(() => {
-              this.loadData();
-            }, 1500);
-          }, 1000);
+              setTimeout(() => {
+                this.loadData();
+              }, 800);
+            } else {
+              wx.showToast({
+                title: result.message || `${action}失败`,
+                icon: 'none',
+                duration: 2000
+              });
+            }
+          } catch (err) {
+            console.error('切换黑名单状态失败:', err);
+            wx.showToast({
+              title: '操作失败，请重试',
+              icon: 'none',
+              duration: 2000
+            });
+          }
         }
       }
     });
@@ -379,25 +438,40 @@ Page({
   // 删除黑名单条目
   removeItem(e) {
     const { phone, name } = e.currentTarget.dataset;
+    const { activityId } = this.data;
 
     wx.showModal({
       title: '移除黑名单',
       content: `确定要将"${name || phone}"移出黑名单吗？`,
       confirmText: '确定移除',
       confirmColor: '#ef4444',
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          wx.showLoading({ title: '移除中...' });
+          try {
+            // 调用后端API移除黑名单
+            const result = await blacklistAPI.remove(activityId, phone);
 
-          // 模拟API调用
-          setTimeout(() => {
-            wx.hideLoading();
-            wx.showToast({ title: '已移除', icon: 'success' });
+            if (result.code === 0) {
+              wx.showToast({ title: '已移除', icon: 'success' });
 
-            setTimeout(() => {
-              this.loadData();
-            }, 1500);
-          }, 1000);
+              setTimeout(() => {
+                this.loadData();
+              }, 800);
+            } else {
+              wx.showToast({
+                title: result.message || '移除失败',
+                icon: 'none',
+                duration: 2000
+              });
+            }
+          } catch (err) {
+            console.error('移除黑名单失败:', err);
+            wx.showToast({
+              title: '操作失败，请重试',
+              icon: 'none',
+              duration: 2000
+            });
+          }
         }
       }
     });

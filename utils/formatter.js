@@ -1,5 +1,36 @@
 // utils/formatter.js - 数据格式化工具
 
+// 格式化日期时间
+const formatDateTime = (dateTime) => {
+  if (!dateTime) return '';
+
+  try {
+    // 兼容ISO格式和普通格式
+    let dateStr = dateTime;
+
+    // 如果包含空格（后端可能返回这种格式），转换为ISO格式
+    if (dateStr.includes(' ') && !dateStr.includes('T')) {
+      dateStr = dateStr.replace(' ', 'T');
+    }
+
+    // 移除毫秒部分
+    dateStr = dateStr.replace(/\.\d+/, '');
+
+    const date = new Date(dateStr);
+
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} ${hour}:${minute}`;
+  } catch (err) {
+    console.error('日期格式化失败:', dateTime, err);
+    return dateTime;
+  }
+};
+
 // 格式化手机号（隐藏中间四位）
 const formatMobile = (mobile) => {
   if (!mobile || mobile.length !== 11) return mobile;
@@ -175,6 +206,7 @@ const deepClone = (obj) => {
 };
 
 module.exports = {
+  formatDateTime,
   formatMobile,
   formatMoney,
   formatPercent,

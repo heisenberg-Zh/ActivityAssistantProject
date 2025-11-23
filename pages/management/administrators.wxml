@@ -14,7 +14,7 @@
   </view>
 
   <!-- 提示信息 -->
-  <view class="notice-section" style="padding-top: {{navBarHeight + 8}}px;">
+  <view class="notice-section">
     <view class="notice-card notice-card--info">
       <text class="text-sm">管理员可以修改活动信息、管理白/黑名单、审核报名和查看报名信息，但不能添加或移除其他管理员。</text>
     </view>

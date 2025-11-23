@@ -1,11 +1,12 @@
 // pages/my-activities/joined-list.js
-const { activities: allActivities, registrations } = require('../../utils/mock.js');
+const { registrationAPI, activityAPI } = require('../../utils/api.js');
 const { parseDate } = require('../../utils/date-helper.js');
 const app = getApp();
 
 Page({
   data: {
-    activities: []
+    activities: [],
+    loading: true
   },
 
   /**
@@ -18,48 +19,79 @@ Page({
   /**
    * 加载已参加的活动列表
    */
-  loadActivities() {
-    const currentUserId = app.globalData.currentUserId || 'u1';
+  async loadActivities() {
+    try {
+      this.setData({ loading: true });
+      wx.showLoading({ title: '加载中...' });
 
-    // 获取用户参加的所有活动（status=approved且未取消）
-    const userRegistrations = registrations.filter(r =>
-      r.userId === currentUserId &&
-      r.status === 'approved'
-    );
+      const currentUserId = app.globalData.currentUserId || 'u1';
 
-    // 获取对应的活动信息
-    const joinedActivities = userRegistrations.map(r => {
-      const activity = allActivities.find(a => a.id === r.activityId);
-      if (!activity) return null;
+      // 从后端API获取我的报名列表
+      const result = await registrationAPI.getMyRegistrations({ page: 0, size: 1000 });
 
-      // 处理状态
-      let statusClass = 'ended';
-      if (activity.status === '进行中') {
-        statusClass = 'ongoing';
-      } else if (activity.status === '即将开始') {
-        statusClass = 'upcoming';
+      if (result.code !== 0) {
+        throw new Error(result.message || '获取报名列表失败');
       }
 
-      return {
-        id: activity.id,
-        title: activity.title,
-        date: activity.date,
-        status: activity.status,
-        statusClass: statusClass,
-        registrationId: r.id
-      };
-    }).filter(a => a !== null);
+      const allRegistrations = result.data.content || result.data || [];
 
-    // 按报名时间倒序排列
-    joinedActivities.sort((a, b) => {
-      const regA = userRegistrations.find(r => r.id === a.registrationId);
-      const regB = userRegistrations.find(r => r.id === b.registrationId);
-      return parseDate(regB.registeredAt) - parseDate(regA.registeredAt);
-    });
+      // 筛选已通过审核的报名
+      const approvedRegistrations = allRegistrations.filter(r => r.status === 'approved');
 
-    this.setData({
-      activities: joinedActivities
-    });
+      // 获取对应的活动信息（批量获取或逐个获取）
+      const joinedActivities = [];
+
+      for (const registration of approvedRegistrations) {
+        try {
+          const activityResult = await activityAPI.getDetail(registration.activityId);
+
+          if (activityResult.code === 0 && activityResult.data) {
+            const activity = activityResult.data;
+
+            // 处理状态
+            let statusClass = 'ended';
+            if (activity.status === '进行中') {
+              statusClass = 'ongoing';
+            } else if (activity.status === '即将开始') {
+              statusClass = 'upcoming';
+            }
+
+            joinedActivities.push({
+              id: activity.id,
+              title: activity.title,
+              date: activity.date,
+              status: activity.status,
+              statusClass: statusClass,
+              registrationId: registration.id,
+              registeredAt: registration.createdAt || registration.registeredAt
+            });
+          }
+        } catch (err) {
+          console.warn('获取活动详情失败:', registration.activityId, err);
+        }
+      }
+
+      // 按报名时间倒序排列
+      joinedActivities.sort((a, b) => {
+        return parseDate(b.registeredAt) - parseDate(a.registeredAt);
+      });
+
+      this.setData({
+        activities: joinedActivities,
+        loading: false
+      });
+
+      wx.hideLoading();
+    } catch (err) {
+      console.error('加载参与活动列表失败:', err);
+      wx.hideLoading();
+      wx.showToast({
+        title: err.message || '加载失败',
+        icon: 'none',
+        duration: 2000
+      });
+      this.setData({ loading: false });
+    }
   },
 
   /**

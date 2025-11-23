@@ -3,7 +3,6 @@ const { activityAPI, registrationAPI } = require('../../utils/api.js');
 const { validateActivityForm } = require('../../utils/validator.js');
 const { formatDateTime } = require('../../utils/datetime.js');
 const { parseDate } = require('../../utils/date-helper.js');
-const { activities, registrations } = require('../../utils/mock.js');
 const {
   checkManagementPermission,
   checkFieldEditability,
@@ -2048,66 +2047,81 @@ Page({
   },
 
   // 加载活动数据（不跳转，直接加载到当前表单）
-  loadActivityData(activityId) {
-    const activity = activities.find(a => a.id === activityId);
+  async loadActivityData(activityId) {
+    try {
+      wx.showLoading({ title: '加载中...' });
 
-    if (!activity) {
-      wx.showToast({ title: '活动不存在', icon: 'none' });
-      return;
+      // 从后端API获取活动详情
+      const result = await activityAPI.getDetail(activityId);
+
+      if (result.code !== 0 || !result.data) {
+        throw new Error(result.message || '活动不存在');
+      }
+
+      const activity = result.data;
+
+      // 解析活动数据到表单
+      const startDateTime = (activity.startTime || activity.date || '').split(' ');
+      const endDateTime = (activity.endTime || activity.date || '').split(' ');
+      const registerDeadline = activity.registerDeadline ? activity.registerDeadline.split(' ') : startDateTime;
+
+      const form = {
+        title: activity.title,
+        desc: activity.desc || '',
+        type: activity.type,
+        typeIndex: TYPE_OPTIONS.indexOf(activity.type),
+        isPublic: activity.isPublic !== undefined ? activity.isPublic : true,
+        organizerPhone: activity.organizerPhone || '',
+        organizerWechat: activity.organizerWechat || '',
+        hasGroups: activity.hasGroups || false,
+        groupCount: activity.groups ? activity.groups.length : 2,
+        startDate: startDateTime[0] || '',
+        startTime: startDateTime[1] || '09:00',
+        endDate: endDateTime[0] || '',
+        endTime: endDateTime[1] || '18:00',
+        registerDeadlineDate: registerDeadline[0] || '',
+        registerDeadlineTime: registerDeadline[1] || '09:00',
+        place: activity.place || '',
+        address: activity.address || '',
+        latitude: activity.latitude,
+        longitude: activity.longitude,
+        checkinRadius: activity.checkinRadius || 500,
+        total: activity.total,
+        minParticipants: activity.minParticipants || 0,
+        needReview: activity.needReview || false,
+        fee: activity.fee || 0,
+        feeType: activity.feeType || '免费',
+        requirements: activity.requirements || '',
+        description: activity.description || ''
+      };
+
+      // 如果有分组，加载分组数据
+      let groups = [];
+      if (activity.hasGroups && activity.groups) {
+        groups = activity.groups.map(g => ({ ...g }));
+      }
+
+      this.setData({
+        form,
+        groups
+      });
+
+      // 标记所有步骤为已完成
+      const steps = this.data.steps.map(s => ({ ...s, completed: true }));
+      this.setData({ steps });
+
+      this.checkCanPublish();
+
+      wx.hideLoading();
+      wx.showToast({ title: '已复制活动内容', icon: 'success' });
+    } catch (err) {
+      console.error('加载活动数据失败:', err);
+      wx.hideLoading();
+      wx.showToast({
+        title: err.message || '加载失败',
+        icon: 'none',
+        duration: 2000
+      });
     }
-
-    // 解析活动数据到表单
-    const startDateTime = activity.startTime.split(' ');
-    const endDateTime = activity.endTime.split(' ');
-    const registerDeadline = activity.registerDeadline ? activity.registerDeadline.split(' ') : startDateTime;
-
-    const form = {
-      title: activity.title,
-      desc: activity.desc || '',
-      type: activity.type,
-      typeIndex: TYPE_OPTIONS.indexOf(activity.type),
-      isPublic: activity.isPublic !== undefined ? activity.isPublic : true,
-      organizerPhone: activity.organizerPhone || '',
-      organizerWechat: activity.organizerWechat || '',
-      hasGroups: activity.hasGroups || false,
-      groupCount: activity.groups ? activity.groups.length : 2,
-      startDate: startDateTime[0],
-      startTime: startDateTime[1] || '09:00',
-      endDate: endDateTime[0],
-      endTime: endDateTime[1] || '18:00',
-      registerDeadlineDate: registerDeadline[0],
-      registerDeadlineTime: registerDeadline[1] || '09:00',
-      place: activity.place,
-      address: activity.address,
-      latitude: activity.latitude,
-      longitude: activity.longitude,
-      checkinRadius: activity.checkinRadius || 500,
-      total: activity.total,
-      minParticipants: activity.minParticipants || 0,
-      needReview: activity.needReview || false,
-      fee: activity.fee || 0,
-      feeType: activity.feeType || '免费',
-      requirements: activity.requirements || '',
-      description: activity.description || ''
-    };
-
-    // 如果有分组，加载分组数据
-    let groups = [];
-    if (activity.hasGroups && activity.groups) {
-      groups = activity.groups.map(g => ({ ...g }));
-    }
-
-    this.setData({
-      form,
-      groups
-    });
-
-    // 标记所有步骤为已完成
-    const steps = this.data.steps.map(s => ({ ...s, completed: true }));
-    this.setData({ steps });
-
-    this.checkCanPublish();
-
-    wx.showToast({ title: '已复制活动内容', icon: 'success' });
   }
 });

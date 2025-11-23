@@ -431,6 +431,26 @@ function transformResponse(data, url) {
       }
     }
 
+    // 消息相关接口
+    if (url.includes('/api/messages')) {
+      // 如果是分页格式，提取 content 数组
+      if (data.content && Array.isArray(data.content)) {
+        // 返回分页数据，保持结构
+        return {
+          ...data,
+          // 保持原有的分页信息
+          content: data.content
+        };
+      }
+      // 如果是 list 格式
+      if (data.list && Array.isArray(data.list)) {
+        // 转换为标准格式
+        return data.list;
+      }
+      // 直接返回数据（可能是数组或对象）
+      return data;
+    }
+
     return data;
   } catch (err) {
     console.error('响应数据转换失败:', err, url, data);

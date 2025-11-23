@@ -14,7 +14,7 @@
   </view>
 
   <!-- 提示信息 -->
-  <view class="info-banner" style="margin-top: {{navBarHeight + 8}}px;">
+  <view class="info-banner">
     <view class="info-banner-icon">⚠</view>
     <view class="info-banner-content">
       <text class="info-banner-title">禁止报名</text>

@@ -560,5 +560,5 @@
 
 /* 底部安全区域 */
 .bottom-space {
-  height: 40rpx;
+  height: 100rpx;
 }

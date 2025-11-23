@@ -1,6 +1,6 @@
 // pages/statistics/created-detail.js
 const wxCharts = require('../../utils/wxcharts/wxcharts-full.js');
-const { activities } = require('../../utils/mock.js');
+const { activityAPI } = require('../../utils/api.js');
 const { parseDate } = require('../../utils/date-helper.js');
 const app = getApp();
 
@@ -9,6 +9,7 @@ let barChart = null;
 
 Page({
   data: {
+    activities: [],  // 存储从后端获取的活动列表
     totalCreated: 0,
     totalJoined: 0,
     avgRate: '0.0',
@@ -23,8 +24,8 @@ Page({
     console.log('📊 [created-detail] 页面加载，使用 wx-charts');
 
     // 获取系统信息以设置 canvas 尺寸
-    const systemInfo = wx.getSystemInfoSync();
-    const windowWidth = systemInfo.windowWidth;
+    const windowInfo = wx.getWindowInfo();
+    const windowWidth = windowInfo.windowWidth;
     const canvasWidth = windowWidth - 40; // 减去左右 padding
     const canvasHeight = 260; // 图表高度
 
@@ -52,36 +53,54 @@ Page({
   /**
    * 加载统计数据
    */
-  loadStatistics() {
-    const currentUserId = app.globalData.currentUserId || 'u1';
-    console.log('👤 [created-detail] 当前用户ID:', currentUserId);
+  async loadStatistics() {
+    try {
+      wx.showLoading({ title: '加载中...' });
 
-    // 获取用户创建的所有活动
-    const userActivities = activities.filter(a =>
-      a.organizerId === currentUserId &&
-      !a.isDeleted
-    );
+      const currentUserId = app.globalData.currentUserId || 'u1';
+      console.log('👤 [created-detail] 当前用户ID:', currentUserId);
 
-    console.log('📋 [created-detail] 找到创建的活动:', userActivities.length, '个');
+      // 从后端API获取我创建的活动列表
+      const result = await activityAPI.getMyActivities({ page: 0, size: 1000 });
 
-    const totalCreated = userActivities.length;
-    const totalJoined = userActivities.reduce((sum, a) => sum + a.joined, 0);
+      if (result.code !== 0) {
+        throw new Error(result.message || '获取活动列表失败');
+      }
 
-    let avgRate = '0.0';
-    if (totalCreated > 0) {
-      const totalRate = userActivities.reduce((sum, a) => {
-        return sum + (a.total > 0 ? (a.joined / a.total) * 100 : 0);
-      }, 0);
-      avgRate = (totalRate / totalCreated).toFixed(1);
+      const userActivities = result.data.content || result.data || [];
+
+      console.log('📋 [created-detail] 找到创建的活动:', userActivities.length, '个');
+
+      const totalCreated = userActivities.length;
+      const totalJoined = userActivities.reduce((sum, a) => sum + (a.joined || 0), 0);
+
+      let avgRate = '0.0';
+      if (totalCreated > 0) {
+        const totalRate = userActivities.reduce((sum, a) => {
+          return sum + (a.total > 0 ? ((a.joined || 0) / a.total) * 100 : 0);
+        }, 0);
+        avgRate = (totalRate / totalCreated).toFixed(1);
+      }
+
+      console.log('📊 [created-detail] 统计数据:', { totalCreated, totalJoined, avgRate });
+
+      this.setData({
+        activities: userActivities,  // 保存活动列表供图表使用
+        totalCreated,
+        totalJoined,
+        avgRate
+      });
+
+      wx.hideLoading();
+    } catch (err) {
+      console.error('加载统计数据失败:', err);
+      wx.hideLoading();
+      wx.showToast({
+        title: err.message || '加载失败',
+        icon: 'none',
+        duration: 2000
+      });
     }
-
-    console.log('📊 [created-detail] 统计数据:', { totalCreated, totalJoined, avgRate });
-
-    this.setData({
-      totalCreated,
-      totalJoined,
-      avgRate
-    });
   },
 
   /**
@@ -90,11 +109,8 @@ Page({
   initPieChart() {
     console.log('🥧 [created-detail] 初始化饼图');
 
-    const currentUserId = app.globalData.currentUserId || 'u1';
-    const userActivities = activities.filter(a =>
-      a.organizerId === currentUserId &&
-      !a.isDeleted
-    );
+    // 从页面数据中获取活动列表
+    const userActivities = this.data.activities;
 
     console.log('📋 [饼图] 找到创建的活动:', userActivities.length, '个');
 
@@ -142,11 +158,8 @@ Page({
   initBarChart() {
     console.log('📊 [created-detail] 初始化柱状图');
 
-    const currentUserId = app.globalData.currentUserId || 'u1';
-    const userActivities = activities.filter(a =>
-      a.organizerId === currentUserId &&
-      !a.isDeleted
-    );
+    // 从页面数据中获取活动列表
+    const userActivities = this.data.activities;
 
     console.log('📋 [柱状图] 找到创建的活动:', userActivities.length, '个');
 

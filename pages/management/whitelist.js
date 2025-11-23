@@ -1,5 +1,5 @@
 // pages/management/whitelist.js
-const { activities, participants, registrations } = require('../../utils/mock.js');
+const { activityAPI, whitelistAPI } = require('../../utils/api.js');
 const {
   checkManagementPermission,
   parseBatchPhoneNumbers
@@ -56,61 +56,77 @@ Page({
   },
 
   // 加载数据
-  loadData() {
+  async loadData() {
     const { activityId } = this.data;
     const currentUserId = app.globalData.currentUserId || 'u1';
 
-    // 查找活动
-    const activity = activities.find(a => a.id === activityId);
+    try {
+      wx.showLoading({ title: '加载中...' });
 
-    if (!activity) {
-      wx.showToast({ title: '活动不存在', icon: 'none' });
-      setTimeout(() => wx.navigateBack(), 1500);
-      return;
-    }
+      // 并行请求：活动详情、白名单列表、已报名用户列表
+      const [activityResult, whitelistResult, usersResult] = await Promise.all([
+        activityAPI.getDetail(activityId),
+        whitelistAPI.getWhitelist(activityId),
+        whitelistAPI.getRegisteredUsers(activityId)
+      ]);
 
-    // 检查管理权限
-    const permission = checkManagementPermission(activity, currentUserId);
+      wx.hideLoading();
 
-    if (!permission.hasPermission) {
-      wx.showModal({
-        title: '无权限',
-        content: '您不是此活动的创建者或管理员',
-        showCancel: false,
-        success: () => wx.navigateBack()
+      // 检查活动详情
+      if (activityResult.code !== 0) {
+        wx.showToast({ title: activityResult.message || '获取活动详情失败', icon: 'none' });
+        setTimeout(() => wx.navigateBack(), 1500);
+        return;
+      }
+
+      const activity = activityResult.data;
+
+      if (!activity) {
+        wx.showToast({ title: '活动不存在', icon: 'none' });
+        setTimeout(() => wx.navigateBack(), 1500);
+        return;
+      }
+
+      // 检查管理权限
+      const permission = checkManagementPermission(activity, currentUserId);
+
+      if (!permission.hasPermission) {
+        wx.showModal({
+          title: '无权限',
+          content: '您不是此活动的创建者或管理员',
+          showCancel: false,
+          success: () => wx.navigateBack()
+        });
+        return;
+      }
+
+      // 获取白名单（从API返回的数据已包含用户详情）
+      const whitelist = whitelistResult.code === 0 ? (whitelistResult.data || []) : [];
+
+      // 获取已报名用户列表
+      const registeredUsers = usersResult.code === 0 ? (usersResult.data || []) : [];
+
+      // 为每个已报名用户标记是否在白名单中
+      registeredUsers.forEach(user => {
+        user.inWhitelist = whitelist.some(w =>
+          w.userId === user.userId || w.phone === user.mobile
+        );
       });
-      return;
+
+      this.setData({
+        activity,
+        whitelist,
+        registeredUsers
+      });
+    } catch (err) {
+      wx.hideLoading();
+      console.error('加载活动数据失败:', err);
+      wx.showToast({
+        title: err.message || '加载失败，请稍后重试',
+        icon: 'none'
+      });
+      setTimeout(() => wx.navigateBack(), 1500);
     }
-
-    // 获取白名单（包含用户详情）
-    const whitelist = (activity.whitelist || []).map(item => {
-      const user = participants.find(p => p.id === item.userId);
-      return {
-        ...item,
-        name: user?.name || '未知用户',
-        avatar: user?.avatar || ''
-      };
-    });
-
-    // 获取已报名用户（用于选择添加）
-    const activityRegs = registrations.filter(r => r.activityId === activityId && r.status === 'approved');
-    const registeredUsers = activityRegs.map(reg => {
-      const user = participants.find(p => p.id === reg.userId);
-      return {
-        userId: reg.userId,
-        name: reg.name,
-        mobile: reg.mobile,
-        avatar: user?.avatar || '',
-        // 检查是否已在白名单
-        inWhitelist: whitelist.some(w => w.userId === reg.userId || w.phone === reg.mobile)
-      };
-    });
-
-    this.setData({
-      activity,
-      whitelist,
-      registeredUsers
-    });
   },
 
   // 显示添加对话框
@@ -380,9 +396,8 @@ Page({
   },
 
   // 确认添加
-  confirmAdd() {
-    const { addMode, phoneValidation, selectedUserIds, registeredUsers, activity } = this.data;
-    const currentUserId = app.globalData.currentUserId || 'u1';
+  async confirmAdd() {
+    const { addMode, phoneValidation, selectedUserIds, activityId } = this.data;
 
     if (addMode === 'phone') {
       // 批量手机号添加
@@ -394,42 +409,36 @@ Page({
       // 使用验证后的有效手机号（排除已存在的）
       const phonesToAdd = phoneValidation.valid.filter(p => !phoneValidation.existing.includes(p));
 
-      wx.showLoading({ title: '添加中...' });
+      try {
+        // 调用后端API批量添加
+        const result = await whitelistAPI.addBatch(activityId, { phones: phonesToAdd });
 
-      // 模拟API调用 - 实际添加到whitelist
-      setTimeout(() => {
-        // 初始化whitelist数组
-        if (!activity.whitelist) {
-          activity.whitelist = [];
-        }
-
-        // 添加手机号到白名单
-        const now = new Date();
-        const addedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-        phonesToAdd.forEach(phone => {
-          // 查找对应的用户ID
-          const user = participants.find(p => p.mobile === phone);
-          activity.whitelist.push({
-            phone: phone,
-            userId: user?.id || null,
-            addedAt: addedAt,
-            addedBy: currentUserId
+        if (result.code === 0) {
+          wx.showToast({
+            title: result.message || `成功添加 ${phonesToAdd.length} 个手机号`,
+            icon: 'success',
+            duration: 2000
           });
-        });
 
-        wx.hideLoading();
+          this.closeAddDialog();
+          setTimeout(() => {
+            this.loadData();
+          }, 800);
+        } else {
+          wx.showToast({
+            title: result.message || '添加失败',
+            icon: 'none',
+            duration: 2000
+          });
+        }
+      } catch (err) {
+        console.error('添加白名单失败:', err);
         wx.showToast({
-          title: `成功添加 ${phonesToAdd.length} 个手机号`,
-          icon: 'success',
+          title: '操作失败，请重试',
+          icon: 'none',
           duration: 2000
         });
-
-        this.closeAddDialog();
-        setTimeout(() => {
-          this.loadData();
-        }, 800);
-      }, 800);
+      }
 
     } else {
       // 从已报名用户选择
@@ -438,80 +447,76 @@ Page({
         return;
       }
 
-      wx.showLoading({ title: '添加中...' });
+      try {
+        // 调用后端API批量添加
+        const result = await whitelistAPI.addBatch(activityId, { userIds: selectedUserIds });
 
-      // 模拟API调用 - 实际添加到whitelist
-      setTimeout(() => {
-        // 初始化whitelist数组
-        if (!activity.whitelist) {
-          activity.whitelist = [];
+        if (result.code === 0) {
+          wx.showToast({
+            title: result.message || `成功添加 ${selectedUserIds.length} 个用户`,
+            icon: 'success',
+            duration: 2000
+          });
+
+          this.closeAddDialog();
+          setTimeout(() => {
+            this.loadData();
+          }, 800);
+        } else {
+          wx.showToast({
+            title: result.message || '添加失败',
+            icon: 'none',
+            duration: 2000
+          });
         }
-
-        const now = new Date();
-        const addedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-        let addedCount = 0;
-        selectedUserIds.forEach(userId => {
-          // 检查是否已存在
-          const exists = activity.whitelist.some(w => w.userId === userId);
-          if (!exists) {
-            // 从registeredUsers获取用户信息
-            const regUser = registeredUsers.find(u => u.userId === userId);
-            activity.whitelist.push({
-              phone: regUser?.mobile || '',
-              userId: userId,
-              addedAt: addedAt,
-              addedBy: currentUserId
-            });
-            addedCount++;
-          }
-        });
-
-        wx.hideLoading();
+      } catch (err) {
+        console.error('添加白名单失败:', err);
         wx.showToast({
-          title: `成功添加 ${addedCount} 个用户`,
-          icon: 'success',
+          title: '操作失败，请重试',
+          icon: 'none',
           duration: 2000
         });
-
-        this.closeAddDialog();
-        setTimeout(() => {
-          this.loadData();
-        }, 800);
-      }, 800);
+      }
     }
   },
 
   // 删除白名单条目
   removeItem(e) {
     const { phone, name } = e.currentTarget.dataset;
-    const { activity } = this.data;
+    const { activityId } = this.data;
 
     wx.showModal({
       title: '移除白名单',
       content: `确定要将"${name || phone}"移出白名单吗？`,
       confirmText: '确定移除',
       confirmColor: '#ef4444',
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          wx.showLoading({ title: '移除中...' });
+          try {
+            // 调用后端API移除白名单
+            const result = await whitelistAPI.remove(activityId, phone);
 
-          // 模拟API调用 - 实际从whitelist中删除
-          setTimeout(() => {
-            if (activity.whitelist) {
-              const index = activity.whitelist.findIndex(w => w.phone === phone);
-              if (index > -1) {
-                activity.whitelist.splice(index, 1);
-              }
+            if (result.code === 0) {
+              wx.showToast({ title: '已移除', icon: 'success' });
+
+              setTimeout(() => {
+                this.loadData();
+              }, 800);
+            } else {
+              wx.showToast({
+                title: result.message || '移除失败',
+                icon: 'none',
+                duration: 2000
+              });
             }
-
-            wx.hideLoading();
-            wx.showToast({ title: '已移除', icon: 'success' });
-
-            setTimeout(() => {
-              this.loadData();
-            }, 800);
-          }, 800);
+          } catch (err) {
+            console.error('移除白名单失败:', err);
+            wx.showToast({
+              title: '操作失败，请重试',
+              icon: 'none',
+              duration: 2000
+            });
+          }
         }
       }
     });
