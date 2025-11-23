@@ -4,9 +4,10 @@ const { sanitizeInput } = require('../../utils/security.js');
 const app = getApp();
 
 // 统一菜单列表（按需求顺序排列）
+// 注意：消息中心的badge数量会在页面加载时动态更新
 const menuLinks = [
   { key: 'my-activities', label: '我的活动', icon: '活', bg: '#dbeafe', color: '#1d4ed8' },
-  { key: 'messages', label: '消息中心', icon: '信', bg: '#fee2e2', color: '#b91c1c', badge: '3' },
+  { key: 'messages', label: '消息中心', icon: '信', bg: '#fee2e2', color: '#b91c1c', badge: '' },
   { key: 'favorites', label: '我的收藏', icon: '藏', bg: '#ede9fe', color: '#6d28d9' },
   { key: 'feedback', label: '帮助与反馈', icon: '帮', bg: '#fef3c7', color: '#b45309' },
   { key: 'about', label: '关于我们', icon: '关', bg: '#e0e7ff', color: '#4338ca' },
@@ -50,6 +51,8 @@ Page({
   onShow() {
     // 每次显示时刷新数据
     this.loadUserData();
+    // 加载未读消息数量
+    this.loadUnreadMessageCount();
   },
 
   /**
@@ -278,6 +281,59 @@ Page({
       console.log('✅ 离线数据加载成功');
     } catch (err) {
       console.error('加载离线数据失败:', err);
+    }
+  },
+
+  /**
+   * 加载未读消息数量（从后端API获取）
+   */
+  async loadUnreadMessageCount() {
+    try {
+      const { messageAPI } = require('../../utils/api.js');
+
+      // 从后端API获取消息列表
+      const result = await messageAPI.getMyMessages({ page: 0, size: 100 });
+
+      if (result.code === 0 && result.data) {
+        // 兼容多种后端数据格式
+        let notifications = [];
+
+        if (Array.isArray(result.data)) {
+          notifications = result.data;
+        } else if (result.data.content && Array.isArray(result.data.content)) {
+          notifications = result.data.content;
+        } else if (result.data.list && Array.isArray(result.data.list)) {
+          notifications = result.data.list;
+        }
+
+        // 计算未读消息数量
+        const unreadCount = notifications.filter(msg => !msg.isRead).length;
+
+        // 更新菜单列表中的消息徽章
+        const updatedMenuLinks = this.data.menuLinks.map(item => {
+          if (item.key === 'messages') {
+            return {
+              ...item,
+              badge: unreadCount > 0 ? String(unreadCount) : ''
+            };
+          }
+          return item;
+        });
+
+        this.setData({ menuLinks: updatedMenuLinks });
+
+        console.log(`📬 未读消息数量: ${unreadCount}`);
+      }
+    } catch (err) {
+      console.error('加载未读消息数量失败:', err);
+      // 失败时清空徽章
+      const updatedMenuLinks = this.data.menuLinks.map(item => {
+        if (item.key === 'messages') {
+          return { ...item, badge: '' };
+        }
+        return item;
+      });
+      this.setData({ menuLinks: updatedMenuLinks });
     }
   },
 

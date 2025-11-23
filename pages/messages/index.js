@@ -1,6 +1,5 @@
 // pages/messages/index.js
 const { messageAPI } = require('../../utils/api.js');
-const notification = require('../../utils/notification.js');  // 保留用于初始化示例消息
 
 const app = getApp();
 
@@ -47,7 +46,7 @@ Page({
     }
   },
 
-  // 加载消息列表（从后端API获取，支持错误降级）
+  // 加载消息列表（从后端API获取）
   async loadMessages() {
     let loadingShown = false;
     try {
@@ -61,14 +60,23 @@ Page({
         throw new Error(result.message || '获取消息列表失败');
       }
 
-      let notifications = result.data || [];  // 改为 let，允许重新赋值
+      // 兼容多种后端数据格式
+      let notifications = [];
 
-      // 如果是第一次使用且没有消息，初始化一些示例消息
-      if (notifications.length === 0) {
-        this.initializeSampleMessages();
-        // 重新获取消息（现在应该有示例消息了）
-        const retryResult = await messageAPI.getMyMessages({ page: 0, size: 100 });
-        notifications = retryResult.data || [];
+      if (result.data) {
+        if (Array.isArray(result.data)) {
+          // 格式1: { code: 0, data: [...] }
+          notifications = result.data;
+        } else if (result.data.content && Array.isArray(result.data.content)) {
+          // 格式2: { code: 0, data: { content: [...], totalElements: ... } } (分页格式)
+          notifications = result.data.content;
+        } else if (result.data.list && Array.isArray(result.data.list)) {
+          // 格式3: { code: 0, data: { list: [...] } }
+          notifications = result.data.list;
+        } else if (typeof result.data === 'object' && result.data.id) {
+          // 格式4: 单个对象，转换为数组
+          notifications = [result.data];
+        }
       }
 
       // 转换为页面所需的格式
@@ -96,51 +104,21 @@ Page({
         loadingShown = false;
       }
 
-      // 友好的错误处理
+      // 显示空状态
+      this.setData({
+        allMessages: [],
+        messages: []
+      });
+
+      // 友好的错误提示
       const errorMsg = error.message || '加载失败';
 
-      // 如果是后端未实现的错误，给出提示
-      if (errorMsg.includes('No static resource') || error.type === 'server_error') {
-        console.log('📢 后端消息接口未实现，当前使用Mock数据模式');
-
-        // 显示温馨提示（不使用error图标，避免惊吓用户）
-        wx.showToast({
-          title: '暂无新消息',
-          icon: 'none',
-          duration: 1500
-        });
-
-        // 初始化示例消息（为空列表）
-        this.setData({
-          allMessages: [],
-          messages: []
-        });
-      } else {
-        // 其他错误显示具体错误信息
-        wx.showToast({
-          title: errorMsg,
-          icon: 'none',
-          duration: 2000
-        });
-      }
+      wx.showToast({
+        title: errorMsg.includes('No static resource') ? '暂无消息' : errorMsg,
+        icon: 'none',
+        duration: 2000
+      });
     }
-  },
-
-  // 初始化示例消息（首次使用时）
-  initializeSampleMessages() {
-    console.log('初始化示例消息');
-
-    // 添加欢迎消息
-    notification.sendSystemNotification(
-      '欢迎使用活动助手',
-      '您已成功注册，现在可以开始创建和参与精彩活动了。'
-    );
-
-    // 添加功能介绍消息
-    notification.sendSystemNotification(
-      '新功能上线',
-      '活动助手新增数据统计功能，现在可以查看详细的活动数据分析报告。'
-    );
   },
 
   // 格式化消息为页面所需的格式
@@ -270,7 +248,7 @@ Page({
     }
 
     try {
-      // 标记消息为已读（使用后端API）
+      // 调用后端API标记消息为已读
       const result = await messageAPI.markAsRead(id);
 
       if (result.code === 0) {
@@ -293,8 +271,8 @@ Page({
     } catch (error) {
       console.error('标记已读失败:', error);
       wx.showToast({
-        title: '操作失败',
-        icon: 'error',
+        title: '操作失败，请稍后重试',
+        icon: 'none',
         duration: 1500
       });
     }
@@ -357,8 +335,8 @@ Page({
             wx.hideLoading();
             console.error('批量标记已读失败:', error);
             wx.showToast({
-              title: '操作失败',
-              icon: 'error',
+              title: '操作失败，请稍后重试',
+              icon: 'none',
               duration: 1500
             });
           }
