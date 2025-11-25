@@ -1,6 +1,6 @@
 // pages/my-activities/index.js
 const { activityAPI, registrationAPI, reviewAPI } = require('../../utils/api.js');
-const { translateActivityStatus } = require('../../utils/formatter.js');
+const { calculateActivityStatus } = require('../../utils/formatter.js');
 const { isBeforeRegisterDeadline } = require('../../utils/datetime.js');
 const { checkManagementPermission } = require('../../utils/activity-management-helper.js');
 const app = getApp();
@@ -95,19 +95,19 @@ Page({
         registrationAPI.getMyRegistrations({ page: 0, size: 100 })
       ]);
 
-      // 获取我创建的活动，并翻译状态
+      // 获取我创建的活动，并动态计算状态
       const createdActivities = myActivitiesResult.code === 0
         ? (myActivitiesResult.data.content || myActivitiesResult.data || []).map(a => {
-            // 【关键修复】先翻译状态，再传入 getActionsForActivity
-            const translatedActivity = {
+            // 【关键修复】先动态计算状态，再传入 getActionsForActivity
+            const enrichedActivity = {
               ...a,
-              status: translateActivityStatus(a.status) // 翻译英文状态为中文
+              status: calculateActivityStatus(a) // 动态计算活动状态
             };
 
             return {
-              ...translatedActivity,
+              ...enrichedActivity,
               role: '我创建的',
-              actions: this.getActionsForActivity(translatedActivity, 'created') // ✅ 传入翻译后的数据
+              actions: this.getActionsForActivity(enrichedActivity, 'created') // ✅ 传入计算后的数据
             };
           })
         : [];
@@ -124,16 +124,16 @@ Page({
           try {
             const activityResult = await activityAPI.getDetail(reg.activityId);
             if (activityResult.code === 0 && activityResult.data) {
-              // 【关键修复】先构建包含翻译后状态的活动对象
-              const translatedActivity = {
+              // 【关键修复】先构建包含动态计算状态的活动对象
+              const enrichedActivity = {
                 ...activityResult.data,
-                status: translateActivityStatus(activityResult.data.status) // 翻译英文状态为中文
+                status: calculateActivityStatus(activityResult.data) // 动态计算活动状态
               };
 
               return {
-                ...translatedActivity,
+                ...enrichedActivity,
                 role: '我参加的',
-                actions: this.getActionsForActivity(translatedActivity, 'joined') // ✅ 传入翻译后的数据
+                actions: this.getActionsForActivity(enrichedActivity, 'joined') // ✅ 传入计算后的数据
               };
             }
           } catch (err) {

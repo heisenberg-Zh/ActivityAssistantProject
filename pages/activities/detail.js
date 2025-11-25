@@ -4,7 +4,7 @@ const { parseDate } = require('../../utils/date-helper.js');
 const {
   formatMoney,
   formatParticipants,
-  translateActivityStatus,
+  calculateActivityStatus,
   formatActivityStatus,
   getNameInitial,
   getAvatarColor
@@ -181,9 +181,9 @@ Page({
         feeInfo = `本次活动费用${formatMoney(detail.fee)}/人`;
       }
 
-      // 翻译活动状态为中文
-      const translatedStatus = translateActivityStatus(detail.status);
-      const statusInfo = formatActivityStatus(detail.status);
+      // 动态计算活动状态（根据时间）
+      const dynamicStatus = calculateActivityStatus(detail);
+      const statusInfo = formatActivityStatus(dynamicStatus);
 
       // 判断是否可以报名
       const now = new Date();
@@ -192,7 +192,7 @@ Page({
 
       // 判断是否可以签到
       const startTime = parseDate(detail.startTime);
-      const canCheckin = translatedStatus === '进行中' ||
+      const canCheckin = dynamicStatus === '进行中' ||
         (Math.abs(now.getTime() - startTime.getTime()) <= 30 * 60 * 1000);
 
       // ========== 【关键】检查当前用户是否已报名 ==========
@@ -243,14 +243,14 @@ Page({
         activityId: detail.id
       };
 
-      // 翻译状态后的活动详情
-      const translatedDetail = {
+      // 设置活动详情（使用动态计算的状态）
+      const enrichedDetail = {
         ...detail,
-        status: translatedStatus // 使用翻译后的中文状态
+        status: dynamicStatus // 使用动态计算的状态
       };
 
       this.setData({
-        detail: translatedDetail,
+        detail: enrichedDetail,
         organizer: organizerInfo,
         members,
         allRegistrations: allApprovedRegs, // 存储所有已审核通过的报名记录

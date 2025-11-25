@@ -2,6 +2,7 @@ package com.activityassistant.config;
 
 import com.activityassistant.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -17,7 +18,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.List;
 
 /**
  * Spring Security 配置
@@ -33,6 +34,14 @@ import java.util.Collections;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    /**
+     * 允许的CORS来源（从配置文件读取）
+     * 开发环境：* （允许所有）
+     * 生产环境：具体的域名列表
+     */
+    @Value("${app.cors.allowed-origins}")
+    private String allowedOrigins;
 
     /**
      * 安全过滤链配置
@@ -94,8 +103,11 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // 允许的源（开发环境允许所有，生产环境需要指定具体域名）
-        configuration.setAllowedOriginPatterns(Collections.singletonList("*"));
+        // 允许的源（从配置文件读取，支持多个域名用逗号分隔）
+        // 开发环境：* （允许所有）
+        // 生产环境：https://yourdomain.com,https://www.yourdomain.com
+        List<String> allowedOriginsList = Arrays.asList(allowedOrigins.split(","));
+        configuration.setAllowedOriginPatterns(allowedOriginsList);
 
         // 允许的HTTP方法
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));

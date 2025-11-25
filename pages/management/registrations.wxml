@@ -48,7 +48,7 @@
   <!-- 报名列表 -->
   <view class="section">
     <view wx:if="{{displayRegistrations.length > 0}}" class="list">
-      <block wx:for="{{displayRegistrations}}" wx:key="userId">
+      <block wx:for="{{displayRegistrations}}" wx:key="id">
         <view class="list-item card shadow-card">
           <view wx:if="{{item.userAvatar}}" class="list-avatar-container">
             <image src="{{item.userAvatar}}" mode="cover" class="list-avatar"></image>
@@ -72,6 +72,7 @@
               <view
                 class="btn btn--success btn--small"
                 bindtap="approveRegistration"
+                data-id="{{item.id}}"
                 data-user-id="{{item.userId}}"
                 data-name="{{item.userName}}"
               >
@@ -80,6 +81,7 @@
               <view
                 class="btn btn--danger btn--small"
                 bindtap="rejectRegistration"
+                data-id="{{item.id}}"
                 data-user-id="{{item.userId}}"
                 data-name="{{item.userName}}"
                 style="margin-left: 8rpx;"
@@ -91,6 +93,7 @@
             <view
               class="btn btn--secondary btn--small"
               bindtap="showRemoveDialog"
+              data-id="{{item.id}}"
               data-user-id="{{item.userId}}"
               data-name="{{item.userName}}"
               data-mobile="{{item.mobile}}"

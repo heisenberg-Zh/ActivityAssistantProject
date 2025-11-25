@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 活动视图对象
@@ -142,9 +143,9 @@ public class ActivityVO {
     private String groups;
 
     /**
-     * 管理员列表（JSON字符串）
+     * 管理员列表
      */
-    private String administrators;
+    private List<UserSimpleVO> administrators;
 
     /**
      * 白名单（JSON字符串）

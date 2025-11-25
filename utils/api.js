@@ -1,77 +1,10 @@
 // utils/api.js - API封装层
-const { activities, participants, registrations, checkinRecords } = require('./mock.js');
 const { sanitizeInput, escapeHtml } = require('./security.js');
 const { requestWithRetry, NetworkErrorType, requestCache } = require('./request-manager.js');
 const { transformResponse, transformRequest } = require('./data-adapter.js');
 
 // 模拟网络延迟
 const delay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Mock收藏数据管理（使用本地存储持久化）
-const MockFavoriteStorage = {
-  KEY: 'mock_favorites_data',
-
-  // 加载收藏数据
-  load() {
-    try {
-      const data = wx.getStorageSync(this.KEY);
-      return data || [];
-    } catch (err) {
-      console.error('加载Mock收藏数据失败:', err);
-      return [];
-    }
-  },
-
-  // 保存收藏数据
-  save(favorites) {
-    try {
-      wx.setStorageSync(this.KEY, favorites);
-    } catch (err) {
-      console.error('保存Mock收藏数据失败:', err);
-    }
-  },
-
-  // 添加收藏
-  add(activityId, userId = 'u1') {
-    const favorites = this.load();
-    const existing = favorites.find(f => f.activityId === activityId && f.userId === userId);
-
-    if (existing) {
-      return existing;
-    }
-
-    const newFavorite = {
-      id: 'fav' + Date.now(),
-      activityId,
-      userId,
-      createdAt: new Date().toISOString()
-    };
-
-    favorites.push(newFavorite);
-    this.save(favorites);
-    return newFavorite;
-  },
-
-  // 移除收藏
-  remove(activityId, userId = 'u1') {
-    const favorites = this.load();
-    const filtered = favorites.filter(f => !(f.activityId === activityId && f.userId === userId));
-    this.save(filtered);
-    return filtered.length < favorites.length;
-  },
-
-  // 获取用户的收藏列表
-  getByUser(userId = 'u1') {
-    const favorites = this.load();
-    return favorites.filter(f => f.userId === userId);
-  },
-
-  // 检查是否已收藏
-  isFavorited(activityId, userId = 'u1') {
-    const favorites = this.load();
-    return favorites.some(f => f.activityId === activityId && f.userId === userId);
-  }
-};
 
 // 通用请求封装（支持超时、重试、缓存）
 const request = async (url, options = {}) => {
@@ -442,55 +375,7 @@ const mockRequest = (url, method, data) => {
     return { code: 0, data: participants[0], message: 'success' };
   }
 
-  // 收藏相关接口（使用本地存储持久化）
-  if (url === '/api/favorites' && method === 'POST') {
-    // 添加收藏
-    const { activityId } = data;
-    const newFavorite = MockFavoriteStorage.add(activityId);
-    return { code: 0, data: newFavorite, message: '收藏成功' };
-  }
-
-  if (url.startsWith('/api/favorites/') && method === 'DELETE') {
-    // 取消收藏
-    const activityId = url.split('/').pop();
-    const removed = MockFavoriteStorage.remove(activityId);
-
-    return {
-      code: 0,
-      data: null,
-      message: removed ? '取消收藏成功' : '未找到收藏记录'
-    };
-  }
-
-  if (url === '/api/favorites/my' && method === 'GET') {
-    // 获取我的收藏列表
-    const userFavorites = MockFavoriteStorage.getByUser();
-    const favoritesWithActivities = userFavorites.map(favorite => {
-      const activity = activities.find(a => a.id === favorite.activityId);
-      return {
-        ...favorite,
-        activity: activity || null
-      };
-    }).filter(f => f.activity !== null); // 过滤掉活动不存在的收藏
-
-    return {
-      code: 0,
-      data: favoritesWithActivities,
-      message: 'success'
-    };
-  }
-
-  if (url === '/api/favorites/check' && method === 'GET') {
-    // 检查是否已收藏
-    const { activityId } = data;
-    const favorited = MockFavoriteStorage.isFavorited(activityId);
-
-    return {
-      code: 0,
-      data: { favorited },
-      message: 'success'
-    };
-  }
+  // 注意：收藏功能已改用真实后端API，不再使用Mock数据
 
   // 消息相关接口（使用本地存储持久化，兼容 notification.js）
   if (url === '/api/messages/my' && method === 'GET') {
@@ -1282,7 +1167,7 @@ const reviewAPI = {
   })
 };
 
-// 收藏API
+// 收藏API（使用后端数据库）
 const favoriteAPI = {
   // 添加收藏
   add: (activityId) => request('/api/favorites', {

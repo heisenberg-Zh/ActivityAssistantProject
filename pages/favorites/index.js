@@ -1,7 +1,7 @@
 // pages/favorites/index.js
 const { activityAPI, favoriteAPI } = require('../../utils/api.js');
 const { enrichActivityWithTags } = require('../../utils/activity-helper.js');
-const { translateActivityStatus } = require('../../utils/formatter.js');
+const { calculateActivityStatus } = require('../../utils/formatter.js');
 const app = getApp();
 
 Page({
@@ -56,14 +56,33 @@ Page({
       }
 
       // 获取收藏的活动列表
+      // 后端返回格式：{ content: [...], totalElements, totalPages }
       const favoritesData = result.data?.content || result.data || [];
 
       // 处理活动数据
       const favoriteActivities = favoritesData.map(favorite => {
-        const activity = enrichActivityWithTags(favorite.activity || favorite, currentUserId);
-        // 翻译状态为中文
-        activity.status = translateActivityStatus(activity.status);
-        return activity;
+        // 后端 FavoriteVO 结构包含了活动的所有信息
+        const activity = {
+          id: favorite.activityId,
+          title: favorite.activityTitle,
+          description: favorite.activityDescription,
+          type: favorite.activityType,
+          status: favorite.activityStatus,
+          startTime: favorite.startTime,
+          endTime: favorite.endTime,
+          registerDeadline: favorite.registerDeadline,  // 添加报名截止时间
+          place: favorite.place,
+          organizerId: favorite.organizerId,
+          organizerName: favorite.organizerName,
+          joined: favorite.joined,
+          total: favorite.total
+        };
+
+        // 添加标签和动态计算状态
+        const enrichedActivity = enrichActivityWithTags(activity, currentUserId);
+        enrichedActivity.status = calculateActivityStatus(activity);  // 动态计算状态
+
+        return enrichedActivity;
       });
 
       this.setData({
@@ -77,8 +96,9 @@ Page({
       this.setData({ loading: false });
       wx.hideLoading();
       wx.showToast({
-        title: '加载失败',
-        icon: 'error'
+        title: error.message || '加载失败',
+        icon: 'none',
+        duration: 2000
       });
     }
   },

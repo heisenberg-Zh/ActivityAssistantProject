@@ -4,10 +4,12 @@ import com.activityassistant.dto.response.ActivityStatisticsVO;
 import com.activityassistant.dto.response.UserStatisticsVO;
 import com.activityassistant.exception.BusinessException;
 import com.activityassistant.model.Activity;
+import com.activityassistant.model.Review;
 import com.activityassistant.model.User;
 import com.activityassistant.repository.ActivityRepository;
 import com.activityassistant.repository.CheckinRepository;
 import com.activityassistant.repository.RegistrationRepository;
+import com.activityassistant.repository.ReviewRepository;
 import com.activityassistant.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +42,9 @@ public class StatisticsService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private ReviewRepository reviewRepository;
 
     /**
      * 获取活动统计数据
@@ -151,7 +156,38 @@ public class StatisticsService {
         // 8. 统计无效签到次数
         long invalidCheckinCount = checkinRepository.countByUserIdAndIsValid(targetUserId, false);
 
-        // 9. 构建返回结果
+        // 9. 统计获得的评价数（作为活动创建者）
+        // 获取用户创建的所有活动
+        List<Activity> createdActivitiesList = activityRepository.findByOrganizerId(targetUserId);
+        List<String> activityIds = createdActivitiesList.stream()
+                .map(Activity::getId)
+                .toList();
+
+        // 统计这些活动收到的评价总数
+        long totalReviews = 0L;
+        double totalRating = 0.0;
+        int ratingCount = 0;
+
+        for (String activityId : activityIds) {
+            List<Review> reviews = reviewRepository.findByActivityIdOrderByCreatedAtDesc(activityId);
+            totalReviews += reviews.size();
+            for (Review review : reviews) {
+                if (review.getRating() != null) {
+                    totalRating += review.getRating();
+                    ratingCount++;
+                }
+            }
+        }
+
+        // 计算平均评分
+        Double averageRating = null;
+        if (ratingCount > 0) {
+            averageRating = totalRating / ratingCount;
+            // 保留一位小数
+            averageRating = Math.round(averageRating * 10.0) / 10.0;
+        }
+
+        // 10. 构建返回结果
         return UserStatisticsVO.builder()
                 .userId(targetUserId)
                 .nickname(user.getNickname())
@@ -162,6 +198,8 @@ public class StatisticsService {
                 .checkinRate(checkinRate)
                 .lateCount(lateCount)
                 .invalidCheckinCount(invalidCheckinCount)
+                .totalReviews(totalReviews)
+                .averageRating(averageRating)
                 .build();
     }
 }

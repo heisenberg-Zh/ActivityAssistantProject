@@ -44,33 +44,38 @@ spring:
           min-idle: 5
           max-wait: 3000ms
 
-# 日志配置
+# 日志配置（生产环境优化）
 logging:
   level:
-    root: INFO
-    com.activityassistant: INFO
-    org.springframework.web: WARN
-    org.springframework.security: WARN
+    root: WARN                          # 只记录警告和错误
+    com.activityassistant: INFO         # 应用日志记录INFO级别
+    org.springframework.web: WARN       # Spring Web只记录警告
+    org.springframework.security: WARN  # Spring Security只记录警告
+    org.hibernate: WARN                 # Hibernate只记录警告
+  # 日志文件配置（建议配置）
+  file:
+    name: /var/log/activity-assistant/application.log
+    max-size: 100MB
+    max-history: 30  # 保留30天日志
 
 # 应用自定义配置
 app:
   # 生产模式
   mode: prod
 
+  # JWT 配置（生产环境必须使用环境变量）
+  jwt:
+    secret: ${JWT_SECRET}  # 必须从环境变量读取强随机密钥
+
+  # CORS 配置（生产环境严格限制来源）
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS:https://yourdomain.com}  # 从环境变量读取，支持多个域名用逗号分隔
+
   # 微信小程序配置（生产环境使用真实配置）
   wechat:
     app-id: ${WECHAT_APP_ID}      # 从环境变量读取
     app-secret: ${WECHAT_APP_SECRET}  # 从环境变量读取
     mock-login-enabled: false  # 生产环境禁用模拟登录
-
-  # 安全配置
-  security:
-    # 生产环境严格跨域控制
-    cors:
-      allowed-origins: https://yourdomain.com
-      allowed-methods: GET,POST,PUT,DELETE
-      allowed-headers: '*'
-      allow-credentials: true
 
   # 文件上传配置
   upload:

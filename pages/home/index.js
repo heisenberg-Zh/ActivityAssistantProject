@@ -1,6 +1,6 @@
 // pages/home/index.js
 const { activityAPI, registrationAPI } = require('../../utils/api.js');
-const { translateActivityStatus } = require('../../utils/formatter.js');
+const { calculateActivityStatus } = require('../../utils/formatter.js');
 const app = getApp();
 
 Page({
@@ -68,7 +68,7 @@ Page({
         }
       }
 
-      // 为活动列表添加已报名状态，并翻译状态为中文
+      // 为活动列表添加已报名状态，并动态计算状态
       const enrichedActivities = activities.map(activity => {
         // 只有登录用户才检查报名状态
         const isRegistered = isLoggedIn && myRegistrations.some(
@@ -77,7 +77,7 @@ Page({
         return {
           ...activity,
           isRegistered,
-          status: translateActivityStatus(activity.status) // 翻译英文状态为中文
+          status: calculateActivityStatus(activity) // 动态计算活动状态
         };
       });
 

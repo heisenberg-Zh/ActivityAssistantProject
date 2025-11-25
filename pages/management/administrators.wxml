@@ -29,11 +29,11 @@
         <view class="admin-item card shadow-card">
           <image src="{{item.avatar}}" mode="cover" class="admin-avatar"></image>
           <view class="admin-info">
-            <text class="admin-name">{{item.name}}</text>
-            <text class="admin-mobile">{{item.mobile}}</text>
+            <text class="admin-name">{{item.nickname}}</text>
+            <text class="admin-mobile">{{item.phone}}</text>
           </view>
           <view class="admin-actions">
-            <view class="btn btn--danger btn--small" bindtap="removeAdmin" data-user-id="{{item.userId}}" data-name="{{item.name}}">
+            <view class="btn btn--danger btn--small" bindtap="removeAdmin" data-user-id="{{item.userId}}" data-name="{{item.nickname}}">
               移除
             </view>
           </view>
@@ -74,8 +74,8 @@
             >
               <image src="{{item.avatar}}" mode="cover" class="user-avatar"></image>
               <view class="user-info">
-                <text class="user-name">{{item.name}}</text>
-                <text class="user-mobile">{{item.mobile}}</text>
+                <text class="user-name">{{item.nickname}}</text>
+                <text class="user-mobile">{{item.phone}}</text>
               </view>
               <view wx:if="{{selectedUserId === item.id}}" class="user-check">✓</view>
             </view>

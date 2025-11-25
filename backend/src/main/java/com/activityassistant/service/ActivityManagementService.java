@@ -4,6 +4,7 @@ import com.activityassistant.dto.response.UserSimpleVO;
 import com.activityassistant.exception.BusinessException;
 import com.activityassistant.exception.NotFoundException;
 import com.activityassistant.model.Activity;
+import com.activityassistant.model.Registration;
 import com.activityassistant.model.User;
 import com.activityassistant.repository.ActivityRepository;
 import com.activityassistant.repository.RegistrationRepository;
@@ -104,6 +105,39 @@ public class ActivityManagementService {
         activityRepository.save(activity);
 
         log.info("移除管理员成功，activityId={}, userId={}, operatorId={}", activityId, userId, currentUserId);
+    }
+
+    // ============================================
+    // 已报名用户管理
+    // ============================================
+
+    /**
+     * 获取活动已报名用户列表（用于白名单/黑名单选择添加）
+     */
+    public List<UserSimpleVO> getRegisteredUsers(String activityId, String currentUserId) {
+        Activity activity = getActivityAndCheckPermission(activityId, currentUserId);
+
+        // 查询所有已通过审核的报名记录
+        List<Registration> registrations = registrationRepository.findByActivityIdAndStatus(
+                activityId,
+                "approved",
+                org.springframework.data.domain.Pageable.unpaged()
+        ).getContent();
+
+        if (registrations.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 获取所有报名用户的ID
+        List<String> userIds = registrations.stream()
+                .map(Registration::getUserId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // 批量查询用户信息并转换为VO
+        return userRepository.findAllById(userIds).stream()
+                .map(this::toUserSimpleVO)
+                .collect(Collectors.toList());
     }
 
     // ============================================

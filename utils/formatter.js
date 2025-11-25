@@ -55,7 +55,7 @@ const formatParticipants = (joined, total) => {
   return `${joined}/${total}人`;
 };
 
-// 将后端英文状态翻译为中文
+// 将后端英文状态翻译为中文（静态翻译，不考虑时间）
 const translateActivityStatus = (status) => {
   const statusMap = {
     'pending': '待发布',
@@ -69,6 +69,63 @@ const translateActivityStatus = (status) => {
   };
 
   return statusMap[status] || status;
+};
+
+/**
+ * 根据活动时间动态计算活动实际状态
+ * 注意：这是动态状态，会随着当前时间变化
+ *
+ * @param {Object} activity - 活动对象（必须包含 status, registerDeadline, startTime, endTime）
+ * @returns {String} 状态中文文本
+ */
+const calculateActivityStatus = (activity) => {
+  if (!activity) return '未知';
+
+  const now = new Date();
+
+  // 1. 如果是取消或草稿状态，使用数据库状态（这些是固定状态，不随时间变化）
+  if (activity.status === 'cancelled') return '已取消';
+  if (activity.status === 'draft') return '草稿';
+  if (activity.status === 'pending') return '待发布';
+
+  // 2. 解析时间（兼容ISO格式和普通格式）
+  const parseTime = (timeStr) => {
+    if (!timeStr) return null;
+    try {
+      let dateStr = timeStr;
+      // 如果包含空格（后端可能返回这种格式），转换为ISO格式
+      if (dateStr.includes && dateStr.includes(' ') && !dateStr.includes('T')) {
+        dateStr = dateStr.replace(' ', 'T');
+      }
+      // 移除毫秒部分
+      dateStr = dateStr.replace && dateStr.replace(/\.\d+/, '');
+      return new Date(dateStr);
+    } catch (err) {
+      console.error('解析时间失败:', timeStr, err);
+      return null;
+    }
+  };
+
+  const registerDeadline = parseTime(activity.registerDeadline);
+  const startTime = parseTime(activity.startTime);
+  const endTime = parseTime(activity.endTime);
+
+  // 3. 如果时间解析失败，回退到使用数据库状态
+  if (!registerDeadline || !startTime || !endTime) {
+    console.warn('活动时间解析失败，使用数据库状态:', activity.id);
+    return translateActivityStatus(activity.status);
+  }
+
+  // 4. 根据时间动态判断状态
+  if (now >= endTime) {
+    return '已结束';  // 当前时间 >= 结束时间
+  } else if (now >= startTime) {
+    return '进行中';  // 开始时间 <= 当前时间 < 结束时间
+  } else if (now >= registerDeadline) {
+    return '即将开始';  // 报名截止 <= 当前时间 < 开始时间
+  } else {
+    return '报名中';  // 当前时间 < 报名截止时间
+  }
 };
 
 // 格式化活动状态（返回文本和颜色）
@@ -212,6 +269,7 @@ module.exports = {
   formatPercent,
   formatParticipants,
   translateActivityStatus,
+  calculateActivityStatus,  // 新增：动态计算活动状态
   formatActivityStatus,
   formatRegistrationStatus,
   formatCheckinStatus,

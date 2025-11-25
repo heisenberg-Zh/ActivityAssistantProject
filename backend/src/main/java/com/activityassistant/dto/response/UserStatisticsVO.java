@@ -61,4 +61,14 @@ public class UserStatisticsVO {
      * 无效签到次数
      */
     private Long invalidCheckinCount;
+
+    /**
+     * 获得的评价总数（作为活动创建者）
+     */
+    private Long totalReviews;
+
+    /**
+     * 平均评分（作为活动创建者）
+     */
+    private Double averageRating;
 }
