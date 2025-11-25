@@ -2,11 +2,49 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🚨 重要：项目当前阶段和开发原则
+
+### 项目状态
+**当前阶段**: 🔴 **生产准备阶段** - 测试收尾，即将上线部署
+
+### 核心开发原则（必须严格遵守）
+
+#### 1. ❌ 禁止使用假数据
+- **所有功能必须通过后端 API 调用数据库**
+- **禁止使用 `utils/mock.js` 中的假数据**
+- **禁止使用本地存储 Mock 数据**
+- **禁止在代码中硬编码测试数据**
+
+#### 2. ✅ 测试数据管理
+- 如需测试数据，必须通过数据库脚本插入
+- 使用后端 API 获取真实数据
+- 不能为了测试方便而临时使用假数据
+
+#### 3. 🔧 功能完善要求
+- 发现功能不完善时，**必须完善后端功能**
+- **不能用假数据绕过问题**
+- 不确定如何处理时，**先与用户确认再执行**
+
+#### 4. 📝 代码审查要点
+- 排查所有使用 `require('../../utils/mock.js')` 的地方
+- 排查所有使用 `wx.setStorageSync` 存储业务数据的地方
+- 确保所有 API 调用都配置为 `development` 模式（使用真实后端）
+
+### 遗留问题待清理
+以下功能当前仍使用假数据或本地存储，需要逐步清理：
+- ⚠️ `utils/mock.js` - 假数据文件（待废弃）
+- ⚠️ 收藏功能 - 使用本地存储（需改为 API）
+- ⚠️ 部分页面可能仍引用 mock 数据（需全面排查）
+
 ## 项目概述
 
-ActivityAssistant 是一个微信小程序活动管理系统，帮助用户创建、管理和参与各类社交活动。项目使用微信小程序原生开发，目前实现了前端界面和基于假数据的交互逻辑。
+ActivityAssistant 是一个微信小程序活动管理系统，帮助用户创建、管理和参与各类社交活动。项目采用前后端分离架构：
+- **前端**: 微信小程序原生开发
+- **后端**: Spring Boot + MySQL + Redis
 
-**项目状态**: 前端 v1 版本已完成，待接入后端 API
+**技术栈**:
+- 前端：微信小程序原生框架
+- 后端：Spring Boot 3.2.1、Spring Security、JWT、MySQL 8.0、Redis
 
 ## 开发环境
 
@@ -37,14 +75,22 @@ ActivityAssistantProject/
 │   ├── profile/        # 个人中心 (tabBar)
 │   ├── my-activities/  # 我的活动
 │   ├── messages/       # 消息中心
+│   ├── management/     # 活动管理（管理员/白名单/黑名单/评价）
 │   └── settings/       # 设置
 ├── utils/              # 工具函数
-│   └── mock.js        # 假数据定义
-├── ui-html/           # HTML 原型文件 (设计参考)
-├── app.js             # 小程序入口
-├── app.json           # 小程序配置
-└── app.wxss           # 全局样式
+│   ├── api.js         # API 请求封装（连接后端）
+│   ├── config.js      # 环境配置
+│   ├── security.js    # 安全工具（XSS防护等）
+│   ├── formatter.js   # 数据格式化
+│   └── mock.js        # ⚠️ 假数据（待废弃，仅用于参考）
+├── backend/           # 后端服务（Spring Boot）
+├── ui-html/          # HTML 原型文件 (设计参考)
+├── app.js            # 小程序入口
+├── app.json          # 小程序配置
+└── app.wxss          # 全局样式
 ```
+
+**重要说明**: `utils/mock.js` 文件已不再使用，所有数据均通过 `utils/api.js` 从后端获取。
 
 ### TabBar 结构
 小程序底部导航栏包含 4 个主入口:
@@ -55,10 +101,21 @@ ActivityAssistantProject/
 
 **注意**: 活动详情页 (`pages/activities/detail`) 不使用 tabBar，底部显示"分享"和"报名"操作按钮
 
-### 数据流
-- **假数据源**: `utils/mock.js` 提供活动列表和用户数据
-- **页面数据**: 各页面从 mock.js 引入假数据模拟交互
-- **状态管理**: 使用 Page.data 和 setData 管理页面状态
+### 数据流架构
+```
+微信小程序前端
+    ↓ HTTP/HTTPS请求 (utils/api.js)
+后端 API (Spring Boot)
+    ↓ JPA/Hibernate
+MySQL 数据库
+    ↓ 缓存层
+Redis (Session/Cache)
+```
+
+**关键组件**:
+- `utils/api.js` - 统一的 API 请求封装，处理认证、错误、重试
+- `utils/config.js` - 环境配置，控制 API 地址和 Mock 模式
+- JWT Token - 存储在 `wx.getStorageSync('token')`，每次请求自动携带
 
 ### 核心页面交互流程
 
@@ -67,19 +124,21 @@ ActivityAssistantProject/
 2. 跳转至 `pages/activities/create` 分步骤表单
 3. 填写活动信息 (基本信息 → 时间 → 地点 → 人数 → 其他设置 → 自定义字段)
 4. 支持保存草稿、复制活动、实时预览
-5. 发布后生成分享链接
+5. 调用 `activityAPI.create()` 发布活动并返回活动ID
 
 #### 报名流程
 1. 用户浏览活动列表或详情
 2. 点击"报名"按钮跳转至 `pages/registration/index`
 3. 填写姓名、手机号等自定义字段
-4. 提交报名 (本地模拟反馈)
+4. 调用 `registrationAPI.register()` 提交报名
+5. 后端验证权限、白/黑名单、人数限制后返回结果
 
 #### 签到流程
 1. 用户进入活动详情页点击"签到"
 2. 跳转至 `pages/checkin/index`
-3. 获取 GPS 位置并验证签到范围
-4. 记录签到时间和位置
+3. 使用 `wx.getLocation()` 获取 GPS 位置
+4. 后端验证签到时间、地理位置范围
+5. 记录签到时间和位置坐标
 
 ## UI 设计规范
 
@@ -99,28 +158,31 @@ ActivityAssistantProject/
 - 头像资源: 根目录下 `activityassistant_avatar_*.png` (4 张)
 - 轮播图: 使用真实活动场景图片 (含网球场景)
 
-## 待实现功能
+## 已实现功能
 
-### 后端集成
-- 接入真实后端 API (活动 CRUD、报名、签到、统计)
-- 实现微信登录鉴权和用户信息存储
-- 替换 `utils/mock.js` 中的假数据为真实 API 调用
-- **用户反馈 API**：提交用户的帮助与反馈内容到后端（`pages/profile/index.js:submitFeedback` 方法）
-- **收藏功能 API**：
-  - 同步用户收藏数据到服务器（目前使用本地存储 `wx.setStorageSync`）
-  - 收藏列表云端同步，支持跨设备访问
-  - 相关文件：`pages/favorites/index.js`、`pages/activities/detail.js:toggleFavorite`
+### 核心功能模块
+- ✅ 微信登录与JWT认证
+- ✅ 活动创建、编辑、删除、查询
+- ✅ 活动报名、审核、取消
+- ✅ 活动签到（位置验证）
+- ✅ 活动管理员管理
+- ✅ 白名单/黑名单管理
+- ✅ 活动评价系统
+- ✅ 消息通知系统
+- ✅ 用户反馈系统
+- ✅ 数据统计和可视化
 
-### 功能增强
+### 待完善功能
+
+#### 高优先级
+- ⚠️ **收藏功能云端同步**: 目前使用本地存储，需改为后端API
+  - 相关文件：`pages/favorites/index.js`、`pages/activities/detail.js`
+  - 需要实现：收藏API、跨设备同步
+
+#### 功能增强（按需开发）
 - 微信群内接龙报名功能
-- 位置签到的防作弊机制
-- 报名审核流程
-- 消息通知和提醒
-
-### 优化任务
-- 真机/多机型样式适配细化
-- 组件化抽取 (活动卡片、徽标、顶部条等)
-- 样式变量统一管理
+- 位置签到的防作弊增强
+- 消息推送优化
 - 国际化和深色模式支持
 
 ## 开发注意事项
@@ -130,11 +192,33 @@ ActivityAssistantProject/
 - tabBar 页面之间使用 `wx.switchTab`
 - 传递参数使用 URL query string 格式: `?id=${id}`
 
-### 数据获取
-在接入真实 API 前，所有数据从 `utils/mock.js` 获取:
+### API 调用规范
+所有数据必须通过 `utils/api.js` 中封装的 API 方法获取：
+
 ```javascript
-const { activities, participants } = require('../../utils/mock.js');
+// 正确示例：调用后端API
+const { activityAPI } = require('../../utils/api.js');
+
+// 获取活动列表
+const result = await activityAPI.getList({ page: 0, size: 20 });
+if (result.code === 0) {
+  this.setData({ activities: result.data.content });
+}
 ```
+
+**禁止的做法**:
+```javascript
+// ❌ 错误：不要使用mock数据
+const { activities } = require('../../utils/mock.js');
+
+// ❌ 错误：不要硬编码测试数据
+const activities = [{ id: 'test', title: 'Test Activity' }];
+```
+
+### 数据存储规范
+- **Token**: 使用 `wx.setStorageSync('token', token)` 存储JWT
+- **用户信息**: 使用 `wx.setStorageSync('userInfo', userInfo)` 存储基本用户信息
+- **业务数据**: ❌ 禁止使用本地存储，必须通过 API 获取
 
 ### 分享功能
 每个页面可实现 `onShareAppMessage` 方法支持微信分享:
@@ -180,32 +264,50 @@ onShareAppMessage() {
 
 ### 环境配置说明
 
-项目支持三种运行环境，在 `utils/config.js` 中切换：
+项目支持三种运行环境，在 `utils/config.js` 中配置：
 
-1. **development（开发环境）** - 默认模式
+**当前环境**: 🔴 **必须使用 `development`（开发环境）**
+
+```javascript
+// utils/config.js
+const CURRENT_ENV = 'development';  // ✅ 使用真实后端
+```
+
+### 环境模式说明
+
+1. **development（开发环境）** - ✅ **当前必须使用**
    - API地址：`http://localhost:8082`
-   - 需要本地后端服务
+   - 连接本地后端服务
    - **重要**：需在微信开发者工具中**禁用域名校验**（详情 > 本地设置 > 不校验合法域名）
+   - **用途**：开发和测试阶段
 
 2. **production（生产环境）**
-   - API地址：需配置为实际 HTTPS 域名
+   - API地址：配置为实际 HTTPS 域名
    - 需在微信公众平台配置合法域名
    - 适用于真机预览和正式发布
+   - **用途**：生产部署
 
-3. **mock（Mock模式）**
-   - 使用本地假数据（`utils/mock.js`）
-   - 无需后端服务，无需域名配置
-   - 适合前端独立开发
+3. **mock（Mock模式）** - ❌ **已禁用，仅供参考**
+   - ~~使用本地假数据（`utils/mock.js`）~~
+   - ~~无需后端服务，无需域名配置~~
+   - **注意**: 项目已进入生产准备阶段，**禁止使用 Mock 模式**
+   - **用途**：仅作为历史参考，不得在开发中使用
+
+### 域名校验设置
+
+**开发阶段**（使用 localhost）：
+1. 打开微信开发者工具
+2. 点击右上角"详情"按钮
+3. 进入"本地设置"选项卡
+4. ✅ 勾选"不校验合法域名、web-view（业务域名）、TLS 版本以及 HTTPS 证书"
 
 ### 常见网络错误解决
 
 **错误：`request:fail url not in domain list`**
 
-原因：微信小程序只允许访问配置的合法域名（HTTPS）
-
 解决方案：
-1. **开发阶段**：在微信开发者工具中禁用域名校验（推荐）
-2. **切换Mock模式**：修改 `utils/config.js` 中的 `CURRENT_ENV = 'mock'`
-3. **正式发布**：后端部署到HTTPS域名，并在微信公众平台配置
+1. ✅ **推荐**：在微信开发者工具中禁用域名校验（见上方设置）
+2. ❌ **禁止**：切换到 Mock 模式
+3. **生产部署**：后端部署到 HTTPS 域名，并在微信公众平台配置
 
 详细配置指南参见：`WECHAT_DEV_CONFIG.md`
