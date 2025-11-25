@@ -60,10 +60,14 @@ springdoc:
 app:
   # JWT 配置
   jwt:
-    secret: ActivityAssistant2025SecretKeyForJWTTokenGeneration
+    secret: ${JWT_SECRET:ActivityAssistant2025SecretKeyForJWTTokenGeneration}  # 优先从环境变量读取，生产环境必须设置
     expiration: 604800000  # 7天（毫秒）
     header: Authorization
     prefix: Bearer
+
+  # CORS 配置
+  cors:
+    allowed-origins: "*"  # 默认允许所有，将在环境配置文件中覆盖
 
   # 微信小程序配置（将在环境配置文件中覆盖）
   wechat:
