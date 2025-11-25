@@ -3,21 +3,30 @@ package com.activityassistant.service;
 import com.activityassistant.constant.ErrorCode;
 import com.activityassistant.dto.request.UpdateUserRequest;
 import com.activityassistant.dto.response.LoginResponse;
+import com.activityassistant.dto.response.UserSimpleVO;
 import com.activityassistant.dto.response.UserVO;
 import com.activityassistant.exception.BusinessException;
 import com.activityassistant.exception.NotFoundException;
 import com.activityassistant.exception.UnauthorizedException;
 import com.activityassistant.mapper.UserMapper;
+import com.activityassistant.model.Activity;
+import com.activityassistant.model.Registration;
 import com.activityassistant.model.User;
+import com.activityassistant.repository.ActivityRepository;
+import com.activityassistant.repository.RegistrationRepository;
 import com.activityassistant.repository.UserRepository;
 import com.activityassistant.util.JwtUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 用户服务
@@ -34,6 +43,9 @@ public class UserService {
     private final UserMapper userMapper;
     private final WeChatService weChatService;
     private final JwtUtil jwtUtil;
+    private final ActivityRepository activityRepository;
+    private final RegistrationRepository registrationRepository;
+    private final ObjectMapper objectMapper;
 
     /**
      * 微信登录
@@ -167,5 +179,78 @@ public class UserService {
      */
     public boolean existsById(String userId) {
         return userRepository.existsById(userId);
+    }
+
+    /**
+     * 获取可添加为管理员的用户列表
+     * 逻辑：从所有已报名该活动的用户中，排除组织者和已有管理员
+     *
+     * @param activityId 活动ID
+     * @param currentUserId 当前用户ID
+     * @return 可添加的用户列表
+     */
+    public List<UserSimpleVO> getAvailableAdministrators(String activityId, String currentUserId) {
+        // 1. 验证活动是否存在
+        Activity activity = activityRepository.findById(activityId)
+                .orElseThrow(() -> new NotFoundException("活动不存在"));
+
+        // 2. 验证当前用户是否是组织者（只有组织者可以添加管理员）
+        if (!activity.getOrganizerId().equals(currentUserId)) {
+            throw new BusinessException(ErrorCode.PERMISSION_DENIED, "只有组织者可以添加管理员");
+        }
+
+        // 3. 获取活动的组织者ID
+        String organizerId = activity.getOrganizerId();
+
+        // 4. 获取已有管理员列表
+        List<String> adminIds = parseJsonList(activity.getAdministrators());
+        Set<String> excludedUserIds = new HashSet<>(adminIds);
+        excludedUserIds.add(organizerId); // 排除组织者
+
+        // 5. 获取所有已报名该活动且状态为 approved 的用户ID
+        List<Registration> registrations = registrationRepository.findByActivityId(activityId, org.springframework.data.domain.Pageable.unpaged())
+                .getContent();
+
+        Set<String> registeredUserIds = registrations.stream()
+                .filter(r -> "approved".equals(r.getStatus())) // 只获取已通过审核的用户
+                .map(Registration::getUserId)
+                .filter(userId -> !excludedUserIds.contains(userId)) // 排除组织者和已有管理员
+                .collect(Collectors.toSet());
+
+        // 6. 如果没有可添加的用户，返回空列表
+        if (registeredUserIds.isEmpty()) {
+            log.info("活动 {} 没有可添加为管理员的用户", activityId);
+            return Collections.emptyList();
+        }
+
+        // 7. 根据用户ID列表查询用户信息并转换为 UserSimpleVO
+        List<User> users = userRepository.findAllById(registeredUserIds);
+
+        List<UserSimpleVO> result = users.stream()
+                .map(user -> UserSimpleVO.builder()
+                        .id(user.getId())
+                        .nickname(user.getNickname())
+                        .avatar(user.getAvatar())
+                        .phone(user.getPhone()) // 手机号
+                        .build())
+                .collect(Collectors.toList());
+
+        log.info("活动 {} 可添加为管理员的用户数量: {}", activityId, result.size());
+        return result;
+    }
+
+    /**
+     * 解析JSON数组为List<String>
+     */
+    private List<String> parseJsonList(String json) {
+        if (json == null || json.trim().isEmpty() || "null".equals(json)) {
+            return new ArrayList<>();
+        }
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<String>>() {});
+        } catch (JsonProcessingException e) {
+            log.warn("JSON解析失败，返回空列表，json={}", json);
+            return new ArrayList<>();
+        }
     }
 }

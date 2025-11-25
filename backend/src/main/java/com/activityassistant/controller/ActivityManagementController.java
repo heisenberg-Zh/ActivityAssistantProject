@@ -87,6 +87,20 @@ public class ActivityManagementController {
     // ============================================
 
     /**
+     * 获取活动已报名用户列表（用于白名单/黑名单选择添加）
+     */
+    @GetMapping("/{activityId}/registered-users")
+    @Operation(summary = "获取活动已报名用户列表", description = "获取指定活动的所有已报名用户（用于选择添加到白名单/黑名单）")
+    public ApiResponse<List<UserSimpleVO>> getRegisteredUsers(
+            @Parameter(description = "活动ID", example = "A20251116000001")
+            @PathVariable String activityId) {
+
+        String currentUserId = SecurityUtils.getCurrentUserId();
+        List<UserSimpleVO> registeredUsers = activityManagementService.getRegisteredUsers(activityId, currentUserId);
+        return ApiResponse.success(registeredUsers);
+    }
+
+    /**
      * 获取活动白名单列表
      */
     @GetMapping("/{activityId}/whitelist")

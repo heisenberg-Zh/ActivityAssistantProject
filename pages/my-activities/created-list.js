@@ -1,6 +1,7 @@
 // pages/my-activities/created-list.js
 const { activityAPI } = require('../../utils/api.js');
 const { parseDate } = require('../../utils/date-helper.js');
+const { calculateActivityStatus } = require('../../utils/formatter.js');
 const app = getApp();
 
 Page({
@@ -37,11 +38,16 @@ Page({
 
       // 处理活动数据
       const processedActivities = createdActivities.map(activity => {
-        // 处理状态
+        // 动态计算活动状态（根据时间）
+        const dynamicStatus = calculateActivityStatus(activity);
+
+        // 处理状态样式类
         let statusClass = 'ended';
-        if (activity.status === '进行中') {
+        if (dynamicStatus === '进行中') {
           statusClass = 'ongoing';
-        } else if (activity.status === '即将开始') {
+        } else if (dynamicStatus === '即将开始') {
+          statusClass = 'upcoming';
+        } else if (dynamicStatus === '报名中') {
           statusClass = 'upcoming';
         }
 
@@ -49,7 +55,7 @@ Page({
           id: activity.id,
           title: activity.title,
           date: activity.date,
-          status: activity.status,
+          status: dynamicStatus,  // 使用动态计算的中文状态
           statusClass: statusClass,
           createdAt: activity.createdAt
         };

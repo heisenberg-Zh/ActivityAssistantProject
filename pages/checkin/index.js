@@ -2,7 +2,7 @@
 const { activityAPI, checkinAPI, registrationAPI } = require('../../utils/api.js');
 const { validateCheckinLocation, formatDistance } = require('../../utils/location.js');
 const { isInCheckinWindow, isLate, formatDateTime } = require('../../utils/datetime.js');
-const { formatCheckinStatus, translateActivityStatus } = require('../../utils/formatter.js');
+const { formatCheckinStatus, calculateActivityStatus } = require('../../utils/formatter.js');
 const { getCurrentUserId } = require('../../utils/user-helper.js');
 const { submitGuard } = require('../../utils/submit-guard.js');
 
@@ -101,9 +101,9 @@ Page({
       const activity = result.data;
       console.log('成功加载活动:', activity.title);
 
-      // 翻译活动状态为中文
-      if (activity.status) {
-        activity.status = translateActivityStatus(activity.status);
+      // 动态计算活动状态（根据时间）
+      if (activity) {
+        activity.status = calculateActivityStatus(activity);
       }
 
       // 获取状态对应的CSS类名

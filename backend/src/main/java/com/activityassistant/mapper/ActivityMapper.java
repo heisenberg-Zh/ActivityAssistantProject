@@ -3,15 +3,24 @@ package com.activityassistant.mapper;
 import com.activityassistant.dto.request.CreateActivityRequest;
 import com.activityassistant.dto.request.UpdateActivityRequest;
 import com.activityassistant.dto.response.ActivityVO;
+import com.activityassistant.dto.response.UserSimpleVO;
 import com.activityassistant.model.Activity;
 import com.activityassistant.model.User;
 import com.activityassistant.repository.RegistrationRepository;
 import com.activityassistant.repository.UserRepository;
 import com.activityassistant.service.IdGeneratorService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * 活动实体和VO转换工具
@@ -19,6 +28,7 @@ import java.util.UUID;
  * @author Claude
  * @since 2025-11-10
  */
+@Slf4j
 @Component
 public class ActivityMapper {
 
@@ -30,6 +40,9 @@ public class ActivityMapper {
 
     @Autowired
     private IdGeneratorService idGeneratorService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     /**
      * Activity转ActivityVO
@@ -45,6 +58,9 @@ public class ActivityMapper {
 
         // 获取组织者信息
         User organizer = userRepository.findById(activity.getOrganizerId()).orElse(null);
+
+        // 解析管理员列表
+        List<UserSimpleVO> administratorList = parseAdministrators(activity.getAdministrators());
 
         ActivityVO.ActivityVOBuilder builder = ActivityVO.builder()
                 .id(activity.getId())
@@ -70,7 +86,7 @@ public class ActivityMapper {
                 .isPublic(activity.getIsPublic())
                 .isDeleted(activity.getIsDeleted())
                 .groups(activity.getGroups())
-                .administrators(activity.getAdministrators())
+                .administrators(administratorList)
                 .whitelist(activity.getWhitelist())
                 .blacklist(activity.getBlacklist())
                 .customFields(activity.getCustomFields())
@@ -230,6 +246,42 @@ public class ActivityMapper {
         }
         if (request.getCustomFields() != null) {
             activity.setCustomFields(request.getCustomFields());
+        }
+    }
+
+    /**
+     * 解析管理员JSON字符串为UserSimpleVO列表
+     *
+     * @param administratorsJson 管理员ID列表的JSON字符串
+     * @return UserSimpleVO列表
+     */
+    private List<UserSimpleVO> parseAdministrators(String administratorsJson) {
+        if (administratorsJson == null || administratorsJson.trim().isEmpty() || "null".equals(administratorsJson)) {
+            return Collections.emptyList();
+        }
+
+        try {
+            // 解析JSON字符串为用户ID列表
+            List<String> adminIds = objectMapper.readValue(administratorsJson, new TypeReference<List<String>>() {});
+
+            if (adminIds == null || adminIds.isEmpty()) {
+                return Collections.emptyList();
+            }
+
+            // 查询用户信息并转换为UserSimpleVO
+            List<User> users = userRepository.findAllById(adminIds);
+
+            return users.stream()
+                    .map(user -> UserSimpleVO.builder()
+                            .id(user.getId())
+                            .nickname(user.getNickname())
+                            .avatar(user.getAvatar())
+                            .phone(user.getPhone())
+                            .build())
+                    .collect(Collectors.toList());
+        } catch (JsonProcessingException e) {
+            log.warn("解析管理员列表JSON失败: {}", administratorsJson, e);
+            return Collections.emptyList();
         }
     }
 }

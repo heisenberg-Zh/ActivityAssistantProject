@@ -1,6 +1,6 @@
 // pages/activities/list.js
 const { activityAPI, registrationAPI } = require('../../utils/api.js');
-const { translateActivityStatus } = require('../../utils/formatter.js');
+const { calculateActivityStatus } = require('../../utils/formatter.js');
 const app = getApp();
 
 const filters = [
@@ -75,15 +75,15 @@ Page({
         // 查找该活动的报名记录（只有登录用户才有）
         const myReg = isLoggedIn ? myRegistrations.find(r => r.activityId === activity.id) : null;
 
-        // 翻译活动状态为中文
-        const translatedStatus = translateActivityStatus(activity.status);
+        // 动态计算活动状态（根据时间）
+        const dynamicStatus = calculateActivityStatus(activity);
 
         // 计算按钮状态
-        const buttonState = this.calculateButtonState(activity, myReg, translatedStatus);
+        const buttonState = this.calculateButtonState(activity, myReg, dynamicStatus);
 
         return {
           ...activity,
-          status: translatedStatus,
+          status: dynamicStatus,
           isRegistered: !!myReg && myReg.status !== 'cancelled' && myReg.status !== 'rejected',
           registrationStatus: myReg ? myReg.status : null,
           ...buttonState

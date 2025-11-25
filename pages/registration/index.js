@@ -2,7 +2,7 @@
 const { activityAPI } = require('../../utils/api.js');
 const { registrationAPI } = require('../../utils/api.js');
 const { validateRegistrationForm } = require('../../utils/validator.js');
-const { formatMobile, formatMoney, getAvatarColor } = require('../../utils/formatter.js');
+const { formatMobile, formatMoney, getAvatarColor, calculateActivityStatus } = require('../../utils/formatter.js');
 const { formatDateCN, isBeforeRegisterDeadline } = require('../../utils/datetime.js');
 const { getCurrentUserId } = require('../../utils/user-helper.js');
 const { submitGuard } = require('../../utils/submit-guard.js');
@@ -97,7 +97,7 @@ Page({
 
     const id = query.id || 'a1';
     this.loadActivityDetail(id);
-    this.loadParticipants(id);
+    // 注意：loadParticipants 将在 loadActivityDetail 完成后自动调用
   },
 
   // 加载活动详情
@@ -181,9 +181,15 @@ Page({
 
       wx.hideLoading();
 
+      // 动态计算活动状态
+      const enrichedDetail = {
+        ...detail,
+        status: calculateActivityStatus(detail)
+      };
+
       this.setData({
         id,
-        detail,
+        detail: enrichedDetail,
         deadline,
         progress,
         feeInfo,
@@ -195,6 +201,9 @@ Page({
         formData,
         showGroupSelection
       });
+
+      // 【关键修复】在数据设置完成后，加载参与者列表
+      this.loadParticipants(id);
 
       // 如果是微信用户且无分组，自动填充昵称
       if (!hasGroups) {

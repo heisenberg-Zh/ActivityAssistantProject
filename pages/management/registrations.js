@@ -275,7 +275,8 @@ Page({
 
             // 调用后端API审核通过
             const result = await registrationAPI.approve(id, {
-              status: 'approved'
+              approved: true,  // 后端要求布尔值
+              note: ''         // 可选备注
             });
 
             wx.hideLoading();
@@ -323,7 +324,8 @@ Page({
 
             // 调用后端API审核拒绝
             const result = await registrationAPI.approve(id, {
-              status: 'rejected'
+              approved: false,  // 后端要求布尔值，false表示拒绝
+              note: ''          // 可选备注
             });
 
             wx.hideLoading();

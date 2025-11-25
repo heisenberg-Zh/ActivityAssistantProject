@@ -2,6 +2,7 @@ package com.activityassistant.controller;
 
 import com.activityassistant.dto.request.UpdateUserRequest;
 import com.activityassistant.dto.response.ApiResponse;
+import com.activityassistant.dto.response.UserSimpleVO;
 import com.activityassistant.dto.response.UserVO;
 import com.activityassistant.security.SecurityUtils;
 import com.activityassistant.service.UserService;
@@ -12,6 +13,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 用户控制器

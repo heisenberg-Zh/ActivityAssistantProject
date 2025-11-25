@@ -49,9 +49,10 @@ Page({
     try {
       wx.showLoading({ title: '加载中...' });
 
-      // 并行请求：活动详情和可添加用户列表
-      const [activityResult, usersResult] = await Promise.all([
+      // 并行请求：活动详情、管理员列表和可添加用户列表
+      const [activityResult, adminsResult, usersResult] = await Promise.all([
         activityAPI.getDetail(activityId),
+        administratorAPI.getAdministrators(activityId),
         administratorAPI.getAvailableUsers(activityId)
       ]);
 
@@ -85,29 +86,17 @@ Page({
         return;
       }
 
-      // 获取管理员列表（从活动详情中获取，这里需要将participants信息合并进去）
-      // 由于活动详情中的administrators可能只包含userId，我们需要获取完整信息
+      // 获取管理员列表（优先使用独立API返回的数据）
       let administrators = [];
-      if (activity.administrators && activity.administrators.length > 0) {
-        // 如果后端返回的管理员列表已经包含用户详情，直接使用
-        if (activity.administrators[0].userName) {
-          administrators = activity.administrators.map(admin => ({
-            userId: admin.userId,
-            userName: admin.userName || '未知用户',
-            addedAt: admin.addedAt || '',
-            addedBy: admin.addedBy || '',
-            avatar: admin.userAvatar || '/activityassistant_avatar_01.png'
-          }));
-        } else {
-          // 否则需要从API获取管理员详情（暂时使用helper函数）
-          administrators = activity.administrators.map((admin, index) => ({
-            userId: admin.userId,
-            userName: `管理员${index + 1}`,  // 临时显示，后续应该从API获取
-            addedAt: admin.addedAt || '',
-            addedBy: admin.addedBy || '',
-            avatar: `/activityassistant_avatar_0${(index % 4) + 1}.png`
-          }));
-        }
+      if (adminsResult.code === 0 && adminsResult.data && adminsResult.data.length > 0) {
+        // 后端返回的 UserSimpleVO 格式：{ id, nickname, avatar, phone }
+        // 需要映射为前端使用的格式：{ userId, nickname, avatar, phone }
+        administrators = adminsResult.data.map(admin => ({
+          userId: admin.id || admin.userId,
+          nickname: admin.nickname || '未知用户',
+          avatar: admin.avatar || '/activityassistant_avatar_01.png',
+          phone: admin.phone || ''
+        }));
       }
 
       // 获取可添加的用户列表
@@ -127,6 +116,40 @@ Page({
         icon: 'none'
       });
       setTimeout(() => wx.navigateBack(), 1500);
+    }
+  },
+
+  // 刷新管理员列表（用于添加/移除后的即时更新）
+  async refreshAdministrators() {
+    const { activityId } = this.data;
+
+    try {
+      // 并行请求：管理员列表和可添加用户列表
+      const [adminsResult, usersResult] = await Promise.all([
+        administratorAPI.getAdministrators(activityId),
+        administratorAPI.getAvailableUsers(activityId)
+      ]);
+
+      // 获取管理员列表
+      let administrators = [];
+      if (adminsResult.code === 0 && adminsResult.data && adminsResult.data.length > 0) {
+        administrators = adminsResult.data.map(admin => ({
+          userId: admin.id || admin.userId,
+          nickname: admin.nickname || '未知用户',
+          avatar: admin.avatar || '/activityassistant_avatar_01.png',
+          phone: admin.phone || ''
+        }));
+      }
+
+      // 获取可添加的用户列表
+      const availableUsers = usersResult.code === 0 ? (usersResult.data || []) : [];
+
+      this.setData({
+        administrators,
+        availableUsers
+      });
+    } catch (err) {
+      console.error('刷新管理员列表失败:', err);
     }
   },
 
@@ -172,15 +195,16 @@ Page({
       const result = await administratorAPI.addAdministrator(activityId, selectedUserId);
 
       if (result.code === 0) {
-        wx.showToast({ title: '添加成功', icon: 'success' });
-
-        // 关闭对话框并刷新数据
+        // 关闭对话框
         this.closeAddDialog();
 
-        // 刷新显示
+        // 显示成功提示
+        wx.showToast({ title: '添加成功', icon: 'success', duration: 1500 });
+
+        // 立即刷新管理员列表
         setTimeout(() => {
-          this.loadData();
-        }, 800);
+          this.refreshAdministrators();
+        }, 300);
       } else {
         wx.showToast({
           title: result.message || '添加失败',
@@ -215,12 +239,13 @@ Page({
             const result = await administratorAPI.removeAdministrator(activityId, userId);
 
             if (result.code === 0) {
-              wx.showToast({ title: '已移除', icon: 'success' });
+              // 显示成功提示
+              wx.showToast({ title: '已移除', icon: 'success', duration: 1500 });
 
-              // 刷新数据
+              // 立即刷新管理员列表
               setTimeout(() => {
-                this.loadData();
-              }, 800);
+                this.refreshAdministrators();
+              }, 300);
             } else {
               wx.showToast({
                 title: result.message || '移除失败',

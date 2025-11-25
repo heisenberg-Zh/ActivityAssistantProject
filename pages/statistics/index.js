@@ -129,9 +129,9 @@ Page({
             color: '#b45309'
           },
           {
-            label: '待后端支持',
-            value: '-',
-            icon: '✨',
+            label: '获得评价数',
+            value: data.totalReviews || 0,
+            icon: '⭐',
             bg: '#ede9fe',
             color: '#6d28d9'
           }

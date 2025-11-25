@@ -20,8 +20,8 @@ spring:
   # JPA 配置
   jpa:
     hibernate:
-      ddl-auto: none  # 生产环境必须是 none，使用 SQL 脚本管理表结构
-    show-sql: true    # 开发环境显示 SQL
+      ddl-auto: update  # 开发环境使用 update 自动创建/更新表结构
+    show-sql: true      # 开发环境显示 SQL
     properties:
       hibernate:
         format_sql: true

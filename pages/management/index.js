@@ -1,7 +1,7 @@
 // pages/management/index.js
 const { activityAPI, registrationAPI, reviewAPI } = require('../../utils/api.js');
 const { checkManagementPermission } = require('../../utils/activity-management-helper.js');
-const { translateActivityStatus } = require('../../utils/formatter.js');
+const { calculateActivityStatus } = require('../../utils/formatter.js');
 const app = getApp();
 
 Page({
@@ -209,15 +209,15 @@ Page({
       // 获取管理员列表（如果有）
       const administrators = activity.administrators || [];
 
-      // 【关键修复】翻译活动状态为中文
-      const translatedActivity = {
+      // 【关键修复】动态计算活动状态
+      const enrichedActivity = {
         ...activity,
-        status: translateActivityStatus(activity.status)
+        status: calculateActivityStatus(activity)  // 动态计算活动状态
       };
 
       // 如果活动已结束，加载评价统计数据
       let reviewStatistics = null;
-      if (translatedActivity.status === '已结束') {
+      if (enrichedActivity.status === '已结束') {
         try {
           const reviewStatsResult = await reviewAPI.getStatistics(activityId);
           if (reviewStatsResult.code === 0) {
@@ -231,7 +231,7 @@ Page({
       }
 
       this.setData({
-        activity: translatedActivity,
+        activity: enrichedActivity,
         hasPermission: true,
         role: permission.role,
         administrators,

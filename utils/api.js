@@ -1282,7 +1282,7 @@ const reviewAPI = {
   })
 };
 
-// 收藏API
+// 收藏API（使用后端数据库）
 const favoriteAPI = {
   // 添加收藏
   add: (activityId) => request('/api/favorites', {
