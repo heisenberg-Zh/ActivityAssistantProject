@@ -169,7 +169,7 @@ public class StatisticsService {
         int ratingCount = 0;
 
         for (String activityId : activityIds) {
-            List<Review> reviews = reviewRepository.findByActivityIdOrderByCreatedAtDesc(activityId);
+            List<Review> reviews = reviewRepository.findByActivityIdAndIsDeletedFalseOrderByCreatedAtDesc(activityId);
             totalReviews += reviews.size();
             for (Review review : reviews) {
                 if (review.getRating() != null) {
