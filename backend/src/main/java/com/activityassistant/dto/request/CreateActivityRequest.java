@@ -33,6 +33,12 @@ public class CreateActivityRequest {
     private String type;
 
     /**
+     * 活动状态：pending/published/cancelled等
+     * 如果不传，后端默认为pending
+     */
+    private String status;
+
+    /**
      * 开始时间
      */
     @NotNull(message = "开始时间不能为空")

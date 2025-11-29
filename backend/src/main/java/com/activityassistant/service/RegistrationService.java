@@ -10,6 +10,8 @@ import com.activityassistant.model.Activity;
 import com.activityassistant.model.Registration;
 import com.activityassistant.repository.ActivityRepository;
 import com.activityassistant.repository.RegistrationRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -18,6 +20,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Map;
 
 import java.time.LocalDateTime;
 
@@ -81,8 +86,15 @@ public class RegistrationService {
         }
 
         // 检查人数限制
+        // 【修复】增加对total字段的有效性检查
+        Integer total = activity.getTotal();
+        if (total == null || total <= 0) {
+            log.error("活动ID={} 的人数上限配置异常: total={}, 无法报名", activity.getId(), total);
+            throw new BusinessException(INVALID_OPERATION, "活动人数配置异常，请联系组织者处理");
+        }
+
         long currentJoined = registrationRepository.countByActivityIdAndStatus(request.getActivityId(), "approved");
-        if (currentJoined >= activity.getTotal()) {
+        if (currentJoined >= total) {
             throw new BusinessException(INVALID_OPERATION, "活动人数已满，无法报名");
         }
 
@@ -101,6 +113,12 @@ public class RegistrationService {
         // 更新活动的已报名人数
         if (!activity.getNeedReview()) {
             activity.setJoined(activity.getJoined() + 1);
+
+            // 【修复】如果报名关联了分组，同时更新分组的 joined 字段
+            if (savedRegistration.getGroupId() != null && activity.getGroups() != null) {
+                updateGroupJoined(activity, savedRegistration.getGroupId(), 1);
+            }
+
             activityRepository.save(activity);
         }
 
@@ -143,12 +161,19 @@ public class RegistrationService {
 
         // 更新报名状态
         String oldStatus = registration.getStatus();
+        String groupId = registration.getGroupId();
         registration.setStatus("cancelled");
         registrationRepository.save(registration);
 
         // 如果原状态是已通过，需要减少活动的已报名人数
         if ("approved".equals(oldStatus)) {
             activity.setJoined(Math.max(0, activity.getJoined() - 1));
+
+            // 【修复】如果报名关联了分组，同时减少分组的 joined 字段
+            if (groupId != null && activity.getGroups() != null) {
+                updateGroupJoined(activity, groupId, -1);
+            }
+
             activityRepository.save(activity);
         }
 
@@ -285,8 +310,15 @@ public class RegistrationService {
 
         // 如果通过审核，检查人数限制
         if (request.getApproved()) {
+            // 【修复】增加对total字段的有效性检查
+            Integer total = activity.getTotal();
+            if (total == null || total <= 0) {
+                log.error("活动ID={} 的人数上限配置异常: total={}, 无法通过报名", activity.getId(), total);
+                throw new BusinessException(INVALID_OPERATION, "活动人数配置异常，请联系组织者处理");
+            }
+
             long currentJoined = registrationRepository.countByActivityIdAndStatus(registration.getActivityId(), "approved");
-            if (currentJoined >= activity.getTotal()) {
+            if (currentJoined >= total) {
                 throw new BusinessException(INVALID_OPERATION, "活动人数已满，无法通过报名");
             }
 
@@ -296,6 +328,12 @@ public class RegistrationService {
 
             // 更新活动的已报名人数
             activity.setJoined(activity.getJoined() + 1);
+
+            // 【修复】如果报名关联了分组，同时更新分组的 joined 字段
+            if (registration.getGroupId() != null && activity.getGroups() != null) {
+                updateGroupJoined(activity, registration.getGroupId(), 1);
+            }
+
             activityRepository.save(activity);
         } else {
             // 拒绝报名
@@ -319,5 +357,60 @@ public class RegistrationService {
      */
     public boolean isUserRegistered(String activityId, String userId) {
         return registrationRepository.existsByActivityIdAndUserId(activityId, userId);
+    }
+
+    /**
+     * 更新分组的已报名人数
+     *
+     * @param activity 活动对象
+     * @param groupId  分组ID
+     * @param delta    增量（+1 表示增加，-1 表示减少）
+     */
+    private void updateGroupJoined(Activity activity, String groupId, int delta) {
+        try {
+            String groupsJson = activity.getGroups();
+            if (groupsJson == null || groupsJson.isEmpty()) {
+                return;
+            }
+
+            // 解析 groups JSON
+            ObjectMapper objectMapper = new ObjectMapper();
+            List<Map<String, Object>> groups = objectMapper.readValue(
+                    groupsJson,
+                    new TypeReference<List<Map<String, Object>>>() {}
+            );
+
+            // 查找目标分组并更新 joined 字段
+            boolean updated = false;
+            for (Map<String, Object> group : groups) {
+                if (groupId.equals(group.get("id"))) {
+                    // 获取当前 joined 值
+                    Integer currentJoined = (Integer) group.get("joined");
+                    if (currentJoined == null) {
+                        currentJoined = 0;
+                    }
+
+                    // 更新 joined
+                    int newJoined = Math.max(0, currentJoined + delta);
+                    group.put("joined", newJoined);
+
+                    log.info("更新分组 {} 的 joined: {} -> {}", groupId, currentJoined, newJoined);
+                    updated = true;
+                    break;
+                }
+            }
+
+            if (updated) {
+                // 序列化回 JSON 并更新到 activity
+                String updatedGroupsJson = objectMapper.writeValueAsString(groups);
+                activity.setGroups(updatedGroupsJson);
+            } else {
+                log.warn("未找到分组ID: {} 在活动 {} 的 groups 中", groupId, activity.getId());
+            }
+
+        } catch (Exception e) {
+            log.error("更新分组 joined 失败，活动ID: {}, 分组ID: {}", activity.getId(), groupId, e);
+            // 不抛出异常，避免影响主流程
+        }
     }
 }

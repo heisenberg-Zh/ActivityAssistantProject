@@ -85,6 +85,9 @@ public class SecurityConfig {
                         // 消息相关接口（游客可访问，未登录返回空列表）
                         .requestMatchers("/api/messages/**").permitAll()
 
+                        // 数据修复接口（仅开发环境临时使用）
+                        .requestMatchers("/api/admin/data-fix/**").permitAll()
+
                         // 其他所有接口都需要认证
                         .anyRequest().authenticated()
                 )
