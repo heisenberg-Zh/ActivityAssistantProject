@@ -151,9 +151,19 @@ Page({
         : [];
 
       const userRegs = allRegistrations.filter(
-        r => r.userId === currentUserId && r.status !== 'cancelled'
+        r => r.userId === currentUserId && r.status !== 'cancelled' && r.status !== 'rejected'
       );
       const isRegistered = userRegs.length > 0;
+      const myRegistration = isRegistered ? userRegs[0] : null; // 获取我的报名记录
+
+      // 【新增】如果用户已报名，显示已报名信息并提供取消报名选项
+      if (isRegistered && myRegistration) {
+        wx.hideLoading();
+
+        // 显示已报名状态页面
+        this.showRegisteredState(id, detail, myRegistration);
+        return;
+      }
 
       // 存储所有报名记录，用于后续筛选
       const approvedRegs = allRegistrations.filter(r => r.status === 'approved');
@@ -245,6 +255,87 @@ Page({
     } catch (err) {
       console.error('加载参与者列表失败:', err);
     }
+  },
+
+  // 显示已报名状态
+  showRegisteredState(id, detail, myRegistration) {
+    console.log('用户已报名此活动，显示已报名状态', myRegistration);
+
+    // 解析自定义字段数据
+    let formData = {
+      name: myRegistration.name || '',
+      mobile: myRegistration.mobile || ''
+    };
+
+    // 如果有customData，解析JSON
+    if (myRegistration.customData) {
+      try {
+        const customData = typeof myRegistration.customData === 'string'
+          ? JSON.parse(myRegistration.customData)
+          : myRegistration.customData;
+        formData = { ...formData, ...customData };
+      } catch (err) {
+        console.error('解析customData失败:', err);
+      }
+    }
+
+    // 获取自定义字段配置
+    const customFields = detail.customFields || [
+      { id: 'name', label: '昵称', required: true, desc: '您之前填写的昵称', isCustom: false },
+      { id: 'mobile', label: '手机号', required: true, desc: '您之前填写的手机号', isCustom: false }
+    ];
+
+    // 计算进度
+    const progress = Math.min(100, Math.round((detail.joined / detail.total) * 100));
+
+    // 生成费用说明
+    let feeInfo = '';
+    if (detail.feeType === '免费') {
+      feeInfo = '本次活动免费参加';
+    } else if (detail.feeType === 'AA') {
+      feeInfo = `本次活动采用AA制，预估每人${formatMoney(detail.fee)}`;
+    } else {
+      feeInfo = `本次活动费用${formatMoney(detail.fee)}/人`;
+    }
+
+    // 生成温馨提示（已报名状态）
+    const guidelines = [
+      myRegistration.status === 'pending'
+        ? '您的报名正在审核中，请耐心等待组织者审核'
+        : '您已成功报名此活动',
+      '如需取消报名，请点击下方"取消报名"按钮',
+      '报名信息如下，仅供查看，无法修改'
+    ];
+
+    // 设置页面数据
+    this.setData({
+      id,
+      detail: {
+        ...detail,
+        status: calculateActivityStatus(detail)
+      },
+      deadline: formatDateCN(detail.registerDeadline),
+      progress,
+      feeInfo,
+      guidelines,
+      isRegistered: true,
+      myRegistration, // 保存报名记录，用于取消报名
+      customFields,
+      formData, // 显示用户之前填写的数据
+      showGroupSelection: false, // 不显示分组选择
+      registrationStatus: myRegistration.status, // 保存报名状态
+      registeredGroupName: detail.hasGroups && myRegistration.groupId
+        ? (detail.groups.find(g => g.id === myRegistration.groupId)?.name || '未知分组')
+        : null
+    });
+
+    // 显示提示
+    const statusText = myRegistration.status === 'pending' ? '审核中' : '已报名';
+    wx.showToast({
+      title: `您已报名此活动（${statusText}）`,
+      icon: 'none',
+      duration: 2000
+    });
   },
 
   // 自动填充用户信息
@@ -393,7 +484,13 @@ Page({
 
   // 取消报名
   cancelRegistration() {
-    const { id, detail } = this.data;
+    const { id, detail, myRegistration } = this.data;
+
+    // 检查是否有报名记录
+    if (!myRegistration || !myRegistration.id) {
+      wx.showToast({ title: '未找到报名记录', icon: 'none' });
+      return;
+    }
 
     // 校验报名截止时间
     const deadlineCheck = isBeforeRegisterDeadline(detail.registerDeadline);
@@ -417,21 +514,28 @@ Page({
           wx.showLoading({ title: '处理中...' });
 
           try {
-            // 这里应该调用API取消报名
-            // await registrationAPI.cancel({ activityId: id });
+            // 【修复】调用真实API取消报名
+            const result = await registrationAPI.cancel(myRegistration.id);
 
-            // 模拟取消成功
-            setTimeout(() => {
-              wx.hideLoading();
+            wx.hideLoading();
+
+            if (result.code === 0) {
               wx.showToast({ title: '已取消报名', icon: 'success' });
+
+              // 清除活动详情缓存
+              const { requestCache } = require('../../utils/request-manager.js');
+              const detailCacheKey = requestCache.generateKey(`/api/activities/${id}`, {});
+              requestCache.clear(detailCacheKey);
 
               // 延迟跳转到活动详情页
               setTimeout(() => {
                 wx.redirectTo({
-                  url: `/pages/activities/detail?id=${id}`
+                  url: `/pages/activities/detail?id=${id}&t=${Date.now()}`
                 });
               }, 1500);
-            }, 1000);
+            } else {
+              wx.showToast({ title: result.message || '取消失败', icon: 'none' });
+            }
           } catch (err) {
             wx.hideLoading();
             console.error('取消报名失败:', err);
@@ -528,13 +632,23 @@ Page({
         wx.showLoading({ title: '提交中...' });
 
         try {
-          // 构建提交数据，包含所有动态字段
+          // 【修复】构建符合后端 DTO 的数据格式
+          // 后端期望格式：{ activityId, groupId, name, mobile, customData }
+          const { name, mobile, ...customFields } = formData;
+
+          // 构建提交数据
           const submissionData = {
             activityId: id,
-            groupId: selectedGroupId, // 添加分组ID
-            ...formData,
-            needReview: detail.needReview
+            groupId: selectedGroupId || null,
+            name: name || '',
+            mobile: mobile || null,
+            // 将其他自定义字段打包到 customData JSON 字符串中
+            customData: Object.keys(customFields).length > 0
+              ? JSON.stringify(customFields)
+              : null
           };
+
+          console.log('提交报名数据:', submissionData);
 
           const result = await registrationAPI.create(submissionData);
 
@@ -544,19 +658,57 @@ Page({
             const message = detail.needReview ? '报名成功，等待审核' : '报名成功';
             wx.showToast({ title: message, icon: 'success' });
 
-            // 延迟跳转到详情页
+            // 【修复】清除活动详情和报名列表的缓存，确保返回后显示最新数据
+            const { requestCache } = require('../../utils/request-manager.js');
+            // 清除活动详情缓存
+            const detailCacheKey = requestCache.generateKey(`/api/activities/${id}`, {});
+            requestCache.clear(detailCacheKey);
+            console.log('已清除活动详情缓存:', detailCacheKey);
+
+            // 延迟跳转到详情页，添加时间戳参数强制刷新
             setTimeout(() => {
               wx.redirectTo({
-                url: `/pages/activities/detail?id=${id}`
+                url: `/pages/activities/detail?id=${id}&t=${Date.now()}`
               });
             }, 1500);
           } else {
-            wx.showToast({ title: result.message || '报名失败', icon: 'none' });
+            // 【优化】友好的错误提示
+            let errorMessage = result.message || '报名失败';
+
+            // 特殊错误处理
+            if (errorMessage.includes('已报名') || errorMessage.includes('重复报名')) {
+              errorMessage = '您已报名此活动，无需重复报名';
+              // 延迟返回详情页
+              setTimeout(() => {
+                wx.navigateBack();
+              }, 1500);
+            }
+
+            wx.showToast({
+              title: errorMessage,
+              icon: 'none',
+              duration: 2000
+            });
           }
         } catch (err) {
           wx.hideLoading();
           console.error('报名失败:', err);
-          wx.showToast({ title: '报名失败，请重试', icon: 'none' });
+
+          // 【优化】更友好的错误提示
+          let errorMessage = '报名失败，请重试';
+          if (err.message) {
+            if (err.message.includes('已报名') || err.message.includes('重复报名')) {
+              errorMessage = '您已报名此活动，无需重复报名';
+            } else if (err.message.includes('网络')) {
+              errorMessage = '网络连接失败，请检查网络后重试';
+            }
+          }
+
+          wx.showToast({
+            title: errorMessage,
+            icon: 'none',
+            duration: 2000
+          });
         }
       },
       {

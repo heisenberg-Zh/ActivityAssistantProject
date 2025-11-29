@@ -103,11 +103,25 @@
   </view>
 </view>
 
+<!-- 已报名状态提示（如果用户已报名） -->
+<view wx:if="{{!showGroupSelection && isRegistered}}" class="registered-status-section">
+  <view class="registered-status-card">
+    <view class="status-icon">
+      <text class="icon-emoji">{{registrationStatus === 'pending' ? '⏳' : '✅'}}</text>
+    </view>
+    <view class="status-content">
+      <text class="status-title">{{registrationStatus === 'pending' ? '报名审核中' : '已成功报名'}}</text>
+      <text class="status-desc">{{registrationStatus === 'pending' ? '您的报名正在等待组织者审核' : '您已成功报名此活动'}}</text>
+      <text wx:if="{{registeredGroupName}}" class="status-group">报名分组：{{registeredGroupName}}</text>
+    </view>
+  </view>
+</view>
+
 <!-- 报名表单（非分组选择时显示） -->
 <view wx:if="{{!showGroupSelection}}" class="form-section">
   <view class="form-header">
-    <text class="form-title">填写报名信息</text>
-    <text class="form-subtitle">请如实填写以下信息</text>
+    <text class="form-title">{{isRegistered ? '您的报名信息' : '填写报名信息'}}</text>
+    <text class="form-subtitle">{{isRegistered ? '以下是您提交的报名信息' : '请如实填写以下信息'}}</text>
   </view>
 
   <view class="form-container">
@@ -117,15 +131,16 @@
         <view class="input-wrapper">
           <view class="input-label-row">
             <text class="input-label">{{field.label}}</text>
-            <text wx:if="{{field.required}}" class="input-required">*</text>
+            <text wx:if="{{field.required && !isRegistered}}" class="input-required">*</text>
           </view>
           <input
-            class="input-field"
+            class="input-field {{isRegistered ? 'input-field--disabled' : ''}}"
             type="{{field.id === 'mobile' ? 'number' : 'text'}}"
             placeholder="{{field.desc || '请输入' + field.label}}"
             bindinput="onInput"
             data-field="{{field.id}}"
             value="{{formData[field.id]}}"
+            disabled="{{isRegistered}}"
           />
           <text wx:if="{{field.desc}}" class="field-hint" style="font-size: 22rpx; color: #9ca3af; margin-top: 8rpx; display: block;">{{field.desc}}</text>
         </view>

@@ -86,6 +86,18 @@ Page({
         return;
       }
 
+      // 【调试】输出活动详细数据，帮助排查问题
+      console.log('===== 活动详情数据 =====');
+      console.log('活动标题:', detail.title);
+      console.log('活动ID:', detail.id);
+      console.log('total字段:', detail.total, '类型:', typeof detail.total);
+      console.log('joined字段:', detail.joined, '类型:', typeof detail.joined);
+      console.log('hasGroups:', detail.hasGroups);
+      if (detail.groups) {
+        console.log('分组数据:', JSON.stringify(detail.groups));
+      }
+      console.log('======================');
+
       console.log('成功加载活动详情:', detail.title);
 
       // ========== 权限检查 ==========
@@ -146,8 +158,11 @@ Page({
         };
       }
 
-      // 获取参与者列表（使用前面已获取的报名记录）
+      // 【修复】分离已审核报名记录（用于显示）和所有报名记录（用于判断isRegistered）
+      // 显示用的报名记录：只显示已通过审核的
       const activityRegs = allRegistrations.filter(r => r.status === 'approved');
+      // 判断用的报名记录：包含所有状态（approved, pending, rejected）
+      const allStatusRegs = allRegistrations;
 
       // 如果活动有分组，初始显示第一个分组的参与者
       const currentGroupId = detail.hasGroups && detail.groups && detail.groups.length > 0
@@ -186,9 +201,64 @@ Page({
       const statusInfo = formatActivityStatus(dynamicStatus);
 
       // 判断是否可以报名
+      // 【修复】不再使用parseDate处理截止时间，避免null值被错误处理为当前时间
       const now = new Date();
-      const deadline = parseDate(detail.registerDeadline);
-      const canRegister = now < deadline && detail.joined < detail.total;
+
+      // 检查报名截止时间
+      let isBeforeDeadline = true;  // 默认允许报名
+      if (detail.registerDeadline) {
+        // 【修复】直接使用ISO格式，现代浏览器都支持
+        // 不再使用 replace(/-/g, '/') 转换，避免破坏ISO格式
+        let deadlineStr = detail.registerDeadline;
+
+        // 如果缺少秒数，补充 :00
+        if (deadlineStr.length === 16 && deadlineStr.includes('T')) {
+          deadlineStr += ':00';
+        }
+
+        const deadline = new Date(deadlineStr);
+        isBeforeDeadline = now < deadline;
+
+        console.log('报名截止时间检查:', {
+          registerDeadline: detail.registerDeadline,
+          deadlineStr: deadlineStr,
+          now: now.toISOString(),
+          deadline: deadline.toISOString(),
+          isBeforeDeadline,
+          nowTime: now.getTime(),
+          deadlineTime: deadline.getTime(),
+          isValidDate: !isNaN(deadline.getTime())
+        });
+      } else {
+        console.log('未设置报名截止时间，默认允许报名');
+      }
+
+      // 【修复】增加对total字段的有效性检查,防止因total为null/undefined/0导致误判
+      // 如果 total 无效（null/undefined/0），视为没有人数限制，允许报名
+      const hasValidTotal = detail.total && detail.total > 0;
+      let hasCapacity = true;  // 默认允许报名
+
+      if (hasValidTotal) {
+        // 只有在 total 有效的情况下才检查容量
+        hasCapacity = (detail.joined || 0) < detail.total;
+      } else {
+        // total 无效时，记录警告但仍允许报名（避免误判为满员）
+        console.warn('活动人数上限配置异常:', {
+          activityId: detail.id,
+          title: detail.title,
+          total: detail.total,
+          joined: detail.joined
+        });
+      }
+
+      const canRegister = isBeforeDeadline && hasCapacity;
+
+      console.log('canRegister计算:', {
+        isBeforeDeadline,
+        hasValidTotal,
+        hasCapacity,
+        canRegister
+      });
 
       // 判断是否可以签到
       const startTime = parseDate(detail.startTime);
@@ -196,16 +266,21 @@ Page({
         (Math.abs(now.getTime() - startTime.getTime()) <= 30 * 60 * 1000);
 
       // ========== 【关键】检查当前用户是否已报名 ==========
-      // 如果用户未登录，直接设置为 false，不检查报名记录
+      // 【修复】使用 allStatusRegs 而不是 activityRegs，确保能检测到 pending 状态的报名
       let isRegistered = false;
+      let currentUserRegistration = null;  // 【新增】保存当前用户的报名记录
       if (currentUserId) {
-        // 只有登录用户才检查是否已报名
-        isRegistered = activityRegs.some(r =>
+        // 只有登录用户才检查是否已报名（包含所有状态）
+        currentUserRegistration = allStatusRegs.find(r =>
           r.userId === currentUserId &&
           (r.status === 'approved' || r.status === 'pending')
         );
+        isRegistered = !!currentUserRegistration;
       }
       console.log('是否已报名:', isRegistered, '(登录状态:', !!currentUserId, ')');
+      if (currentUserRegistration) {
+        console.log('当前用户的报名ID:', currentUserRegistration.id, '状态:', currentUserRegistration.status);
+      }
       // ========== 报名状态检查结束 ==========
 
       // 检查管理权限（只有登录用户才能管理）
@@ -261,6 +336,7 @@ Page({
         canRegister,
         canCheckin,
         isRegistered,
+        currentUserRegistration,  // 【新增】保存当前用户的报名记录
         canManage: managementPermission.hasPermission,
         managementRole: managementPermission.role || '',
         canViewContact, // 是否可以查看联系方式
@@ -314,6 +390,17 @@ Page({
   goRegister() {
     const { id, canRegister, isRegistered, detail } = this.data;
 
+    // 【调试】输出报名前的状态检查
+    console.log('===== 报名状态检查 =====');
+    console.log('活动标题:', detail.title);
+    console.log('活动ID:', id);
+    console.log('canRegister:', canRegister);
+    console.log('isRegistered:', isRegistered);
+    console.log('total:', detail.total);
+    console.log('joined:', detail.joined);
+    console.log('registerDeadline:', detail.registerDeadline);
+    console.log('======================');
+
     // 【优先级1】先检查登录状态
     if (!app.checkLoginStatus()) {
       wx.showModal({
@@ -337,20 +424,37 @@ Page({
       return;
     }
 
-    // 【优先级3】校验报名截止时间
-    const deadlineCheck = isBeforeRegisterDeadline(detail.registerDeadline);
-    if (!deadlineCheck.valid) {
-      wx.showToast({
-        title: deadlineCheck.message,
-        icon: 'none',
-        duration: 2500
-      });
-      return;
-    }
-
-    // 【优先级4】检查是否满员
+    // 【优先级3】检查是否满员（在截止时间检查之前）
     if (!canRegister) {
-      wx.showToast({ title: '活动已满员', icon: 'none' });
+      const { total, joined } = detail;
+
+      // 【优化】先检查是报名截止还是人数已满
+      const deadlineCheck = isBeforeRegisterDeadline(detail.registerDeadline);
+
+      if (!deadlineCheck.valid) {
+        // 报名已截止
+        wx.showToast({
+          title: deadlineCheck.message,
+          icon: 'none',
+          duration: 2500
+        });
+        return;
+      }
+
+      // 检查total字段是否有效
+      if (!total || total <= 0) {
+        wx.showModal({
+          title: '活动配置异常',
+          content: `活动人数上限配置错误(total: ${total}),请联系活动组织者处理。`,
+          showCancel: false,
+          confirmText: '我知道了'
+        });
+        console.error('活动人数上限异常:', { activityId: id, total, joined });
+        return;
+      }
+
+      // 确实已满员
+      wx.showToast({ title: `活动已满员(${joined}/${total})`, icon: 'none', duration: 2000 });
       return;
     }
 
@@ -400,19 +504,31 @@ Page({
           wx.showLoading({ title: '处理中...' });
 
           try {
-            // 这里应该调用API取消报名
-            // await activityAPI.cancelRegistration({ activityId: id });
+            // 【修复】调用真正的后端API取消报名
+            const { currentUserRegistration } = this.data;
 
-            // 模拟取消成功
-            setTimeout(() => {
+            if (!currentUserRegistration || !currentUserRegistration.id) {
               wx.hideLoading();
+              wx.showToast({ title: '未找到报名记录', icon: 'none' });
+              return;
+            }
+
+            console.log('准备取消报名，报名ID:', currentUserRegistration.id);
+
+            const result = await registrationAPI.cancel(currentUserRegistration.id);
+
+            wx.hideLoading();
+
+            if (result.code === 0) {
               wx.showToast({ title: '已取消报名', icon: 'success' });
 
               // 刷新页面数据
               setTimeout(() => {
                 this.loadActivityDetail(id);
               }, 1500);
-            }, 1000);
+            } else {
+              wx.showToast({ title: result.message || '取消失败', icon: 'none' });
+            }
           } catch (err) {
             wx.hideLoading();
             console.error('取消报名失败:', err);
@@ -564,11 +680,6 @@ Page({
     });
   },
 
-  // 分享
-  onShare() {
-    wx.showShareMenu({ withShareTicket: true });
-  },
-
   // 跳转到管理页面
   goManagement() {
     const { id, canManage } = this.data;
@@ -599,24 +710,47 @@ Page({
   onShareAppMessage() {
     const { detail, id } = this.data;
 
-    // 构建分享标题，包含关键信息
+    // 构建分享标题，包含关键信息，使分享更有吸引力
     let shareTitle = detail.title || '活动详情';
-    if (detail.date) {
+
+    // 添加活动类型和时间信息
+    if (detail.type && detail.date) {
+      shareTitle = `【${detail.type}】${detail.title} | ${detail.date}`;
+    } else if (detail.date) {
       shareTitle = `${detail.title} | ${detail.date}`;
+    } else if (detail.type) {
+      shareTitle = `【${detail.type}】${detail.title}`;
     }
+
+    console.log('分享活动给好友:', shareTitle);
 
     return {
       title: shareTitle,
-      path: `/pages/activities/detail?id=${id}&from=share`, // 添加 from=share 参数
-      imageUrl: detail.poster || ''
+      path: `/pages/activities/detail?id=${id}&from=share`, // 添加 from=share 参数追踪分享来源
+      imageUrl: detail.poster || '' // 如果有海报图片则使用
     };
   },
 
   // 分享到朋友圈
   onShareTimeline() {
-    const { detail } = this.data;
+    const { detail, id } = this.data;
+
+    // 朋友圈分享标题（建议简洁）
+    let shareTitle = detail.title || '活动详情';
+    if (detail.type) {
+      shareTitle = `【${detail.type}】${detail.title}`;
+    }
+
+    // 添加关键信息到标题
+    if (detail.date) {
+      shareTitle += ` | ${detail.date}`;
+    }
+
+    console.log('分享活动到朋友圈:', shareTitle);
+
     return {
-      title: detail.title || '活动详情',
+      title: shareTitle,
+      query: `id=${id}&from=timeline`, // 朋友圈分享通过query传参
       imageUrl: detail.poster || ''
     };
   },
