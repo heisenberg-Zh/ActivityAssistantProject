@@ -213,7 +213,7 @@
 <view class="bottom-space"></view>
 <view class="fixed-footer {{canManage ? 'fixed-footer--three-btn' : ''}}">
   <button wx:if="{{canManage}}" class="btn btn--secondary footer-btn" bindtap="goManagement">管理</button>
-  <button class="btn btn--secondary footer-btn" bindtap="onShare">分享</button>
+  <button class="btn btn--secondary footer-btn" open-type="share">分享</button>
   <button class="btn {{isRegistered ? 'btn--danger' : 'btn--primary'}} footer-btn" bindtap="{{isRegistered ? 'cancelRegistration' : 'goRegister'}}">{{isRegistered ? '取消报名' : '报名'}}</button>
 </view>
 </view>

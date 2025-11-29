@@ -342,3 +342,65 @@
   color: #ef4444;
   font-weight: bold;
 }
+
+/* 步进器组件样式 */
+.stepper-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 20rpx;
+  overflow: hidden;
+  background: #ffffff;
+  width: 100%;
+  max-width: 300rpx;
+}
+
+.stepper-btn {
+  width: 80rpx;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48rpx;
+  font-weight: 600;
+  color: #3b82f6;
+  background: #f9fafb;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s;
+  user-select: none;
+}
+
+.stepper-btn:active {
+  background: #e5e7eb;
+}
+
+.stepper-btn--disabled {
+  color: #d1d5db;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.stepper-btn--disabled:active {
+  background: #f9fafb;
+}
+
+.stepper-input {
+  flex: 1;
+  min-width: 100rpx;
+  max-width: 140rpx;
+  height: 88rpx;
+  text-align: center;
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #1f2937;
+  border: none;
+  border-left: 2rpx solid #e5e7eb;
+  border-right: 2rpx solid #e5e7eb;
+  background: #ffffff;
+  padding: 0;
+  box-sizing: border-box;
+}
+

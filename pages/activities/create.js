@@ -45,7 +45,7 @@ Page({
       desc: '',
       type: '',
       typeIndex: 0,
-      isPublic: false, // 是否公开（默认不公开）
+      isPublic: true, // 是否公开（默认公开，用户可在设置中修改）
       organizerPhone: '', // 联系人电话
       organizerWechat: '', // 联系人微信号
       hasGroups: false, // 是否启用分组
@@ -497,8 +497,8 @@ Page({
     this.setData({ advanceHours: hours });
   },
 
-  // 分组数量改变
-  onGroupCountChange(e) {
+  // 分组数量改变（失焦时触发）
+  onGroupCountBlur(e) {
     let count = parseInt(e.detail.value);
 
     // 验证范围：2-5
@@ -513,6 +513,41 @@ Page({
     // 如果已启用分组，重新初始化分组
     if (this.data.form.hasGroups) {
       this.initGroups(count);
+    }
+  },
+
+  // 焦点进入时全选文本（方便用户直接输入新值）
+  onGroupCountFocus(e) {
+    // 微信小程序没有原生的全选API，但输入框获得焦点时用户可以直接输入覆盖
+    // 这里记录一个标记，提示用户可以直接输入
+    console.log('分组数量输入框获得焦点，可以直接输入新值');
+  },
+
+  // 增加分组数量
+  increaseGroupCount() {
+    const currentCount = this.data.form.groupCount;
+    if (currentCount < 5) {
+      const newCount = currentCount + 1;
+      this.setData({ 'form.groupCount': newCount });
+
+      // 如果已启用分组，重新初始化分组
+      if (this.data.form.hasGroups) {
+        this.initGroups(newCount);
+      }
+    }
+  },
+
+  // 减少分组数量
+  decreaseGroupCount() {
+    const currentCount = this.data.form.groupCount;
+    if (currentCount > 2) {
+      const newCount = currentCount - 1;
+      this.setData({ 'form.groupCount': newCount });
+
+      // 如果已启用分组，重新初始化分组
+      if (this.data.form.hasGroups) {
+        this.initGroups(newCount);
+      }
     }
   },
 
@@ -1408,6 +1443,50 @@ Page({
     }
 
     // 组装提交数据
+    // 【修复】统一日期时间格式化为 ISO 8601 格式（使用 'T' 分隔符）
+    const formatDateTime = (date, time) => {
+      // 如果date参数本身就是完整的日期时间字符串（包含T或空格），先解析它
+      if (date && (date.includes('T') || (date.includes(' ') && date.length > 10))) {
+        // 内联解析逻辑
+        if (date.includes('T')) {
+          const parts = date.split('T');
+          date = parts[0];
+          time = time || parts[1].substring(0, 5); // 只取HH:mm
+        } else {
+          const parts = date.split(' ');
+          date = parts[0];
+          time = time || (parts[1] ? parts[1].substring(0, 5) : '09:00');
+        }
+      }
+
+      // 确保date只包含日期部分（YYYY-MM-DD），移除可能的时间部分
+      if (date && date.length > 10) {
+        date = date.substring(0, 10);
+      }
+
+      // 处理time部分
+      if (!time || time.trim().length === 0) {
+        return `${date}T09:00:00`;  // 【修复】使用 'T' 分隔符
+      }
+
+      // 移除可能的空格
+      time = time.trim();
+
+      // 如果time已经包含秒数（HH:mm:ss），直接使用
+      if (time.length === 8 && time.split(':').length === 3) {
+        return `${date}T${time}`;  // 【修复】使用 'T' 分隔符
+      }
+
+      // 如果time是HH:mm格式，添加秒数
+      if (time.length === 5 && time.split(':').length === 2) {
+        return `${date}T${time}:00`;  // 【修复】使用 'T' 分隔符
+      }
+
+      // 其他情况，使用默认值
+      console.warn('formatDateTime: 未识别的时间格式:', time, '使用默认值');
+      return `${date}T09:00:00`;  // 【修复】使用 'T' 分隔符
+    };
+
     const activityData = {
       title: form.title,
       desc: form.desc,
@@ -1415,11 +1494,11 @@ Page({
       isPublic: form.isPublic, // 是否公开
       organizerPhone: form.organizerPhone || '', // 联系人电话
       organizerWechat: form.organizerWechat || '', // 联系人微信号
-      startTime: `${form.startDate} ${form.startTime}`,
-      endTime: `${form.endDate} ${form.endTime}`,
+      startTime: formatDateTime(form.startDate, form.startTime),
+      endTime: formatDateTime(form.endDate, form.endTime),
       registerDeadline: form.registerDeadlineDate
-        ? `${form.registerDeadlineDate} ${form.registerDeadlineTime}`
-        : `${form.startDate} ${form.startTime}`,
+        ? formatDateTime(form.registerDeadlineDate, form.registerDeadlineTime)
+        : formatDateTime(form.startDate, form.startTime),
       place: form.place,
       address: form.address,
       latitude: form.latitude,
@@ -1433,11 +1512,41 @@ Page({
     if (form.hasGroups) {
       // 计算总人数
       const totalCount = groups.reduce((sum, g) => sum + (parseInt(g.total) || 0), 0);
+
+      // 【修复】：防止total为0导致"满员"误判
+      if (totalCount <= 0) {
+        wx.showModal({
+          title: '人数配置错误',
+          content: '所有分组的总人数不能为0，请检查分组设置。',
+          showCancel: false,
+          confirmText: '返回修改',
+          success: () => {
+            this.setCurrentStep(4); // 跳转到人数设置步骤
+          }
+        });
+        return;
+      }
+
       activityData.total = totalCount;
       activityData.minParticipants = Math.floor(totalCount * 0.5); // 默认一半成行
       activityData.groups = groups;
     } else {
       // 无分组配置
+
+      // 【修复】：防止total为0导致"满员"误判
+      if (!form.total || form.total <= 0) {
+        wx.showModal({
+          title: '人数配置错误',
+          content: '活动人数上限不能为0，请返回修改。',
+          showCancel: false,
+          confirmText: '返回修改',
+          success: () => {
+            this.setCurrentStep(4); // 跳转到人数设置步骤
+          }
+        });
+        return;
+      }
+
       activityData.total = form.total;
       activityData.minParticipants = form.minParticipants;
       activityData.fee = form.fee || 0;
@@ -1479,13 +1588,21 @@ Page({
 
       // 设置为预发布状态
       activityData.status = '预发布';
-      activityData.scheduledPublishTime = `${scheduledPublishDate} ${scheduledPublishTime}`;
+      activityData.scheduledPublishTime = formatDateTime(scheduledPublishDate, scheduledPublishTime);
       activityData.actualPublishTime = null;
     } else {
       // 立即发布
       activityData.status = 'published';
       activityData.scheduledPublishTime = null;
-      activityData.actualPublishTime = new Date().toISOString();
+      // 【修复】使用 ISO 8601 格式（'T' 分隔符）
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      activityData.actualPublishTime = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;  // 【修复】使用 'T' 分隔符
     }
 
     const isEdit = mode === 'edit';
@@ -1786,9 +1903,33 @@ Page({
     };
 
     // 解析活动数据到表单
-    const startDateTime = activity.startTime.split(' ');
-    const endDateTime = activity.endTime.split(' ');
-    const registerDeadline = activity.registerDeadline ? activity.registerDeadline.split(' ') : startDateTime;
+    // 【修复】统一日期时间格式解析，支持ISO格式和空格分隔格式
+    const parseDateTime = (dateTimeStr) => {
+      if (!dateTimeStr) return ['', '09:00'];
+
+      // ISO格式: 2025-12-26T09:00:00 或 2025-12-26T09:00
+      if (dateTimeStr.includes('T')) {
+        const [datePart, timePart] = dateTimeStr.split('T');
+        const timeWithoutSeconds = timePart.substring(0, 5); // 只取 HH:mm
+        return [datePart, timeWithoutSeconds];
+      }
+
+      // 空格分隔格式: 2025-12-26 09:00:00 或 2025-12-26 09:00
+      const parts = dateTimeStr.split(' ');
+      if (parts.length >= 2) {
+        const timeWithoutSeconds = parts[1].substring(0, 5); // 只取 HH:mm
+        return [parts[0], timeWithoutSeconds];
+      }
+
+      // 默认值
+      return [parts[0] || '', '09:00'];
+    };
+
+    const startDateTime = parseDateTime(activity.startTime);
+    const endDateTime = parseDateTime(activity.endTime);
+    const registerDeadline = activity.registerDeadline
+      ? parseDateTime(activity.registerDeadline)
+      : startDateTime;
 
     const form = {
       title: activity.title,
@@ -1884,9 +2025,33 @@ Page({
       }
 
       // 复制活动数据（但不包括ID和状态）
-      const startDateTime = activity.startTime.split(' ');
-      const endDateTime = activity.endTime.split(' ');
-      const registerDeadline = activity.registerDeadline ? activity.registerDeadline.split(' ') : startDateTime;
+      // 【修复】使用统一的日期时间解析函数
+      const parseDateTime = (dateTimeStr) => {
+        if (!dateTimeStr) return ['', '09:00'];
+
+        // ISO格式: 2025-12-26T09:00:00 或 2025-12-26T09:00
+        if (dateTimeStr.includes('T')) {
+          const [datePart, timePart] = dateTimeStr.split('T');
+          const timeWithoutSeconds = timePart.substring(0, 5); // 只取 HH:mm
+          return [datePart, timeWithoutSeconds];
+        }
+
+        // 空格分隔格式: 2025-12-26 09:00:00 或 2025-12-26 09:00
+        const parts = dateTimeStr.split(' ');
+        if (parts.length >= 2) {
+          const timeWithoutSeconds = parts[1].substring(0, 5); // 只取 HH:mm
+          return [parts[0], timeWithoutSeconds];
+        }
+
+        // 默认值
+        return [parts[0] || '', '09:00'];
+      };
+
+      const startDateTime = parseDateTime(activity.startTime);
+      const endDateTime = parseDateTime(activity.endTime);
+      const registerDeadline = activity.registerDeadline
+        ? parseDateTime(activity.registerDeadline)
+        : startDateTime;
 
       const form = {
         title: `${activity.title} (副本)`,
