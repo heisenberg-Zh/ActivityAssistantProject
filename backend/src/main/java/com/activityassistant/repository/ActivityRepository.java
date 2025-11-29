@@ -124,6 +124,15 @@ public interface ActivityRepository extends JpaRepository<Activity, String>, Jpa
     long countByOrganizerId(String organizerId);
 
     /**
+     * 查询组织者创建的所有活动（包括已删除）
+     * 用于统计用户获得的评价等场景
+     *
+     * @param organizerId 组织者ID
+     * @return 活动列表
+     */
+    List<Activity> findByOrganizerId(String organizerId);
+
+    /**
      * 查询周期性活动组的所有活动
      *
      * @param recurringGroupId 周期性活动组ID

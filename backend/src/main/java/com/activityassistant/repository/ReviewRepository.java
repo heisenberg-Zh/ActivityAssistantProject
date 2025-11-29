@@ -109,4 +109,13 @@ public interface ReviewRepository extends JpaRepository<Review, String>, JpaSpec
      * @return 评价列表
      */
     Page<Review> findByActivityId(String activityId, Pageable pageable);
+
+    /**
+     * 根据活动ID查询所有评价，按创建时间降序排列（不包含已删除）
+     * 用于统计和展示场景
+     *
+     * @param activityId 活动ID
+     * @return 评价列表
+     */
+    List<Review> findByActivityIdAndIsDeletedFalseOrderByCreatedAtDesc(String activityId);
 }

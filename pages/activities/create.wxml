@@ -72,8 +72,12 @@
     <view wx:if="{{form.hasGroups}}" class="group-config-section">
       <view class="form-field">
         <text class="field-label">分组数量 *</text>
-        <input class="field-input" type="number" placeholder="请输入分组数量（2-5）" bindinput="onGroupCountChange" value="{{form.groupCount}}" />
-        <text class="field-hint">请输入2-5之间的数字，修改后分组列表会自动更新</text>
+        <view class="stepper-container">
+          <view class="stepper-btn {{form.groupCount <= 2 ? 'stepper-btn--disabled' : ''}}" bindtap="decreaseGroupCount">-</view>
+          <input class="stepper-input" type="digit" bindfocus="onGroupCountFocus" bindblur="onGroupCountBlur" value="{{form.groupCount}}" />
+          <view class="stepper-btn {{form.groupCount >= 5 ? 'stepper-btn--disabled' : ''}}" bindtap="increaseGroupCount">+</view>
+        </view>
+        <text class="field-hint">可设置2-5个分组，点击+/-按钮或直接输入数字</text>
       </view>
 
       <!-- 分组名称输入 -->

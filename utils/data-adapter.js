@@ -95,20 +95,45 @@ function formatTimeRange(startTime, endTime) {
 
 /**
  * 将前端日期字符串转换为后端格式
- * 输入: '2025-12-23 19:00'
- * 输出: '2025-12-23T19:00:00'
+ * 输入: '2025-12-23 19:00' 或 '2025-12-23T19:00'
+ * 输出: '2025-12-23T19:00:00' (ISO 8601 格式，LocalDateTime 标准格式)
+ *
+ * 重要说明：
+ * - 后端使用 LocalDateTime 类型，默认支持 ISO 8601 格式（yyyy-MM-ddTHH:mm:ss）
+ * - application.yml 中的 date-format 配置只对 java.util.Date 有效
+ * - 必须使用 'T' 分隔符，不能使用空格
  */
 function toBackendDateTime(dateTimeStr) {
   if (!dateTimeStr) return null;
 
   try {
-    // 如果已经是ISO格式，直接返回
-    if (dateTimeStr.includes('T')) {
-      return dateTimeStr;
+    let dateStr = dateTimeStr.trim();
+
+    // 如果包含空格，转换为 ISO 格式（使用 'T' 分隔符）
+    if (dateStr.includes(' ') && !dateStr.includes('T')) {
+      dateStr = dateStr.replace(' ', 'T');
     }
 
-    // 转换为ISO格式
-    return dateTimeStr.replace(' ', 'T') + ':00';
+    // 确保包含秒数
+    const parts = dateStr.split('T');
+    if (parts.length === 2) {
+      const timePart = parts[1];
+      const timeSegments = timePart.split(':');
+
+      if (timeSegments.length === 2) {
+        // HH:mm 格式，添加秒数
+        return `${parts[0]}T${timePart}:00`;
+      } else if (timeSegments.length === 3) {
+        // HH:mm:ss 格式，直接返回
+        return dateStr;
+      }
+    } else if (parts.length === 1) {
+      // 只有日期，添加默认时间
+      return `${parts[0]}T00:00:00`;
+    }
+
+    // 保持原样
+    return dateStr;
   } catch (err) {
     console.error('后端日期转换失败:', dateTimeStr, err);
     return dateTimeStr;
@@ -258,6 +283,7 @@ function transformActivityToBackend(activity) {
       endTime: toBackendDateTime(activity.endTime),
       registerDeadline: toBackendDateTime(activity.registerDeadline),
       scheduledPublishTime: toBackendDateTime(activity.scheduledPublishTime),
+      actualPublishTime: toBackendDateTime(activity.actualPublishTime),  // 【修复】添加 actualPublishTime 转换
 
       // JSON字段
       groups: groups,

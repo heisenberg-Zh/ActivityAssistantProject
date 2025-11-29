@@ -81,10 +81,15 @@ Page({
         };
       });
 
+      // 首页只显示有效活动：过滤掉"已结束"和"已取消"的活动
+      const validActivities = enrichedActivities.filter(activity => {
+        return activity.status !== '已结束' && activity.status !== '已取消';
+      });
+
       this.setData({
-        slides: enrichedActivities.slice(0, 5),  // 轮播图显示前5个
-        list: enrichedActivities,
-        enrichedActivities,
+        slides: validActivities.slice(0, 5),  // 轮播图显示前5个有效活动
+        list: validActivities,
+        enrichedActivities: validActivities,
         loading: false
       });
 

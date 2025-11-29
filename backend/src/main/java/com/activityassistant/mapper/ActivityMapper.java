@@ -62,6 +62,21 @@ public class ActivityMapper {
         // 解析管理员列表
         List<UserSimpleVO> administratorList = parseAdministrators(activity.getAdministrators());
 
+        // 【修复】确保total和joined字段不为null,防止前端校验失败
+        Integer total = activity.getTotal();
+        Integer joined = activity.getJoined();
+
+        // 防御性处理:如果total为null或<=0,使用默认值1
+        if (total == null || total <= 0) {
+            log.warn("活动ID={} 的total值异常: {}, 使用默认值1", activity.getId(), total);
+            total = 1;
+        }
+
+        // 防御性处理:如果joined为null,使用默认值0
+        if (joined == null) {
+            joined = 0;
+        }
+
         ActivityVO.ActivityVOBuilder builder = ActivityVO.builder()
                 .id(activity.getId())
                 .title(activity.getTitle())
@@ -77,8 +92,8 @@ public class ActivityMapper {
                 .latitude(activity.getLatitude())
                 .longitude(activity.getLongitude())
                 .checkinRadius(activity.getCheckinRadius())
-                .total(activity.getTotal())
-                .joined(activity.getJoined())
+                .total(total) // 使用验证后的total
+                .joined(joined) // 使用验证后的joined
                 .minParticipants(activity.getMinParticipants())
                 .fee(activity.getFee())
                 .feeType(activity.getFeeType())
@@ -137,13 +152,25 @@ public class ActivityMapper {
             return null;
         }
 
+        // 【修复1】：支持前端传递的status字段
+        // 如果前端传递了status，使用前端的值；否则默认为pending
+        String status = request.getStatus() != null ? request.getStatus() : "pending";
+
+        // 【修复2】：验证并修正total值
+        // 确保total至少为1，防止出现"满员"误判
+        Integer total = request.getTotal();
+        if (total == null || total <= 0) {
+            log.warn("活动total值异常：{}, 已自动修正为1", total);
+            total = 1; // 默认最少1人
+        }
+
         return Activity.builder()
                 .id(idGeneratorService.generateActivityId())
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .organizerId(organizerId)
                 .type(request.getType())
-                .status("pending") // 初始状态为pending
+                .status(status) // 使用前端传递的status或默认值
                 .startTime(request.getStartTime())
                 .endTime(request.getEndTime())
                 .registerDeadline(request.getRegisterDeadline())
@@ -152,7 +179,7 @@ public class ActivityMapper {
                 .latitude(request.getLatitude())
                 .longitude(request.getLongitude())
                 .checkinRadius(request.getCheckinRadius() != null ? request.getCheckinRadius() : 500)
-                .total(request.getTotal())
+                .total(total) // 使用验证后的total值
                 .joined(0) // 初始已报名人数为0
                 .minParticipants(request.getMinParticipants() != null ? request.getMinParticipants() : 1)
                 .fee(request.getFee() != null ? request.getFee() : java.math.BigDecimal.ZERO)
