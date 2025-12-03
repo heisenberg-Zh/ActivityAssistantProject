@@ -1,9 +1,15 @@
 package com.activityassistant.service;
 
+import com.activityassistant.dto.WeChatLoginResponse;
 import com.activityassistant.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.Arrays;
 
 /**
  * 微信服务
@@ -24,6 +30,25 @@ public class WeChatService {
 
     @Value("${app.wechat.mock-login-enabled:false}")
     private boolean mockLoginEnabled;
+
+    private final RestTemplate restTemplate;
+
+    /**
+     * 构造函数
+     * 配置 RestTemplate 支持 text/plain 类型的 JSON 响应（微信 API 返回 Content-Type: text/plain）
+     */
+    public WeChatService() {
+        this.restTemplate = new RestTemplate();
+
+        // 添加支持 text/plain 的 JSON 转换器
+        MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
+        converter.setSupportedMediaTypes(Arrays.asList(
+            MediaType.APPLICATION_JSON,
+            MediaType.TEXT_PLAIN  // 支持微信 API 的 text/plain 响应
+        ));
+
+        this.restTemplate.getMessageConverters().add(0, converter);
+    }
 
     /**
      * 通过code获取微信OpenID
@@ -52,37 +77,63 @@ public class WeChatService {
             }
         }
 
-        // 生产环境：调用微信API
-        // URL: https://api.weixin.qq.com/sns/jscode2session
-        // 参数: appid, secret, js_code, grant_type=authorization_code
-        // 返回: { "openid": "xxx", "session_key": "xxx", "unionid": "xxx" }
+        // ============================================
+        // 生产环境：调用微信API获取真实OpenID
+        // ============================================
+        log.info("生产环境：调用微信API获取OpenID");
 
-        log.warn("生产环境微信登录尚未实现，code={}", code);
-
-        // TODO: 实现真实的微信登录逻辑
-        /*
         try {
+            // 构建微信API URL
             String url = String.format(
                 "https://api.weixin.qq.com/sns/jscode2session?appid=%s&secret=%s&js_code=%s&grant_type=authorization_code",
                 appId, appSecret, code
             );
 
+            log.debug("调用微信API: {}", url.replace(appSecret, "***"));
+
             // 调用微信API
-            RestTemplate restTemplate = new RestTemplate();
             WeChatLoginResponse response = restTemplate.getForObject(url, WeChatLoginResponse.class);
 
-            if (response != null && response.getOpenid() != null) {
+            // 检查响应
+            if (response == null) {
+                log.error("微信API返回空响应");
+                throw new BusinessException(5002, "微信登录失败：服务器无响应");
+            }
+
+            log.info("微信API响应: errcode={}, errmsg={}, openid存在={}",
+                response.getErrcode(), response.getErrmsg(), response.getOpenid() != null);
+
+            // 检查是否成功
+            if (response.isSuccess() && response.getOpenid() != null) {
+                log.info("微信登录成功，openid={}", response.getOpenid());
                 return response.getOpenid();
             } else {
-                throw new BusinessException(5002, "微信登录失败：" + response.getErrmsg());
-            }
-        } catch (Exception e) {
-            log.error("调用微信API失败", e);
-            throw new BusinessException(5001, "微信登录失败，请稍后重试");
-        }
-        */
+                // 微信API返回错误
+                String errorMsg = response.getErrmsg() != null ? response.getErrmsg() : "未知错误";
+                Integer errorCode = response.getErrcode() != null ? response.getErrcode() : -1;
 
-        throw new BusinessException(5001, "微信登录功能未启用，请在配置文件中设置 app.wechat.mock-login-enabled=true");
+                log.error("微信登录失败：errcode={}, errmsg={}", errorCode, errorMsg);
+
+                // 根据错误码返回友好提示
+                String userMessage = switch (errorCode) {
+                    case 40029 -> "登录code无效，请重新授权登录";
+                    case 45011 -> "登录请求过于频繁，请稍后重试";
+                    case 40163 -> "微信配置错误，请联系管理员";
+                    case -1 -> "微信服务繁忙，请稍后重试";
+                    default -> "微信登录失败：" + errorMsg;
+                };
+
+                throw new BusinessException(5002, userMessage);
+            }
+
+        } catch (BusinessException e) {
+            // 业务异常直接抛出
+            throw e;
+        } catch (Exception e) {
+            // 其他异常（网络错误、超时等）
+            log.error("调用微信API失败", e);
+            throw new BusinessException(5001, "微信登录失败，网络连接异常，请检查网络后重试");
+        }
     }
 
     /**
