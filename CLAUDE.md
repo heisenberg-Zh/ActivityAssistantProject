@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 🚨 重要：项目当前阶段和开发原则
 
 ### 项目状态
-**当前阶段**: 🔴 **生产准备阶段** - 测试收尾，即将上线部署
+**当前阶段**: 🟢 **生产环境** - 已部署上线运行
 
 ### 核心开发原则（必须严格遵守）
 
@@ -28,7 +28,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 #### 4. 📝 代码审查要点
 - 排查所有使用 `require('../../utils/mock.js')` 的地方
 - 排查所有使用 `wx.setStorageSync` 存储业务数据的地方
-- 确保所有 API 调用都配置为 `development` 模式（使用真实后端）
+- 确保所有 API 调用都配置为 `production` 模式（连接生产环境后端）
 
 ### 遗留问题待清理
 以下功能当前仍使用假数据或本地存储，需要逐步清理：
@@ -266,36 +266,56 @@ onShareAppMessage() {
 
 项目支持三种运行环境，在 `utils/config.js` 中配置：
 
-**当前环境**: 🔴 **必须使用 `development`（开发环境）**
+**当前环境**: 🟢 **`production`（生产环境）** - 已部署上线
 
 ```javascript
 // utils/config.js
-const CURRENT_ENV = 'development';  // ✅ 使用真实后端
+const CURRENT_ENV = 'production';  // ✅ 当前生产环境配置
 ```
 
 ### 环境模式说明
 
-1. **development（开发环境）** - ✅ **当前必须使用**
+1. **production（生产环境）** - ✅ **当前使用中**
+   - API地址：`https://aap.hnsgj.com/hdtj-api`
+   - 连接生产环境后端服务
+   - 已在微信公众平台配置合法域名
+   - **用途**：正式发布运行
+   - **注意**：任何对生产环境的修改都需谨慎测试
+
+2. **development（开发环境）** - 仅用于本地开发
    - API地址：`http://localhost:8082`
    - 连接本地后端服务
    - **重要**：需在微信开发者工具中**禁用域名校验**（详情 > 本地设置 > 不校验合法域名）
    - **用途**：开发和测试阶段
-
-2. **production（生产环境）**
-   - API地址：配置为实际 HTTPS 域名
-   - 需在微信公众平台配置合法域名
-   - 适用于真机预览和正式发布
-   - **用途**：生产部署
+   - **切换方式**：修改 `utils/config.js` 中 `CURRENT_ENV = 'development'`
 
 3. **mock（Mock模式）** - ❌ **已禁用，仅供参考**
    - ~~使用本地假数据（`utils/mock.js`）~~
    - ~~无需后端服务，无需域名配置~~
-   - **注意**: 项目已进入生产准备阶段，**禁止使用 Mock 模式**
+   - **注意**: 项目已上线运行，**严禁使用 Mock 模式**
    - **用途**：仅作为历史参考，不得在开发中使用
+
+### 环境切换流程
+
+**从生产切换到开发环境**（仅用于本地调试）：
+1. 修改 `utils/config.js`：`CURRENT_ENV = 'development'`
+2. 确保本地后端服务正在运行（`http://localhost:8082`）
+3. 在微信开发者工具中禁用域名校验
+4. ⚠️ **完成调试后必须改回 `production`**
+
+**从开发切换回生产环境**：
+1. 修改 `utils/config.js`：`CURRENT_ENV = 'production'`
+2. 提交代码前务必确认环境配置正确
+3. 测试后再发布更新
 
 ### 域名校验设置
 
-**开发阶段**（使用 localhost）：
+**生产环境**（当前）：
+- 使用 HTTPS 域名：`https://aap.hnsgj.com/hdtj-api`
+- 已在微信公众平台配置合法域名
+- 真机和模拟器均可正常访问
+
+**开发环境**（本地调试时）：
 1. 打开微信开发者工具
 2. 点击右上角"详情"按钮
 3. 进入"本地设置"选项卡
@@ -306,8 +326,16 @@ const CURRENT_ENV = 'development';  // ✅ 使用真实后端
 **错误：`request:fail url not in domain list`**
 
 解决方案：
-1. ✅ **推荐**：在微信开发者工具中禁用域名校验（见上方设置）
-2. ❌ **禁止**：切换到 Mock 模式
-3. **生产部署**：后端部署到 HTTPS 域名，并在微信公众平台配置
+1. **生产环境**：确认 `utils/config.js` 中 `CURRENT_ENV = 'production'`
+2. **开发环境**：在微信开发者工具中禁用域名校验（见上方设置）
+3. ❌ **禁止**：切换到 Mock 模式
+
+**错误：生产环境无法连接后端**
+
+排查步骤：
+1. 检查 `utils/config.js` 是否为 `production` 模式
+2. 检查后端服务是否正常运行
+3. 检查微信公众平台的服务器域名配置
+4. 检查 HTTPS 证书是否有效
 
 详细配置指南参见：`WECHAT_DEV_CONFIG.md`

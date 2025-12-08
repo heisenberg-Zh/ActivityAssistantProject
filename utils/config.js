@@ -8,7 +8,7 @@
  *
  * 切换方式：修改下方的 CURRENT_ENV 变量
  */
-const CURRENT_ENV = 'development'; // 可选值: 'development' | 'production' | 'mock'
+const CURRENT_ENV = 'production'; // 可选值: 'development' | 'production' | 'mock'
 
 // 不同环境的API配置
 const ENV_CONFIG = {
@@ -18,9 +18,9 @@ const ENV_CONFIG = {
     description: '开发环境（需在微信开发者工具中禁用域名校验）'
   },
   production: {
-    baseUrl: 'https://your-domain.com',  // TODO: 替换为实际生产域名
+    baseUrl: 'https://aap.hnsgj.com/hdtj-api',  // 生产环境API地址（HTTPS域名）
     useMock: false,
-    description: '生产环境（需在微信公众平台配置合法域名）'
+    description: '生产环境（需在微信公众平台配置合法服务器域名）'
   },
   mock: {
     baseUrl: '',
@@ -55,8 +55,8 @@ const API_CONFIG = {
 
 // 地图配置
 const MAP_CONFIG = {
-  // 腾讯地图API密钥（需申请）
-  key: 'YOUR_TENCENT_MAP_KEY',
+  // 腾讯地图API密钥
+  key: '56PBZ-QQ2KW-W4FRG-YP6XS-HBKXZ-5HFNZ',
 
   // 默认签到范围（米）
   defaultCheckinRadius: 500,

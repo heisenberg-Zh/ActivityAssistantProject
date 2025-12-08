@@ -756,11 +756,92 @@ Page({
 
   // 真实GPS定位选择器
   useRealLocationPicker() {
-    console.log('使用真实GPS定位');
+    console.log('✅ [定位] 开始使用真实GPS定位');
 
+    // 首先检查位置权限
+    wx.getSetting({
+      success: (res) => {
+        console.log('✅ [定位] 当前权限设置:', res.authSetting);
+
+        // 检查位置权限状态
+        const hasLocationAuth = res.authSetting['scope.userLocation'];
+
+        if (hasLocationAuth === false) {
+          // 用户之前拒绝过位置权限
+          console.warn('⚠️ [定位] 用户之前拒绝了位置权限');
+          wx.showModal({
+            title: '需要位置权限',
+            content: '真实定位功能需要访问您的位置信息，请在设置中开启位置权限',
+            confirmText: '去设置',
+            cancelText: '使用测试模式',
+            success: (modalRes) => {
+              if (modalRes.confirm) {
+                // 打开设置页面
+                wx.openSetting({
+                  success: (settingRes) => {
+                    console.log('✅ [定位] 设置页返回:', settingRes.authSetting);
+                    if (settingRes.authSetting['scope.userLocation']) {
+                      wx.showToast({ title: '权限已开启', icon: 'success' });
+                      // 重新调用选择地点
+                      setTimeout(() => {
+                        this.callChooseLocation();
+                      }, 1000);
+                    }
+                  }
+                });
+              } else {
+                // 切换到测试模式
+                this.setData({ useRealLocation: false });
+                wx.showToast({ title: '已切换到测试模式', icon: 'success' });
+              }
+            }
+          });
+          return;
+        }
+
+        // 如果有权限或者首次请求，直接调用选择地点
+        console.log('✅ [定位] 权限正常，调用选择地点');
+        this.callChooseLocation();
+      },
+      fail: (err) => {
+        console.error('❌ [定位] 获取权限设置失败:', err);
+        // 降级处理，直接尝试调用
+        this.callChooseLocation();
+      }
+    });
+  },
+
+  // 调用微信选择地点API
+  callChooseLocation() {
+    console.log('✅ [定位] 调用 wx.chooseLocation');
+
+    // 检查是否需要隐私授权（微信基础库 2.32.3 及以上）
+    if (wx.requirePrivacyAuthorize) {
+      wx.requirePrivacyAuthorize({
+        success: () => {
+          console.log('✅ [定位] 隐私授权成功');
+          this.doChooseLocation();
+        },
+        fail: (err) => {
+          console.error('❌ [定位] 隐私授权失败:', err);
+          wx.showToast({
+            title: '需要同意隐私协议才能使用定位功能',
+            icon: 'none',
+            duration: 3000
+          });
+        }
+      });
+    } else {
+      // 低版本微信，直接调用
+      this.doChooseLocation();
+    }
+  },
+
+  // 执行选择地点操作
+  doChooseLocation() {
     wx.chooseLocation({
       success: (res) => {
-        console.log('选择地点成功:', res);
+        console.log('✅ [定位] 选择地点成功:', res);
 
         this.setData({
           'form.place': res.name,
@@ -779,22 +860,21 @@ Page({
         this.checkCanPublish();
       },
       fail: (err) => {
-        console.error('选择地点失败:', err);
+        console.error('❌ [定位] 选择地点失败:', err);
 
         // 友好的错误提示
-        let errorMsg = '选择地点失败';
-
         if (err.errMsg && err.errMsg.includes('cancel')) {
           // 用户取消选择
-          console.log('用户取消选择地点');
+          console.log('⚠️ [定位] 用户取消选择地点');
           return;
-        } else if (err.errMsg && err.errMsg.includes('authorize')) {
+        } else if (err.errMsg && (err.errMsg.includes('authorize') || err.errMsg.includes('auth'))) {
           // 权限未授予
-          errorMsg = '需要位置权限才能选择地点';
+          console.warn('⚠️ [定位] 权限未授予');
           wx.showModal({
             title: '需要位置权限',
             content: '请在设置中允许小程序访问您的位置信息',
             confirmText: '去设置',
+            cancelText: '使用测试模式',
             success: (modalRes) => {
               if (modalRes.confirm) {
                 wx.openSetting({
@@ -804,30 +884,44 @@ Page({
                     }
                   }
                 });
-              }
-            }
-          });
-          return;
-        } else if (err.errMsg && err.errMsg.includes('privacy')) {
-          // 隐私协议问题
-          errorMsg = '请在小程序设置中允许访问位置';
-          wx.showModal({
-            title: '位置权限未开启',
-            content: '真实定位功能需要位置权限。您可以：\n1. 在设置中开启位置权限\n2. 或切换到测试模式使用预设地点',
-            confirmText: '切换测试模式',
-            cancelText: '我知道了',
-            success: (modalRes) => {
-              if (modalRes.confirm) {
-                // 切换到测试模式
+              } else {
                 this.setData({ useRealLocation: false });
                 wx.showToast({ title: '已切换到测试模式', icon: 'success' });
               }
             }
           });
           return;
+        } else if (err.errMsg && err.errMsg.includes('privacy')) {
+          console.warn('⚠️ [定位] 隐私协议未授权');
+          wx.showModal({
+            title: '需要同意隐私政策',
+            content: '真实定位依赖隐私授权，请先在弹出的隐私指引中同意授权，或切换回测试模式使用预设地点。',
+            confirmText: '切换测试模式',
+            cancelText: '稍后再试',
+            success: (modalRes) => {
+              if (modalRes.confirm) {
+                this.setData({ useRealLocation: false });
+                wx.showToast({ title: '已切换到测试模式', icon: 'success' });
+              }
+            }
+          });
+          return;
+        } else {
+          // 其他错误
+          console.error('❌ [定位] 其他错误:', err.errMsg);
+          wx.showModal({
+            title: '选择地点失败',
+            content: '定位功能暂时无法使用，建议切换到测试模式使用预设地点\n\n错误信息：' + (err.errMsg || '未知错误'),
+            confirmText: '切换测试模式',
+            cancelText: '我知道了',
+            success: (modalRes) => {
+              if (modalRes.confirm) {
+                this.setData({ useRealLocation: false });
+                wx.showToast({ title: '已切换到测试模式', icon: 'success' });
+              }
+            }
+          });
         }
-
-        wx.showToast({ title: errorMsg, icon: 'none', duration: 2000 });
       }
     });
   },
