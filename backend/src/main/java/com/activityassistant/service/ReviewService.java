@@ -13,6 +13,7 @@ import com.activityassistant.repository.ActivityRepository;
 import com.activityassistant.repository.RegistrationRepository;
 import com.activityassistant.repository.ReviewRepository;
 import com.activityassistant.repository.UserRepository;
+import com.activityassistant.util.ActivityStatusUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -69,10 +70,14 @@ public class ReviewService {
         Activity activity = activityRepository.findByIdAndIsDeletedFalse(request.getActivityId())
                 .orElseThrow(() -> new NotFoundException("活动不存在"));
 
-        // 2. 验证活动已结束
-        if (!"finished".equals(activity.getStatus()) && !"ended".equals(activity.getStatus())) {
-            throw new BusinessException(INVALID_OPERATION, "只能评价已结束的活动");
+        // 2. 验证活动已结束（动态判断：当前时间 >= 结束时间）
+        if (!ActivityStatusUtils.isActivityFinished(activity)) {
+            String statusText = ActivityStatusUtils.getActivityStatusText(activity);
+            log.warn("活动 {} 尚未结束，当前状态: {}，无法评价", activity.getId(), statusText);
+            throw new BusinessException(INVALID_OPERATION,
+                String.format("只能评价已结束的活动，当前活动状态：%s", statusText));
         }
+        log.info("活动 {} 已结束，允许评价", activity.getId());
 
         // 3. 验证用户已参加活动（报名状态为approved）
         Registration registration = registrationRepository.findByActivityIdAndUserId(request.getActivityId(), userId)
