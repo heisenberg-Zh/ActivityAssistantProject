@@ -10,6 +10,7 @@ import com.activityassistant.model.Registration;
 import com.activityassistant.repository.ActivityRepository;
 import com.activityassistant.repository.CheckinRepository;
 import com.activityassistant.repository.RegistrationRepository;
+import com.activityassistant.util.ActivityStatusUtils;
 import com.activityassistant.util.DistanceUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,10 +68,14 @@ public class CheckinService {
         Activity activity = activityRepository.findById(request.getActivityId())
                 .orElseThrow(() -> new BusinessException(NOT_FOUND, "活动不存在"));
 
-        // 2. 验证活动状态（必须是已发布或进行中）
-        if (!"published".equals(activity.getStatus()) && !"ongoing".equals(activity.getStatus())) {
-            throw new BusinessException(INVALID_OPERATION, "活动未开始，无法签到");
+        // 2. 验证活动是否可以签到（动态判断：开始前30分钟到结束时间）
+        if (!ActivityStatusUtils.canCheckin(activity)) {
+            String statusText = ActivityStatusUtils.getActivityStatusText(activity);
+            log.warn("活动 {} 不在签到时间窗口内，当前状态: {}，无法签到", activity.getId(), statusText);
+            throw new BusinessException(INVALID_OPERATION,
+                String.format("活动不在签到时间窗口内，当前活动状态：%s", statusText));
         }
+        log.info("活动 {} 在签到时间窗口内，允许签到", activity.getId());
 
         // 3. 验证是否已报名
         Registration registration = registrationRepository.findByActivityIdAndUserId(

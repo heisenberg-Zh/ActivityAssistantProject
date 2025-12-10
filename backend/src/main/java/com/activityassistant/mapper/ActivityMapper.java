@@ -9,6 +9,7 @@ import com.activityassistant.model.User;
 import com.activityassistant.repository.RegistrationRepository;
 import com.activityassistant.repository.UserRepository;
 import com.activityassistant.service.IdGeneratorService;
+import com.activityassistant.util.ActivityStatusUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -77,13 +78,19 @@ public class ActivityMapper {
             joined = 0;
         }
 
+        // 【动态计算活动状态】
+        // 使用工具类动态计算活动的实际状态，而不是直接使用数据库中的status字段
+        // 这样确保前端获取到的状态总是准确的，解决了前后端状态不一致的问题
+        String dynamicStatus = ActivityStatusUtils.calculateActivityStatus(activity);
+        log.debug("活动 {} 状态：数据库={}, 动态计算={}", activity.getId(), activity.getStatus(), dynamicStatus);
+
         ActivityVO.ActivityVOBuilder builder = ActivityVO.builder()
                 .id(activity.getId())
                 .title(activity.getTitle())
                 .description(activity.getDescription())
                 .organizerId(activity.getOrganizerId())
                 .type(activity.getType())
-                .status(activity.getStatus())
+                .status(dynamicStatus)  // 使用动态计算的状态，而不是 activity.getStatus()
                 .startTime(activity.getStartTime())
                 .endTime(activity.getEndTime())
                 .registerDeadline(activity.getRegisterDeadline())
