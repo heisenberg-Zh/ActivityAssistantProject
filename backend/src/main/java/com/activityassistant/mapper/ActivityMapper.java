@@ -174,8 +174,14 @@ public class ActivityMapper {
         return Activity.builder()
                 .id(idGeneratorService.generateActivityId())
                 .title(request.getTitle())
+                .desc(request.getDesc())
                 .description(request.getDescription())
+                .requirements(request.getRequirements())
                 .organizerId(organizerId)
+                .organizerPhone(request.getOrganizerPhone())
+                .organizerWechat(request.getOrganizerWechat())
+                .image(request.getImage())
+                .hasGroups(request.getHasGroups() != null ? request.getHasGroups() : false)
                 .type(request.getType())
                 .status(status) // 使用前端传递的status或默认值
                 .startTime(request.getStartTime())
@@ -221,8 +227,26 @@ public class ActivityMapper {
         if (request.getTitle() != null) {
             activity.setTitle(request.getTitle());
         }
+        if (request.getDesc() != null) {
+            activity.setDesc(request.getDesc());
+        }
         if (request.getDescription() != null) {
             activity.setDescription(request.getDescription());
+        }
+        if (request.getRequirements() != null) {
+            activity.setRequirements(request.getRequirements());
+        }
+        if (request.getOrganizerPhone() != null) {
+            activity.setOrganizerPhone(request.getOrganizerPhone());
+        }
+        if (request.getOrganizerWechat() != null) {
+            activity.setOrganizerWechat(request.getOrganizerWechat());
+        }
+        if (request.getImage() != null) {
+            activity.setImage(request.getImage());
+        }
+        if (request.getHasGroups() != null) {
+            activity.setHasGroups(request.getHasGroups());
         }
         if (request.getType() != null) {
             activity.setType(request.getType());

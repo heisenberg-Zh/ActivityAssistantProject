@@ -22,9 +22,43 @@ public class UpdateActivityRequest {
     private String title;
 
     /**
-     * 活动描述
+     * 活动简介
+     */
+    @Size(max = 500, message = "活动简介长度不能超过500个字符")
+    private String desc;
+
+    /**
+     * 活动描述（详细说明）
      */
     private String description;
+
+    /**
+     * 报名要求
+     */
+    private String requirements;
+
+    /**
+     * 组织者联系电话
+     */
+    @Size(max = 20, message = "联系电话长度不能超过20个字符")
+    private String organizerPhone;
+
+    /**
+     * 组织者微信号
+     */
+    @Size(max = 50, message = "微信号长度不能超过50个字符")
+    private String organizerWechat;
+
+    /**
+     * 活动封面图片URL
+     */
+    @Size(max = 500, message = "图片URL长度不能超过500个字符")
+    private String image;
+
+    /**
+     * 是否启用分组
+     */
+    private Boolean hasGroups;
 
     /**
      * 活动类型：运动/聚会/培训/户外
