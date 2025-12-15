@@ -8,7 +8,22 @@
  * @returns {boolean} 是否是创建者
  */
 function isActivityCreator(activity, userId) {
-  return activity.organizerId === userId;
+  // 确保都转换为字符串再比较，避免类型不匹配（数字vs字符串）
+  const orgId = String(activity.organizerId || '').trim();
+  const uid = String(userId || '').trim();
+
+  // 添加调试日志
+  console.log('[权限检查] 创建者ID比较:', {
+    organizerId: activity.organizerId,
+    orgIdType: typeof activity.organizerId,
+    userId: userId,
+    userIdType: typeof userId,
+    orgIdStr: orgId,
+    uidStr: uid,
+    isEqual: orgId === uid
+  });
+
+  return orgId === uid;
 }
 
 /**
@@ -21,7 +36,14 @@ function isActivityAdmin(activity, userId) {
   if (!activity.administrators || activity.administrators.length === 0) {
     return false;
   }
-  return activity.administrators.some(admin => admin.userId === userId);
+
+  // 确保都转换为字符串再比较
+  const uid = String(userId || '').trim();
+
+  return activity.administrators.some(admin => {
+    const adminId = String(admin.userId || '').trim();
+    return adminId === uid;
+  });
 }
 
 /**
@@ -112,11 +134,17 @@ function isInBlacklist(activity, phone, userId = null) {
 function getUserManagedActivities(activities, userId, options = {}) {
   const { includeCreated = true, includeManaged = true } = options;
 
+  // 确保userId是字符串
+  const uid = String(userId || '').trim();
+
   return activities.filter(activity => {
     if (activity.isDeleted) return false;
 
-    // 是否包含创建的活动
-    if (includeCreated && activity.organizerId === userId) return true;
+    // 是否包含创建的活动（使用字符串比较）
+    if (includeCreated) {
+      const orgId = String(activity.organizerId || '').trim();
+      if (orgId === uid) return true;
+    }
 
     // 是否包含被指定为管理员的活动
     if (includeManaged && isActivityAdmin(activity, userId)) return true;
