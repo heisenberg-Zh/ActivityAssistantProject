@@ -119,7 +119,10 @@
 .upload-icon { font-size: 40rpx; color: #9ca3af; }
 
 .preview-card { padding: 24rpx; }
-.preview-banner { height: 160rpx; border-radius: 24rpx; padding: 24rpx; display: flex; align-items: flex-end; margin-bottom: 24rpx; color: #fff; }
+.preview-banner { height: 160rpx; border-radius: 24rpx; padding: 24rpx; display: flex; align-items: flex-end; margin-bottom: 24rpx; color: #fff; position: relative; overflow: hidden; }
+.preview-banner-image { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 0; }
+.preview-banner-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.4) 100%); z-index: 1; }
+.preview-type-badge { position: relative; z-index: 2; }
 .preview-body { display: flex; flex-direction: column; }
 .preview-body .text-sm + .text-sm { margin-top: 8rpx; }
 

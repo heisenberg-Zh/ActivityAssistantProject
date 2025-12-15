@@ -145,8 +145,8 @@
   <view class="card shadow-card form-section">
     <text class="section-title">地点设置</text>
 
-    <!-- 定位模式切换开关 -->
-    <view class="option-row" style="margin-bottom: 24rpx; padding: 20rpx; background: #f0f9ff; border-radius: 16rpx; border-left: 4rpx solid #3b82f6;">
+    <!-- 定位模式切换开关（生产环境隐藏） -->
+    <!-- <view class="option-row" style="margin-bottom: 24rpx; padding: 20rpx; background: #f0f9ff; border-radius: 16rpx; border-left: 4rpx solid #3b82f6;">
       <view class="option-label">
         <text class="text-md text-gray-800">{{useRealLocation ? '🌍 真实定位模式' : '🧪 测试模式'}}</text>
         <text class="text-xs text-gray-500">
@@ -154,7 +154,7 @@
         </text>
       </view>
       <switch checked="{{useRealLocation}}" bindchange="toggleLocationMode" color="#3b82f6" />
-    </view>
+    </view> -->
 
     <view class="form-field">
       <text class="field-label">活动地点 *</text>
@@ -484,7 +484,8 @@
     </view>
   </view>
 
-  <view class="card shadow-card form-section">
+  <!-- 活动海报模块已隐藏，后续需要再开发 -->
+  <!-- <view class="card shadow-card form-section">
     <text class="section-title">活动海报</text>
     <view class="upload-box" bindtap="uploadPoster">
       <text class="upload-icon">☁️</text>
@@ -492,12 +493,14 @@
       <text class="text-xs text-gray-400">支持 JPG、PNG 格式，建议尺寸 750×400</text>
     </view>
     <image wx:if="{{form.poster}}" src="{{form.poster}}" mode="aspectFill" class="poster-preview"></image>
-  </view>
+  </view> -->
 
   <view class="card shadow-card preview-card">
     <text class="section-title">实时预览</text>
-    <view class="preview-banner banner banner--pink">
-      <view class="badge badge--light">{{form.type || '待选择类型'}}</view>
+    <view class="preview-banner">
+      <image class="preview-banner-image" src="{{previewImageUrl}}" mode="aspectFill"></image>
+      <view class="preview-banner-overlay"></view>
+      <view class="badge badge--light preview-type-badge">{{form.type || '待选择类型'}}</view>
     </view>
     <view class="preview-body">
       <text class="text-md text-gray-800 mb-8">{{form.title || '活动名称'}}</text>

@@ -8,11 +8,12 @@ const {
   checkFieldEditability,
   getUserManagedActivities
 } = require('../../utils/activity-management-helper.js');
+const { getActivityImage } = require('../../utils/default-images.js');
 const scheduler = require('../../utils/scheduler.js');
 const notification = require('../../utils/notification.js');
 const app = getApp();
 
-const TYPE_OPTIONS = ['聚会', '培训', '户外', '运动', '会议'];
+const TYPE_OPTIONS = ['聚会', '培训', '户外', '运动', '会议', '其他'];
 
 Page({
   data: {
@@ -25,12 +26,13 @@ Page({
     currentStep: 1,
     todayDate: '', // 今天的日期，用于限制选择范围
     canPublish: false, // 是否可以发布（所有必填步骤已完成）
-    // 地点选择模式
-    useRealLocation: false, // false=测试模式(预设地点), true=真实定位模式
+    // 地点选择模式（生产环境默认使用真实定位）
+    useRealLocation: true, // true=真实定位模式（生产环境）, false=测试模式（开发）
     // 页面显示控制
     pageTitle: '创建活动', // 页面标题
     showDraftButtons: true, // 是否显示草稿和复制按钮
     publishButtonText: '发布', // 发布按钮文本
+    previewImageUrl: '../../images/default-other.jpg', // 预览图片URL
     steps: [
       { index: 1, label: '基本信息', active: true, completed: false },
       { index: 2, label: '时间设置', active: false, completed: false },
@@ -273,9 +275,13 @@ Page({
 
   onTypeChange(e) {
     const index = Number(e.detail.value);
+    const type = this.data.types[index];
+
+    // 更新活动类型和预览图片
     this.setData({
-      'form.type': this.data.types[index],
-      'form.typeIndex': index
+      'form.type': type,
+      'form.typeIndex': index,
+      previewImageUrl: getActivityImage(null, type) // 使用默认图片
     });
     this.checkCanPublish();
   },
@@ -1496,26 +1502,21 @@ Page({
       return;
     }
 
-    // 检查联系方式（友好提示，但不强制）
+    // 【修复】强制要求至少填写一种联系方式
     const hasPhone = form.organizerPhone && form.organizerPhone.trim().length > 0;
     const hasWechat = form.organizerWechat && form.organizerWechat.trim().length > 0;
 
     if (!hasPhone && !hasWechat) {
-      const confirmResult = await new Promise(resolve => {
-        wx.showModal({
-          title: '建议填写联系方式',
-          content: '建议至少填写一种联系方式，便于参与者联系您。是否继续发布？',
-          confirmText: '继续发布',
-          cancelText: '返回填写',
-          success: res => resolve(res.confirm)
-        });
+      wx.showModal({
+        title: '缺少联系方式',
+        content: '为便于参与者联系您，必须至少填写一种联系方式（手机号或微信号）',
+        confirmText: '前往填写',
+        showCancel: false,
+        success: () => {
+          this.setCurrentStep(1); // 返回步骤1填写联系方式
+        }
       });
-
-      if (!confirmResult) {
-        // 用户选择返回填写，切换到步骤1
-        this.setCurrentStep(1);
-        return;
-      }
+      return;
     }
 
     // 如果有分组，验证分组信息完整性
@@ -2070,6 +2071,7 @@ Page({
       originalActivity: activity,
       currentRegistrations,
       fieldEditability,
+      previewImageUrl: getActivityImage(activity.image, activity.type), // 设置预览图片
       // 编辑模式的显示控制
       pageTitle: '活动编辑',
       showDraftButtons: !isPublished, // 已发布活动不显示草稿和复制按钮
