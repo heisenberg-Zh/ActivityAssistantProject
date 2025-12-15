@@ -1,7 +1,22 @@
 // pages/home/index.js
 const { activityAPI, registrationAPI } = require('../../utils/api.js');
 const { calculateActivityStatus } = require('../../utils/formatter.js');
+const { getActivityImage } = require('../../utils/default-images.js');
 const app = getApp();
+
+// 状态到CSS类名的映射
+const STATUS_CLASS_MAP = {
+  '报名中': 'registering',
+  '进行中': 'ongoing',
+  '已结束': 'ended',
+  '已取消': 'cancelled',
+  '已满员': 'full'
+};
+
+// 获取状态对应的CSS类名
+const getStatusClass = (status) => {
+  return STATUS_CLASS_MAP[status] || '';
+};
 
 Page({
   data: {
@@ -11,7 +26,8 @@ Page({
       { name: '聚会', key: '聚会', active: false },
       { name: '培训', key: '培训', active: false },
       { name: '户外', key: '户外', active: false },
-      { name: '运动', key: '运动', active: false }
+      { name: '运动', key: '运动', active: false },
+      { name: '其他', key: '其他', active: false }
     ],
     list: [],
     enrichedActivities: [],
@@ -22,21 +38,30 @@ Page({
     await this.loadActivities();
   },
 
+  // 每次显示页面时刷新数据
+  async onShow() {
+    await this.loadActivities();
+  },
+
+  // 下拉刷新
+  async onPullDownRefresh() {
+    await this.loadActivities();
+    wx.stopPullDownRefresh();
+  },
+
   // 加载活动数据
   async loadActivities() {
     try {
       wx.showLoading({ title: '加载中...' });
 
-      // ========== 【关键】检查登录状态 ==========
+      // 检查登录状态
       const isLoggedIn = app.checkLoginStatus();
       const currentUserId = isLoggedIn ? (app.globalData.currentUserId || null) : null;
-      console.log('用户登录状态:', isLoggedIn, '当前用户ID:', currentUserId);
-      // ========== 登录状态检查结束 ==========
 
-      // 请求活动列表（所有人都可以看）
+      // 请求活动列表
       const activitiesResult = await activityAPI.getList({
-        status: 'published',  // 只显示已发布的活动
-        isPublic: true,       // 只显示公开活动
+        status: 'published',
+        isPublic: true,
         page: 0,
         size: 50,
         sort: 'startTime,asc'
@@ -47,7 +72,7 @@ Page({
         throw new Error(activitiesResult.message || '获取活动列表失败');
       }
 
-      // 获取活动列表（处理分页数据）
+      // 获取活动列表
       const activities = activitiesResult.data.content || activitiesResult.data || [];
 
       // 获取我的报名记录（只有登录用户才请求）
@@ -74,10 +99,15 @@ Page({
         const isRegistered = isLoggedIn && myRegistrations.some(
           r => r.activityId === activity.id && r.status === 'approved'
         );
+        const calculatedStatus = calculateActivityStatus(activity);
+        const imageUrl = getActivityImage(activity.image, activity.type);
+
         return {
           ...activity,
           isRegistered,
-          status: calculateActivityStatus(activity) // 动态计算活动状态
+          status: calculatedStatus,
+          statusClass: getStatusClass(calculatedStatus), // 添加状态CSS类名
+          imageUrl  // 添加图片URL（自定义或默认）
         };
       });
 

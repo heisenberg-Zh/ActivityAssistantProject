@@ -162,6 +162,111 @@
   font-weight: 500;
 }
 
+/* 详情页图片样式 */
+.detail-cover-container {
+  margin: 24rpx;
+  border-radius: 32rpx;
+  overflow: hidden;
+  position: relative;
+  height: 400rpx;
+  box-shadow: 0 12rpx 48rpx rgba(15, 23, 42, 0.12);
+}
+
+.detail-cover-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.detail-cover-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.4) 100%);
+  z-index: 1;
+}
+
+/* 活动类型标签 - 右上角 */
+.detail-type-badge {
+  position: absolute;
+  top: 24rpx;
+  right: 24rpx;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8rpx);
+  padding: 16rpx 28rpx;
+  border-radius: 9999rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.15);
+  z-index: 3;
+}
+
+.detail-type-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1f2937;
+  letter-spacing: 1rpx;
+}
+
+/* 活动状态标签 - 左下角 */
+.detail-status-badge {
+  position: absolute;
+  bottom: 24rpx;
+  left: 24rpx;
+  padding: 16rpx 32rpx;
+  border-radius: 9999rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.2);
+  z-index: 3;
+  backdrop-filter: blur(8rpx);
+}
+
+/* 根据状态使用不同的颜色 */
+.detail-status-badge--registering {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.detail-status-badge--ongoing {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.detail-status-badge--ended {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+}
+
+.detail-status-badge--cancelled {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.detail-status-badge--full {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+/* 默认状态 */
+.detail-status-badge {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+
+.detail-status-text {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 2rpx;
+  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.2);
+}
+
+/* 移除旧的样式 */
+.cover-status {
+  display: none;
+}
+
+.cover-type {
+  display: none;
+}
+
+
 .detail-card { padding: 24rpx 24rpx 32rpx 24rpx; }
 .organizer { display: flex; align-items: center; gap: 16rpx; margin-bottom: 24rpx; }
 .organizer-avatar { width: 80rpx; height: 80rpx; border-radius: 9999rpx; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 32rpx; font-weight: 600; }

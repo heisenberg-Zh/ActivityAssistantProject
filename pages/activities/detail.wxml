@@ -27,15 +27,23 @@
   </view>
 </view>
 
-<view class="detail-cover banner banner--{{detail.banner}}">
-  <view class="cover-status">{{detail.status}}</view>
-  <view class="cover-type">{{detail.type}}</view>
+<view class="detail-cover-container">
+  <image class="detail-cover-image" src="{{detail.imageUrl}}" mode="aspectFill"></image>
+  <view class="detail-cover-overlay"></view>
+
+  <!-- 活动类型标签 - 右上角 -->
+  <view class="detail-type-badge">
+    <text class="detail-type-text">{{detail.type}}</text>
+  </view>
+
+  <!-- 活动状态标签 - 左下角 -->
+  <view class="detail-status-badge detail-status-badge--{{detail.statusClass}}">
+    <text class="detail-status-text">{{detail.status}}</text>
+  </view>
 </view>
 
 <view class="section">
   <view class="card shadow-card detail-card">
-    <text class="text-sm text-gray-500 mb-16">{{detail.desc}}</text>
-
     <view class="organizer">
       <view class="organizer-avatar">{{extra.organizerInitial}}</view>
       <view class="flex-col">
@@ -75,7 +83,7 @@
           <text class="info-hint">报名截止：{{extra.deadline}}</text>
         </view>
       </view>
-      <view class="info-item">
+      <view class="info-item" bindtap="openMap">
         <view class="info-item__icon" style="background:#DCFCE7; color:#047857;">📍</view>
         <view class="flex-col info-item__body">
           <text class="info-label">活动地点</text>

@@ -3,16 +3,26 @@
   <scroll-view scroll-x class="scroll-x" style="padding-bottom: 12rpx;" show-scrollbar="false">
     <block wx:for="{{slides}}" wx:key="id" wx:for-item="item">
       <view class="chip">
-        <view class="card banner banner--{{item.banner}} home-banner">
-          <view class="row-between p-16">
-            <view class="badge badge--dark">{{item.status}}</view>
-            <view class="badge badge--light">{{item.type}}</view>
+        <view class="card home-banner">
+          <image class="banner-image" src="{{item.imageUrl}}" mode="aspectFill"></image>
+          <view class="banner-overlay"></view>
+
+          <!-- 活动类型标签 - 右上角 -->
+          <view class="home-type-badge">
+            <text class="home-badge-text">{{item.type}}</text>
           </view>
-          <view class="p-24">
-            <text class="title" style="color:#ffffff;">{{item.title}}</text>
-            <view class="row mt-12">
-              <text class="text-sm" style="color:#eef2ff;">{{item.date}}</text>
-              <text class="text-sm" style="color:#eef2ff; margin-left:16rpx;">{{item.place}}</text>
+
+          <!-- 活动状态标签 - 左上角 -->
+          <view class="home-status-badge home-status-badge--{{item.statusClass}}">
+            <text class="home-badge-text-white">{{item.status}}</text>
+          </view>
+
+          <!-- 活动信息 - 底部 -->
+          <view class="home-banner-info">
+            <text class="home-banner-title">{{item.title}}</text>
+            <view class="home-banner-meta">
+              <text class="home-banner-meta-text">{{item.date}}</text>
+              <text class="home-banner-meta-text" style="margin-left:16rpx;">{{item.place}}</text>
             </view>
           </view>
         </view>
@@ -56,10 +66,21 @@
 <view class="px-24 pb-24">
   <block wx:for="{{list}}" wx:key="id" wx:for-item="item">
     <view class="card mb-24" bindtap="goDetail" data-id="{{item.id}}">
-      <view class="banner banner--{{item.banner}} row-between">
-        <view class="badge badge--dark">{{item.status}}</view>
-        <view class="badge badge--light">{{item.type}}</view>
+      <view class="banner-container">
+        <image class="banner-image" src="{{item.imageUrl}}" mode="aspectFill"></image>
+        <view class="banner-overlay"></view>
+
+        <!-- 活动类型标签 - 右上角 -->
+        <view class="list-type-badge">
+          <text class="list-badge-text">{{item.type}}</text>
+        </view>
+
+        <!-- 活动状态标签 - 左上角 -->
+        <view class="list-status-badge list-status-badge--{{item.statusClass}}">
+          <text class="list-badge-text-white">{{item.status}}</text>
+        </view>
       </view>
+
       <view class="card--pad">
         <text class="text-lg mb-8">{{item.title}}</text>
         <text class="text-sm mb-12">{{item.desc}}</text>
