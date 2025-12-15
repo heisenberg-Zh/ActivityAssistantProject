@@ -1,0 +1,308 @@
+/* pages/profile/edit.wxss - 微信风格列表布局 */
+
+/* 容器 */
+.container {
+  min-height: 100vh;
+  background: #f7f8fa;
+  padding-bottom: 200rpx;
+}
+
+/* ===== 列表布局 ===== */
+.profile-list {
+  background: #ffffff;
+  margin-top: 24rpx;
+}
+
+/* 列表项 */
+.list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 32rpx;
+  background: #ffffff;
+  border-bottom: 1rpx solid #f0f0f0;
+  transition: background 0.2s;
+}
+
+.list-item:active:not(.readonly) {
+  background: #f7f8fa;
+}
+
+.list-item:last-child {
+  border-bottom: none;
+}
+
+/* 标签 */
+.item-label {
+  font-size: 30rpx;
+  color: #000000;
+  font-weight: 400;
+}
+
+/* 值容器 */
+.item-value-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+/* 值 */
+.item-value {
+  font-size: 30rpx;
+  color: #000000;
+  text-align: right;
+}
+
+.item-value.placeholder {
+  color: #9ca3af;
+}
+
+.item-value.readonly-value {
+  color: #6b7280;
+}
+
+/* 箭头 */
+.item-arrow {
+  font-size: 36rpx;
+  color: #c8c9cc;
+  font-weight: 300;
+  line-height: 1;
+}
+
+/* ===== 头像按钮 ===== */
+.avatar-button {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  border: none;
+  line-height: 1;
+}
+
+.avatar-button::after {
+  border: none;
+}
+
+.avatar-preview {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  background: #f3f4f6;
+}
+
+/* ===== 提示信息 ===== */
+.tips-section {
+  margin-top: 32rpx;
+  padding: 0 32rpx;
+}
+
+.tips-text {
+  display: block;
+  font-size: 24rpx;
+  color: #9ca3af;
+  line-height: 1.6;
+}
+
+/* ===== 保存按钮 ===== */
+.save-section {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24rpx 32rpx;
+  background: #f7f8fa;
+  border-top: 1rpx solid #f0f0f0;
+  z-index: 100;
+}
+
+.save-btn {
+  width: 100%;
+  height: 88rpx;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border-radius: 12rpx;
+  color: #ffffff;
+  font-size: 32rpx;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 16rpx rgba(59, 130, 246, 0.25);
+  border: none;
+  line-height: 1;
+}
+
+.save-btn::after {
+  border: none;
+}
+
+.save-btn:disabled {
+  background: #d1d5db;
+  box-shadow: none;
+  color: #9ca3af;
+}
+
+.save-btn:active:not([disabled]) {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+/* ===== 弹窗样式 ===== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48rpx;
+  animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 600rpx;
+  background: #ffffff;
+  border-radius: 24rpx;
+  overflow: hidden;
+  animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(40rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 弹窗头部 */
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx 32rpx 24rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.modal-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.modal-close {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36rpx;
+  color: #9ca3af;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.modal-close:active {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+/* 弹窗内容 */
+.modal-body {
+  padding: 32rpx;
+}
+
+.modal-input {
+  width: 100%;
+  height: 88rpx;
+  background: #f9fafb;
+  border-radius: 12rpx;
+  padding: 0 24rpx;
+  font-size: 30rpx;
+  color: #1f2937;
+  border: 2rpx solid #e5e7eb;
+  box-sizing: border-box;
+}
+
+.modal-input:focus {
+  border-color: #3b82f6;
+  background: #ffffff;
+}
+
+.input-counter {
+  display: block;
+  text-align: right;
+  font-size: 24rpx;
+  color: #9ca3af;
+  margin-top: 12rpx;
+}
+
+.input-hint {
+  display: block;
+  font-size: 24rpx;
+  color: #9ca3af;
+  margin-top: 12rpx;
+  line-height: 1.6;
+}
+
+/* 弹窗底部 */
+.modal-footer {
+  display: flex;
+  gap: 16rpx;
+  padding: 24rpx 32rpx 32rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.modal-btn {
+  flex: 1;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  font-weight: 500;
+  border: none;
+  padding: 0;
+  line-height: 1;
+}
+
+.modal-btn::after {
+  border: none;
+}
+
+.modal-btn.cancel {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.modal-btn.cancel:active {
+  background: #e5e7eb;
+}
+
+.modal-btn.confirm {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #ffffff;
+  box-shadow: 0 4rpx 12rpx rgba(59, 130, 246, 0.25);
+}
+
+.modal-btn.confirm:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
