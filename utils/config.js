@@ -83,7 +83,7 @@ const WX_CONFIG = {
 // 业务配置
 const BUSINESS_CONFIG = {
   // 活动类型
-  activityTypes: ['聚会', '培训', '户外', '运动', '会议'],
+  activityTypes: ['聚会', '培训', '户外', '运动', '会议', '其他'],
 
   // 费用类型
   feeTypes: ['免费', 'AA', '统一收费'],

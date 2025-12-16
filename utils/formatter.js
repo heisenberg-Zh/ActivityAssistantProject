@@ -92,16 +92,30 @@ const calculateActivityStatus = (activity) => {
   const parseTime = (timeStr) => {
     if (!timeStr) return null;
     try {
-      let dateStr = timeStr;
+      // 类型检查
+      if (typeof timeStr !== 'string') {
+        return null;
+      }
+
+      let dateStr = timeStr.trim();
+
       // 如果包含空格（后端可能返回这种格式），转换为ISO格式
-      if (dateStr.includes && dateStr.includes(' ') && !dateStr.includes('T')) {
+      if (dateStr.includes(' ') && !dateStr.includes('T')) {
         dateStr = dateStr.replace(' ', 'T');
       }
+
       // 移除毫秒部分
-      dateStr = dateStr.replace && dateStr.replace(/\.\d+/, '');
-      return new Date(dateStr);
+      dateStr = dateStr.replace(/\.\d+/, '');
+
+      const date = new Date(dateStr);
+
+      // 验证日期是否有效
+      if (isNaN(date.getTime())) {
+        return null;
+      }
+
+      return date;
     } catch (err) {
-      console.error('解析时间失败:', timeStr, err);
       return null;
     }
   };
@@ -110,9 +124,8 @@ const calculateActivityStatus = (activity) => {
   const startTime = parseTime(activity.startTime);
   const endTime = parseTime(activity.endTime);
 
-  // 3. 如果时间解析失败，回退到使用数据库状态
+  // 3. 如果时间解析失败，回退到使用数据库状态（静默处理，不输出警告）
   if (!registerDeadline || !startTime || !endTime) {
-    console.warn('活动时间解析失败，使用数据库状态:', activity.id);
     return translateActivityStatus(activity.status);
   }
 

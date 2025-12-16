@@ -280,8 +280,8 @@ Page({
         wx.navigateTo({ url: `/pages/activities/create?mode=copy&id=${id}` });
         break;
       case 'checkin':
-        // 跳转到签到页面
-        wx.navigateTo({ url: '/pages/checkin/index' });
+        // 跳转到签到页面（传递活动ID）
+        wx.navigateTo({ url: `/pages/checkin/index?id=${id}` });
         break;
       case 'cancelRegistration':
         // 取消报名
@@ -627,6 +627,32 @@ Page({
       return;
     }
 
+    // 【关键】获取活动详情，确认活动确实已结束
+    const activity = this.data.display.find(item => item.id === currentActivityId);
+    if (!activity) {
+      wx.showToast({ title: '活动信息不存在', icon: 'none' });
+      return;
+    }
+
+    // 再次确认活动已结束
+    if (activity.status !== '已结束') {
+      console.warn('活动状态不是"已结束":', activity.status);
+      wx.showModal({
+        title: '提示',
+        content: `当前活动状态为"${activity.status}"，暂时无法评价。请等待活动结束后再试。`,
+        showCancel: false
+      });
+      return;
+    }
+
+    console.log('准备提交评价:', {
+      activityId: currentActivityId,
+      activityTitle: activity.title,
+      activityStatus: activity.status,
+      rating,
+      contentLength: reviewText.trim().length
+    });
+
     try {
       // 调用真实API提交评价
       const requestData = {
@@ -649,6 +675,7 @@ Page({
 
         console.log('评价提交成功:', result.data);
       } else {
+        console.error('评价提交失败:', result);
         wx.showToast({
           title: result.message || '提交失败',
           icon: 'none',
@@ -657,10 +684,17 @@ Page({
       }
     } catch (err) {
       console.error('提交评价失败:', err);
+
+      // 针对"只能评价已结束的活动"错误给出更友好的提示
+      let errorMessage = err.message || '提交失败，请稍后重试';
+      if (errorMessage.includes('只能评价已结束的活动')) {
+        errorMessage = '活动还未完全结束，请稍后再试。如果活动已经结束，请联系管理员处理。';
+      }
+
       wx.showToast({
-        title: err.message || '提交失败，请稍后重试',
+        title: errorMessage,
         icon: 'none',
-        duration: 2000
+        duration: 3000
       });
     }
   },

@@ -68,19 +68,28 @@ Page({
           description: favorite.activityDescription,
           type: favorite.activityType,
           status: favorite.activityStatus,
-          startTime: favorite.startTime,
-          endTime: favorite.endTime,
-          registerDeadline: favorite.registerDeadline,  // 添加报名截止时间
+          startTime: favorite.startTime || favorite.activityStartTime || null,
+          endTime: favorite.endTime || favorite.activityEndTime || null,
+          registerDeadline: favorite.registerDeadline || favorite.activityRegisterDeadline || null,
           place: favorite.place,
           organizerId: favorite.organizerId,
           organizerName: favorite.organizerName,
           joined: favorite.joined,
-          total: favorite.total
+          total: favorite.total,
+          isPublic: favorite.isPublic !== undefined ? favorite.isPublic : true  // 获取公开状态，默认为公开
         };
 
         // 添加标签和动态计算状态
         const enrichedActivity = enrichActivityWithTags(activity, currentUserId);
-        enrichedActivity.status = calculateActivityStatus(activity);  // 动态计算状态
+
+        // 只有在时间字段完整时才动态计算状态，否则使用数据库状态
+        if (activity.startTime && activity.endTime && activity.registerDeadline) {
+          enrichedActivity.status = calculateActivityStatus(activity);
+        } else {
+          // 使用数据库返回的状态，并翻译为中文
+          const { translateActivityStatus } = require('../../utils/formatter.js');
+          enrichedActivity.status = translateActivityStatus(activity.status);
+        }
 
         return enrichedActivity;
       });

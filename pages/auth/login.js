@@ -6,7 +6,7 @@ const app = getApp();
 Page({
   data: {
     canLogin: true,
-    isDev: true  // 开发模式标志，生产环境设为false
+    isDev: false  // 生产环境：禁用开发模式登录
   },
 
   /**
