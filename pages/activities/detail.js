@@ -13,7 +13,22 @@ const { formatDateCN, getRelativeTime, isBeforeRegisterDeadline } = require('../
 const { openMapNavigation } = require('../../utils/location.js');
 const { checkActivityViewPermission } = require('../../utils/activity-helper.js');
 const { checkManagementPermission } = require('../../utils/activity-management-helper.js');
+const { getActivityImage } = require('../../utils/default-images.js');
 const app = getApp();
+
+// 状态到CSS类名的映射
+const STATUS_CLASS_MAP = {
+  '报名中': 'registering',
+  '进行中': 'ongoing',
+  '已结束': 'ended',
+  '已取消': 'cancelled',
+  '已满员': 'full'
+};
+
+// 获取状态对应的CSS类名
+const getStatusClass = (status) => {
+  return STATUS_CLASS_MAP[status] || '';
+};
 
 Page({
   data: {
@@ -321,7 +336,9 @@ Page({
       // 设置活动详情（使用动态计算的状态）
       const enrichedDetail = {
         ...detail,
-        status: dynamicStatus // 使用动态计算的状态
+        status: dynamicStatus, // 使用动态计算的状态
+        statusClass: getStatusClass(dynamicStatus), // 添加状态CSS类名
+        imageUrl: getActivityImage(detail.image, detail.type) // 添加图片URL（自定义或默认）
       };
 
       this.setData({

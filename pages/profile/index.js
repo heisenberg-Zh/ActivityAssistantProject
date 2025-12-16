@@ -6,13 +6,13 @@ const app = getApp();
 // 统一菜单列表（按需求顺序排列）
 // 注意：消息中心的badge数量会在页面加载时动态更新
 const menuLinks = [
-  { key: 'my-activities', label: '我的活动', icon: '活', bg: '#dbeafe', color: '#1d4ed8' },
-  { key: 'messages', label: '消息中心', icon: '信', bg: '#fee2e2', color: '#b91c1c', badge: '' },
-  { key: 'favorites', label: '我的收藏', icon: '藏', bg: '#ede9fe', color: '#6d28d9' },
-  { key: 'feedback', label: '帮助与反馈', icon: '帮', bg: '#fef3c7', color: '#b45309' },
-  { key: 'about', label: '关于我们', icon: '关', bg: '#e0e7ff', color: '#4338ca' },
-  { key: 'privacy', label: '隐私政策', icon: '隐', bg: '#f3e8ff', color: '#7c3aed' },
-  { key: 'settings', label: '设置', icon: '设', bg: '#fce7f3', color: '#be185d' }
+  { key: 'my-activities', label: '我的活动', icon: '📋', bg: '#93c5fd', color: '#1e3a8a' },
+  { key: 'messages', label: '消息中心', icon: '📬', bg: '#fca5a5', color: '#7f1d1d', badge: '' },
+  { key: 'favorites', label: '我的收藏', icon: '⭐', bg: '#c4b5fd', color: '#4c1d95' },
+  { key: 'feedback', label: '帮助与反馈', icon: '💬', bg: '#fcd34d', color: '#78350f' },
+  { key: 'about', label: '关于我们', icon: 'ℹ️', bg: '#a5b4fc', color: '#312e81' },
+  { key: 'privacy', label: '隐私政策', icon: '🔒', bg: '#d8b4fe', color: '#581c87' },
+  { key: 'settings', label: '设置', icon: '⚙️', bg: '#f9a8d4', color: '#831843' }
 ];
 
 Page({
@@ -22,12 +22,13 @@ Page({
       role: '用户',
       id: '',
       tagline: '',
-      initial: ''
+      initial: '',
+      avatarUrl: '' // 添加头像URL字段
     },
     stats: [
-      { label: '创建活动', value: 0, icon: '＋', bg: '#dbeafe', color: '#1d4ed8' },
-      { label: '参与活动', value: 0, icon: '人', bg: '#dcfce7', color: '#047857' },
-      { label: '签到率', value: '0%', icon: '✔', bg: '#fee2e2', color: '#b91c1c' }
+      { label: '创建活动', value: 0, icon: '🎉', bg: '#93c5fd', color: '#1e3a8a' },
+      { label: '参与活动', value: 0, icon: '📅', bg: '#86efac', color: '#14532d' },
+      { label: '签到率', value: '0%', icon: '✅', bg: '#fca5a5', color: '#7f1d1d' }
     ],
     menuLinks,
     // 帮助与反馈弹窗相关
@@ -88,12 +89,13 @@ Page({
             role: '点击登录按钮登录',
             id: '',
             tagline: '',
-            initial: '游'
+            initial: '游',
+            avatarUrl: ''
           },
           stats: [
-            { label: '创建活动', value: '-', icon: '＋', bg: '#dbeafe', color: '#1d4ed8' },
-            { label: '参与活动', value: '-', icon: '人', bg: '#dcfce7', color: '#047857' },
-            { label: '签到率', value: '-', icon: '✔', bg: '#fee2e2', color: '#b91c1c' }
+            { label: '创建活动', value: '-', icon: '🎉', bg: '#93c5fd', color: '#1e3a8a' },
+            { label: '参与活动', value: '-', icon: '📅', bg: '#86efac', color: '#14532d' },
+            { label: '签到率', value: '-', icon: '✅', bg: '#fca5a5', color: '#7f1d1d' }
           ],
           loading: false
         });
@@ -120,14 +122,30 @@ Page({
           // 对用户输入数据进行安全清理
           const userName = sanitizeInput(userData.nickname || '用户', { maxLength: 50 });
 
+          // 处理头像URL：如果为空则使用默认头像
+          let avatarUrl = userData.avatar || '';
+
+          // 调试日志
+          console.log('后端返回的头像URL:', avatarUrl);
+
+          // 如果头像URL为空，不设置（将显示首字母）
+          // 如果想使用默认头像图片，可以设置为 '/activityassistant_avatar_01.png'
+
           this.setData({
             user: {
               name: userName,
               role: this.getRoleText(userData.role),
               id: userData.id || '',
-              tagline: '', // 后端暂无此字段，保留为空
-              initial: userName[0] || '用'
+              tagline: '', // 后端暂无此字段,保留为空
+              initial: userName[0] || '用',
+              avatarUrl: avatarUrl // 保持原样，空字符串将显示首字母，有URL则显示图片
             }
+          });
+
+          console.log('用户信息加载完成:', {
+            name: userName,
+            avatarUrl: avatarUrl,
+            hasAvatar: !!avatarUrl
           });
         }
 
@@ -144,23 +162,23 @@ Page({
               {
                 label: '创建活动',
                 value: statsData.createdActivities || 0,
-                icon: '＋',
-                bg: '#dbeafe',
-                color: '#1d4ed8'
+                icon: '🎉',
+                bg: '#93c5fd',
+                color: '#1e3a8a'
               },
               {
                 label: '参与活动',
                 value: statsData.participatedActivities || 0,
-                icon: '人',
-                bg: '#dcfce7',
-                color: '#047857'
+                icon: '📅',
+                bg: '#86efac',
+                color: '#14532d'
               },
               {
                 label: '签到率',
                 value: checkinRateValue,
-                icon: '✔',
-                bg: '#fee2e2',
-                color: '#b91c1c'
+                icon: '✅',
+                bg: '#fca5a5',
+                color: '#7f1d1d'
               }
             ]
           });
@@ -206,12 +224,13 @@ Page({
             role: '点击登录按钮登录',
             id: '',
             tagline: '',
-            initial: '游'
+            initial: '游',
+            avatarUrl: ''
           },
           stats: [
-            { label: '创建活动', value: '-', icon: '＋', bg: '#dbeafe', color: '#1d4ed8' },
-            { label: '参与活动', value: '-', icon: '人', bg: '#dcfce7', color: '#047857' },
-            { label: '签到率', value: '-', icon: '✔', bg: '#fee2e2', color: '#b91c1c' }
+            { label: '创建活动', value: '-', icon: '🎉', bg: '#93c5fd', color: '#1e3a8a' },
+            { label: '参与活动', value: '-', icon: '📅', bg: '#86efac', color: '#14532d' },
+            { label: '签到率', value: '-', icon: '✅', bg: '#fca5a5', color: '#7f1d1d' }
           ]
         });
 
@@ -234,12 +253,13 @@ Page({
             role: '点击登录按钮登录',
             id: '',
             tagline: '',
-            initial: '游'
+            initial: '游',
+            avatarUrl: ''
           },
           stats: [
-            { label: '创建活动', value: '-', icon: '＋', bg: '#dbeafe', color: '#1d4ed8' },
-            { label: '参与活动', value: '-', icon: '人', bg: '#dcfce7', color: '#047857' },
-            { label: '签到率', value: '-', icon: '✔', bg: '#fee2e2', color: '#b91c1c' }
+            { label: '创建活动', value: '-', icon: '🎉', bg: '#93c5fd', color: '#1e3a8a' },
+            { label: '参与活动', value: '-', icon: '📅', bg: '#86efac', color: '#14532d' },
+            { label: '签到率', value: '-', icon: '✅', bg: '#fca5a5', color: '#7f1d1d' }
           ]
         });
       }
@@ -268,12 +288,13 @@ Page({
           role: '活动组织者（离线）',
           id: currentUserId,
           tagline: '',
-          initial: (currentUser.name || 'T')[0]
+          initial: (currentUser.name || 'T')[0],
+          avatarUrl: currentUser.avatar || '/activityassistant_avatar_01.png'
         },
         stats: [
-          { label: '创建活动', value: 12, icon: '＋', bg: '#dbeafe', color: '#1d4ed8' },
-          { label: '参与活动', value: 25, icon: '人', bg: '#dcfce7', color: '#047857' },
-          { label: '签到率', value: '95%', icon: '✔', bg: '#fee2e2', color: '#b91c1c' }
+          { label: '创建活动', value: 12, icon: '🎉', bg: '#93c5fd', color: '#1e3a8a' },
+          { label: '参与活动', value: 25, icon: '📅', bg: '#86efac', color: '#14532d' },
+          { label: '签到率', value: '95%', icon: '✅', bg: '#fca5a5', color: '#7f1d1d' }
         ],
         loading: false
       });
@@ -390,6 +411,10 @@ Page({
       default:
         break;
     }
+  },
+
+  goEditProfile() {
+    wx.navigateTo({ url: '/pages/profile/edit' });
   },
 
   goMyActivities() {
@@ -526,12 +551,13 @@ Page({
                 role: '点击登录按钮登录',
                 id: '',
                 tagline: '',
-                initial: '游'
+                initial: '游',
+                avatarUrl: ''
               },
               stats: [
-                { label: '创建活动', value: '-', icon: '＋', bg: '#dbeafe', color: '#1d4ed8' },
-                { label: '参与活动', value: '-', icon: '人', bg: '#dcfce7', color: '#047857' },
-                { label: '签到率', value: '-', icon: '✔', bg: '#fee2e2', color: '#b91c1c' }
+                { label: '创建活动', value: '-', icon: '🎉', bg: '#93c5fd', color: '#1e3a8a' },
+                { label: '参与活动', value: '-', icon: '📅', bg: '#86efac', color: '#14532d' },
+                { label: '签到率', value: '-', icon: '✅', bg: '#fca5a5', color: '#7f1d1d' }
               ],
               loading: false
             });
@@ -548,5 +574,18 @@ Page({
     wx.navigateTo({
       url: '/pages/auth/login'
     });
+  },
+
+  /**
+   * 头像加载失败处理
+   */
+  onAvatarError(e) {
+    console.warn('头像加载失败:', e.detail);
+    // 头像加载失败时，清除 avatarUrl，显示首字母
+    if (this.data.user.avatarUrl) {
+      this.setData({
+        'user.avatarUrl': ''
+      });
+    }
   }
 });

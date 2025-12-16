@@ -4,7 +4,7 @@
     <view class="privacy-title">用户隐私保护指引</view>
 
     <view class="privacy-section">
-      <text class="privacy-text">感谢您使用ActivityAssistant活动助手！</text>
+      <text class="privacy-text">感谢您使用 ActivityAssistant 活动助手！</text>
       <text class="privacy-text">为了更好地为您提供服务，我们需要获取以下权限：</text>
     </view>
 
@@ -33,6 +33,7 @@
       <text class="privacy-hint">• 您可以随时在设置中管理权限</text>
     </view>
 
+    <button class="privacy-view-btn" bindtap="viewPrivacyContract">查看《隐私政策》</button>
     <button class="privacy-agree-btn" bindtap="agreePrivacy">同意并继续</button>
     <button class="privacy-disagree-btn" bindtap="disagreePrivacy">暂不使用</button>
   </view>

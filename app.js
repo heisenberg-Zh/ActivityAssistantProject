@@ -21,29 +21,17 @@ App({
   },
 
   onLaunch() {
-    console.log('ActivityAssistant app launched');
+    console.log('====== 小程序启动 ======');
 
     // 打印环境配置信息
-    console.log('====== 环境配置 ======');
     console.log('当前环境:', API_CONFIG.env);
     console.log('API地址:', API_CONFIG.baseUrl);
-    console.log('使用Mock:', API_CONFIG.useMock);
-    console.log('环境说明:', API_CONFIG.description);
-    console.log('====================');
 
-    // 清理损坏的存储数据（修复升级后的兼容性问题）
+    // 清理损坏的存储数据
     try {
       const cleanedCount = cleanCorruptedStorage();
       if (cleanedCount > 0) {
         console.log(`🧹 已清理 ${cleanedCount} 个损坏的存储项`);
-      }
-
-      // 存储健康检查
-      const healthReport = checkStorageHealth();
-      if (!healthReport.healthy) {
-        console.warn('⚠️ 存储健康检查发现问题:', healthReport.issues);
-      } else {
-        console.log('✅ 存储健康检查通过');
       }
     } catch (err) {
       console.error('清理存储时出错:', err);
@@ -55,20 +43,24 @@ App({
     // 检查更新
     this.checkForUpdate();
 
-    // 初始化用户信息
+    // 初始化用户信息（从本地读取）
     this.initUserInfo();
 
-    // 后台静默检查登录状态（不自动登录，允许游客模式）
-    this.checkLoginStatus();
+    // 【核心】静默登录 - 保持登录状态
+    this.silentLogin();
 
     // 检查定时任务
     this.checkScheduledTasks();
   },
 
   onShow() {
-    console.log('App onShow - 检查定时任务');
+    console.log('====== 小程序唤醒 ======');
+
     // 每次小程序显示时检查定时任务
     this.checkScheduledTasks();
+
+    // 【核心】检查登录状态，如有需要则续期
+    this.checkAndRefreshLogin();
   },
 
   // 获取系统信息
@@ -162,7 +154,7 @@ App({
         this.globalData.currentUserId = currentUserId || 'u1';
         this.globalData.currentUser = currentUser || {
           id: 'u1',
-          name: '张小北',
+          name: '张小匠',
           avatar: '/activityassistant_avatar_01.png'
         };
         console.log('✅ 用户信息已加载:', this.globalData.currentUser);
@@ -173,7 +165,7 @@ App({
         this.globalData.currentUserId = 'u1';
         this.globalData.currentUser = {
           id: 'u1',
-          name: '张小北',
+          name: '张小匠',
           avatar: '/activityassistant_avatar_01.png'
         };
       }
@@ -184,7 +176,7 @@ App({
       this.globalData.currentUserId = 'u1';
       this.globalData.currentUser = {
         id: 'u1',
-        name: '张小北',
+        name: '张小匠',
         avatar: '/activityassistant_avatar_01.png'
       };
     }
@@ -193,6 +185,155 @@ App({
   // 检查登录状态
   checkLoginStatus() {
     return this.globalData.isLoggedIn;
+  },
+
+  /**
+   * 静默登录 - 在小程序启动时自动登录
+   * 适用场景：
+   * 1. 首次打开小程序（未登录）
+   * 2. 曾经登录过但Token已过期
+   * 3. 微信登录态有效，自动续期
+   */
+  async silentLogin() {
+    try {
+      console.log('🔐 开始静默登录检查...');
+
+      // 检查是否已有Token
+      const token = wx.getStorageSync('token');
+      const isLoggedIn = wx.getStorageSync('isLoggedIn');
+
+      if (!token || !isLoggedIn) {
+        console.log('💡 未登录或Token丢失，尝试自动登录');
+        await this.performSilentLogin();
+        return;
+      }
+
+      // 有Token，检查微信登录态是否有效
+      console.log('💡 检查微信登录态...');
+      wx.checkSession({
+        success: async () => {
+          console.log('✅ 微信登录态有效，Token可继续使用');
+          // 微信登录态有效，Token也可以继续使用
+          this.globalData.isLoggedIn = true;
+        },
+        fail: async () => {
+          console.log('⚠️ 微信登录态已过期，重新静默登录');
+          // 微信登录态失效，需要重新登录
+          await this.performSilentLogin();
+        }
+      });
+    } catch (err) {
+      console.error('❌ 静默登录检查失败:', err);
+    }
+  },
+
+  /**
+   * 检查并刷新登录状态 - 在小程序onShow时调用
+   * 避免频繁刷新，使用节流机制
+   */
+  async checkAndRefreshLogin() {
+    try {
+      // 节流：距离上次检查少于30秒，跳过
+      const now = Date.now();
+      if (this._lastLoginCheck && (now - this._lastLoginCheck) < 30000) {
+        return;
+      }
+      this._lastLoginCheck = now;
+
+      const token = wx.getStorageSync('token');
+      if (!token) {
+        console.log('💡 onShow: 未登录，尝试静默登录');
+        await this.performSilentLogin();
+        return;
+      }
+
+      // 检查微信登录态
+      wx.checkSession({
+        success: () => {
+          console.log('✅ onShow: 微信登录态有效');
+        },
+        fail: async () => {
+          console.log('⚠️ onShow: 微信登录态失效，重新登录');
+          await this.performSilentLogin();
+        }
+      });
+    } catch (err) {
+      console.error('❌ onShow登录检查失败:', err);
+    }
+  },
+
+  /**
+   * 执行静默登录
+   * 核心逻辑：调用wx.login获取code，然后调用后端登录接口
+   */
+  async performSilentLogin() {
+    try {
+      console.log('🔄 执行静默登录...');
+
+      // 第一步：获取微信登录code
+      const code = await this.getWxLoginCode();
+      console.log('✅ 获取到微信code');
+
+      // 第二步：调用后端登录API
+      const response = await this.callLoginAPI(code);
+
+      if (response.code === 0 && response.data) {
+        const { token, userInfo } = response.data;
+
+        // 第三步：保存登录信息
+        wx.setStorageSync('token', token);
+        wx.setStorageSync('isLoggedIn', true);
+
+        try {
+          setSecureStorage('userInfo', {
+            nickName: userInfo.nickname,
+            avatarUrl: userInfo.avatar,
+            id: userInfo.id
+          });
+          setSecureStorage('currentUserId', userInfo.id);
+          setSecureStorage('currentUser', {
+            id: userInfo.id,
+            name: userInfo.nickname,
+            avatar: userInfo.avatar
+          });
+        } catch (err) {
+          // 加密存储失败，使用普通存储
+          wx.setStorageSync('userInfo', {
+            nickName: userInfo.nickname,
+            avatarUrl: userInfo.avatar,
+            id: userInfo.id
+          });
+          wx.setStorageSync('currentUserId', userInfo.id);
+          wx.setStorageSync('currentUser', {
+            id: userInfo.id,
+            name: userInfo.nickname,
+            avatar: userInfo.avatar
+          });
+        }
+
+        // 第四步：更新全局数据
+        this.globalData.isLoggedIn = true;
+        this.globalData.currentUserId = userInfo.id;
+        this.globalData.userInfo = {
+          nickName: userInfo.nickname,
+          avatarUrl: userInfo.avatar,
+          id: userInfo.id
+        };
+        this.globalData.currentUser = {
+          id: userInfo.id,
+          name: userInfo.nickname,
+          avatar: userInfo.avatar
+        };
+
+        console.log('✅ 静默登录成功:', userInfo.nickname || userInfo.id);
+      } else {
+        console.warn('⚠️ 静默登录失败:', response.message);
+        // 失败不影响使用，允许游客模式
+      }
+    } catch (err) {
+      console.error('❌ 静默登录异常:', err);
+      // 异常不影响使用，允许游客模式
+    }
   },
 
   // 要求登录
@@ -224,64 +365,14 @@ App({
     this.globalData.currentUserId = null;
     this.globalData.currentUser = null;
     try {
-      // 清除所有用户相关的存储（包括加密的）
+      // 清除所有用户相关的存储
       wx.removeStorageSync('userInfo');
       wx.removeStorageSync('isLoggedIn');
       wx.removeStorageSync('currentUserId');
       wx.removeStorageSync('currentUser');
-      wx.removeStorageSync('user_token');
+      wx.removeStorageSync('token');
     } catch (err) {
       console.error('清除用户信息失败:', err);
-    }
-  },
-
-  // 自动登录（开发环境）
-  async autoLogin() {
-    // Mock模式下不需要登录
-    if (API_CONFIG.useMock) {
-      console.log('Mock模式，跳过自动登录');
-      return;
-    }
-
-    try {
-      // 检查是否已有有效token
-      const existingToken = wx.getStorageSync('token');
-      if (existingToken) {
-        console.log('✅ 已有token，跳过自动登录');
-        this.globalData.isLoggedIn = true;
-        return;
-      }
-
-      console.log('🔐 开始自动登录...');
-
-      // 开发环境使用测试code，生产环境使用wx.login()
-      const code = API_CONFIG.env === 'development' ? 'test_code_dev' : await this.getWxLoginCode();
-
-      // 调用登录API
-      const response = await this.callLoginAPI(code);
-
-      if (response.code === 0 && response.data) {
-        const { token, userInfo } = response.data;  // 修正：后端返回 userInfo 而不是 user
-
-        // 保存token和用户信息
-        wx.setStorageSync('token', token);
-        wx.setStorageSync('isLoggedIn', true);
-        setSecureStorage('userInfo', userInfo);
-        setSecureStorage('currentUser', userInfo);
-        setSecureStorage('currentUserId', userInfo.id);  // 修正：后端返回 id 而不是 userId
-
-        // 更新全局数据
-        this.globalData.isLoggedIn = true;
-        this.globalData.currentUserId = userInfo.id;  // 修正：使用 id 而不是 userId
-        this.globalData.currentUser = userInfo;
-        this.globalData.userInfo = userInfo;
-
-        console.log('✅ 自动登录成功:', userInfo.nickname || userInfo.id);
-      } else {
-        console.warn('⚠️ 自动登录失败:', response.message);
-      }
-    } catch (err) {
-      console.error('❌ 自动登录异常:', err);
     }
   },
 

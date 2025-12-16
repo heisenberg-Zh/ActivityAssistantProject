@@ -6,7 +6,7 @@ const { transformResponse, transformRequest } = require('./data-adapter.js');
 // 模拟网络延迟
 const delay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
 
-// 通用请求封装（支持超时、重试、缓存）
+// 通用请求封装（支持超时、重试、缓存、401自动刷新）
 const request = async (url, options = {}) => {
   // 从全局配置获取useMock设置
   const app = getApp();
@@ -15,24 +15,23 @@ const request = async (url, options = {}) => {
   const {
     method = 'GET',
     data = {},
-    mock = globalUseMock,    // 默认使用全局配置的mock设置
-    useCache = false,        // 是否使用缓存（仅GET请求）
-    cacheMaxAge = 5 * 60 * 1000, // 缓存时长（默认5分钟）
-    timeout = 10000,         // 超时时间
-    retryCount = 2,          // 重试次数
-    showLoading = false,     // 是否显示loading
-    showError = true         // 是否显示错误提示
+    mock = globalUseMock,
+    useCache = false,
+    cacheMaxAge = 5 * 60 * 1000,
+    timeout = 10000,
+    retryCount = 2,
+    showLoading = false,
+    showError = true,
+    _retry401 = true  // 内部参数：是否重试401错误
   } = options;
 
   // Mock模式
   if (mock) {
-    // 模拟网络延迟
     await delay(300);
     return mockRequest(url, method, data);
   }
 
   // 真实API调用
-  // 过滤掉值为 null 或 undefined 的参数（针对 GET 请求）
   let cleanedData = data;
   if (method === 'GET' && data && typeof data === 'object') {
     cleanedData = Object.keys(data).reduce((acc, key) => {
@@ -43,7 +42,7 @@ const request = async (url, options = {}) => {
     }, {});
   }
 
-  // 如果是GET请求且启用缓存，先尝试从缓存获取
+  // 缓存检查
   if (method === 'GET' && useCache) {
     const cacheKey = requestCache.generateKey(url, cleanedData);
     const cached = requestCache.get(cacheKey);
@@ -57,8 +56,6 @@ const request = async (url, options = {}) => {
     return new Promise((resolve, reject) => {
       const app = getApp();
       const apiBase = app?.globalData?.apiBase || '';
-
-      // 转换请求数据（前端格式 -> 后端格式）
       const transformedData = transformRequest(cleanedData, url, method);
 
       wx.request({
@@ -72,20 +69,15 @@ const request = async (url, options = {}) => {
         timeout,
         success: (res) => {
           if (res.statusCode === 200) {
-            // 解析响应数据
             try {
               let result = res.data;
 
-              // 如果响应包含 data 字段（统一响应格式）
               if (result && result.data !== undefined) {
-                // 转换响应数据（后端格式 -> 前端格式）
                 result.data = transformResponse(result.data, url);
               } else {
-                // 直接转换整个响应
                 result = transformResponse(result, url);
               }
 
-              // 如果是GET请求且启用缓存，保存到缓存
               if (method === 'GET' && useCache) {
                 const cacheKey = requestCache.generateKey(url, cleanedData);
                 requestCache.set(cacheKey, result);
@@ -100,21 +92,13 @@ const request = async (url, options = {}) => {
               });
             }
           } else if (res.statusCode === 401) {
-            // 未授权，跳转登录
+            // 未授权 - 尝试静默刷新Token
             reject({
-              type: NetworkErrorType.SERVER_ERROR,
-              message: '登录已过期，请重新登录',
-              statusCode: 401
+              type: 'AUTH_EXPIRED',
+              message: '登录状态已过期',
+              statusCode: 401,
+              needRetry: true
             });
-
-            // 清除登录状态
-            wx.removeStorageSync('token');
-            wx.removeStorageSync('isLoggedIn');
-
-            // 跳转登录页
-            setTimeout(() => {
-              wx.navigateTo({ url: '/pages/auth/login' });
-            }, 1500);
           } else if (res.statusCode >= 500) {
             // 服务器错误
             reject({
@@ -143,13 +127,59 @@ const request = async (url, options = {}) => {
     });
   };
 
-  // 使用带重试的请求
-  return requestWithRetry(requestFn, {
-    timeout,
-    retryCount,
-    showLoading,
-    showError
-  });
+  // 使用带重试的请求，并处理401错误
+  try {
+    const result = await requestWithRetry(requestFn, {
+      timeout,
+      retryCount,
+      showLoading,
+      showError
+    });
+    return result;
+  } catch (error) {
+    // 处理401错误 - 尝试静默登录后重试
+    if (error.type === 'AUTH_EXPIRED' && error.needRetry && _retry401) {
+      console.log('🔄 检测到401错误，尝试静默登录后重试...');
+
+      try {
+        // 调用app的静默登录方法
+        const app = getApp();
+        if (app && app.performSilentLogin) {
+          await app.performSilentLogin();
+
+          // 检查登录是否成功
+          const newToken = wx.getStorageSync('token');
+          if (newToken) {
+            console.log('✅ 静默登录成功，重新发起请求');
+
+            // 重新发起请求（禁用401重试，避免死循环）
+            return request(url, {
+              ...options,
+              _retry401: false
+            });
+          }
+        }
+      } catch (loginErr) {
+        console.error('❌ 静默登录失败:', loginErr);
+      }
+
+      // 静默登录失败，提示用户手动登录
+      wx.showModal({
+        title: '登录已过期',
+        content: '请重新登录后继续使用',
+        showCancel: false,
+        confirmText: '去登录',
+        success: (res) => {
+          if (res.confirm) {
+            wx.navigateTo({ url: '/pages/auth/login' });
+          }
+        }
+      });
+    }
+
+    // 抛出原始错误
+    throw error;
+  }
 };
 
 // Mock数据请求处理

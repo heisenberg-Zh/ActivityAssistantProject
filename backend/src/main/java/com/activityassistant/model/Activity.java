@@ -39,16 +39,53 @@ public class Activity {
     private String title;
 
     /**
-     * 活动描述
+     * 活动简介（简短描述）
+     */
+    @Column(name = "desc", length = 500)
+    private String desc;
+
+    /**
+     * 活动描述（详细说明）
      */
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
+
+    /**
+     * 报名要求
+     */
+    @Column(name = "requirements", columnDefinition = "TEXT")
+    private String requirements;
 
     /**
      * 组织者ID
      */
     @Column(name = "organizer_id", nullable = false, length = 36)
     private String organizerId;
+
+    /**
+     * 组织者联系电话
+     */
+    @Column(name = "organizer_phone", length = 20)
+    private String organizerPhone;
+
+    /**
+     * 组织者微信号
+     */
+    @Column(name = "organizer_wechat", length = 50)
+    private String organizerWechat;
+
+    /**
+     * 活动封面图片URL
+     */
+    @Column(name = "image", length = 500)
+    private String image;
+
+    /**
+     * 是否启用分组
+     */
+    @Column(name = "has_groups", nullable = false)
+    @Builder.Default
+    private Boolean hasGroups = false;
 
     /**
      * 活动类型：运动/聚会/培训/户外

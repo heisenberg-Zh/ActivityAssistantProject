@@ -11,6 +11,7 @@
     "pages/statistics/joined-detail",
     "pages/statistics/created-detail",
     "pages/profile/index",
+    "pages/profile/edit",
     "pages/my-activities/index",
     "pages/my-activities/joined-list",
     "pages/my-activities/created-list",
@@ -24,7 +25,8 @@
     "pages/management/whitelist",
     "pages/management/blacklist",
     "pages/management/registrations",
-    "pages/management/reviews"
+    "pages/management/reviews",
+    "pages/privacy/index"
   ],
   "window": {
     "navigationBarTitleText": "ActivityAssistant",
