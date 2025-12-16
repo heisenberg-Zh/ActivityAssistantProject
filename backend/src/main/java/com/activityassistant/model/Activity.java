@@ -40,8 +40,9 @@ public class Activity {
 
     /**
      * 活动简介（简短描述）
+     * 注意：desc是MySQL保留关键字，必须用反引号转义
      */
-    @Column(name = "desc", length = 500)
+    @Column(name = "`desc`", length = 500)
     private String desc;
 
     /**
