@@ -81,7 +81,7 @@ Page({
         return {
           id: reg.userId,
           name: name,
-          avatar: `/activityassistant_avatar_0${Math.floor(Math.random() * 4) + 1}.png`,
+          avatar: reg.userAvatar || null, // 使用真实头像，如果没有则为null（WXML中会显示首字母头像）
           initial: getNameInitial(name),
           bgColor: getAvatarColor(name),
           registeredAt: reg.registeredAt || reg.createdAt,

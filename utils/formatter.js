@@ -130,14 +130,15 @@ const calculateActivityStatus = (activity) => {
   }
 
   // 4. 根据时间动态判断状态
-  if (now >= endTime) {
-    return '已结束';  // 当前时间 >= 结束时间
+  // 严格按照实际时间判断活动状态
+  if (now > endTime) {
+    return '已结束';  // 当前时间 > 结束时间 -> 已结束
   } else if (now >= startTime) {
-    return '进行中';  // 开始时间 <= 当前时间 < 结束时间
+    return '进行中';  // 开始时间 <= 当前时间 <= 结束时间 -> 进行中
   } else if (now >= registerDeadline) {
-    return '即将开始';  // 报名截止 <= 当前时间 < 开始时间
+    return '即将开始';  // 报名截止 <= 当前时间 < 开始时间 -> 即将开始
   } else {
-    return '报名中';  // 当前时间 < 报名截止时间
+    return '报名中';  // 当前时间 < 报名截止时间 -> 报名中
   }
 };
 

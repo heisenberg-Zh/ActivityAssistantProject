@@ -116,11 +116,11 @@ Page({
 
       wx.hideLoading();
 
-      // 检查是否在签到时间窗口内
-      const inWindow = isInCheckinWindow(activity.startTime, 30);
+      // 检查是否在签到时间窗口内（活动开始前30分钟 至 活动结束时间）
+      const inWindow = isInCheckinWindow(activity.startTime, 30, activity.endTime);
       const message = inWindow
         ? '可以签到'
-        : '签到时间：活动开始前后30分钟内';
+        : '签到时间：活动开始前30分钟至活动结束';
 
       this.setData({
         canCheckin: inWindow,
@@ -183,15 +183,23 @@ Page({
   // 加载签到记录
   async loadCheckinRecords(activityId) {
     try {
-      // 获取该活动的所有报名记录
-      const activityRegs = registrations.filter(
-        r => r.activityId === activityId && r.status === 'approved'
-      );
+      // 并行请求：获取活动的所有报名记录和签到记录
+      const [registrationsResult, checkinsResult] = await Promise.all([
+        registrationAPI.getByActivity(activityId, { page: 0, size: 100 }),
+        checkinAPI.getByActivity(activityId, { page: 0, size: 100 })
+      ]);
+
+      // 获取该活动的所有已审核通过的报名记录
+      const activityRegs = registrationsResult.code === 0
+        ? (registrationsResult.data.content || registrationsResult.data || []).filter(r => r.status === 'approved')
+        : [];
 
       // 获取该活动的签到记录
-      const activityCheckins = checkinRecords.filter(
-        c => c.activityId === activityId
-      );
+      const activityCheckins = checkinsResult.code === 0
+        ? (checkinsResult.data.content || checkinsResult.data || [])
+        : [];
+
+      console.log(`活动${activityId}报名人数: ${activityRegs.length}, 签到人数: ${activityCheckins.length}`);
 
       // 合并报名和签到信息
       const records = activityRegs.map((reg, index) => {
@@ -219,6 +227,12 @@ Page({
       });
     } catch (err) {
       console.error('加载签到记录失败:', err);
+      // 失败时设置空数据，避免页面显示异常
+      this.setData({
+        records: [],
+        checkedCount: 0,
+        progress: 0
+      });
     }
   },
 

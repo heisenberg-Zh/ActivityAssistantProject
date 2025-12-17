@@ -78,12 +78,19 @@ const isTimeInRange = (targetTime, startTime, endTime) => {
 };
 
 // 检查是否在签到时间窗口内
-const isInCheckinWindow = (activityStartTime, windowMinutes = 30) => {
+const isInCheckinWindow = (activityStartTime, windowMinutes = 30, activityEndTime = null) => {
   const now = new Date().getTime();
   const start = new Date(activityStartTime).getTime();
   const windowMs = windowMinutes * 60 * 1000;
 
-  // 允许活动开始前后windowMinutes分钟内签到
+  // 如果传入了活动结束时间，使用更合理的签到窗口：开始前30分钟 到 活动结束
+  if (activityEndTime) {
+    const end = new Date(activityEndTime).getTime();
+    // 允许在活动开始前windowMinutes分钟开始签到，一直到活动结束时间
+    return now >= (start - windowMs) && now <= end;
+  }
+
+  // 兼容旧逻辑：允许活动开始前后windowMinutes分钟内签到
   return now >= (start - windowMs) && now <= (start + windowMs);
 };
 
