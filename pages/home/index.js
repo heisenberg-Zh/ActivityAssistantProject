@@ -18,6 +18,49 @@ const getStatusClass = (status) => {
   return STATUS_CLASS_MAP[status] || '';
 };
 
+// 判断活动是否应该在首页显示
+// 规则：已取消的活动不显示；当天结束的活动仍显示，跨天后才不显示
+const shouldShowInHome = (activity) => {
+  // 已取消的活动不显示
+  if (activity.status === '已取消') {
+    return false;
+  }
+
+  // 如果不是"已结束"状态，直接显示
+  if (activity.status !== '已结束') {
+    return true;
+  }
+
+  // 如果是"已结束"状态，检查是否是当天结束
+  if (!activity.endTime) {
+    return false;  // 没有结束时间，不显示
+  }
+
+  try {
+    // 解析结束时间
+    let endTimeStr = activity.endTime;
+    if (endTimeStr.includes(' ') && !endTimeStr.includes('T')) {
+      endTimeStr = endTimeStr.replace(' ', 'T');
+    }
+    endTimeStr = endTimeStr.replace(/\.\d+/, '');
+    const endTime = new Date(endTimeStr);
+
+    // 获取今天的日期（去掉时间部分）
+    const today = new Date();
+    const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    // 获取活动结束日期（去掉时间部分）
+    const endDate = new Date(endTime.getFullYear(), endTime.getMonth(), endTime.getDate());
+
+    // 如果结束日期 >= 今天，显示（包括当天结束的活动）
+    // 如果结束日期 < 今天（已经过了结束日期），不显示
+    return endDate >= todayDate;
+  } catch (err) {
+    console.error('解析活动结束时间失败:', err);
+    return false;  // 解析失败，不显示
+  }
+};
+
 Page({
   data: {
     slides: [],
@@ -111,9 +154,10 @@ Page({
         };
       });
 
-      // 首页只显示有效活动：过滤掉"已结束"和"已取消"的活动
+      // 首页只显示有效活动：过滤掉"已取消"和已过期的"已结束"活动
+      // 当天结束的活动仍然显示，跨天后才不显示
       const validActivities = enrichedActivities.filter(activity => {
-        return activity.status !== '已结束' && activity.status !== '已取消';
+        return shouldShowInHome(activity);
       });
 
       this.setData({

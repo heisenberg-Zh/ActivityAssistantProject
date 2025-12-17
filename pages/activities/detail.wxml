@@ -111,6 +111,18 @@
   </view>
 </view>
 
+<!-- 签到提示卡片（已审核通过且可签到时显示） -->
+<view class="section" wx:if="{{isApproved && canCheckin}}">
+  <view class="card shadow-card checkin-notice-card">
+    <view class="checkin-notice-icon">✅</view>
+    <view class="checkin-notice-content">
+      <text class="checkin-notice-title">签到时间已到</text>
+      <text class="checkin-notice-text">活动正在进行中，点击下方"签到"按钮完成签到</text>
+    </view>
+    <button class="btn btn--primary btn--small" bindtap="goCheckin">立即签到</button>
+  </view>
+</view>
+
 <!-- 分组信息 -->
 <view class="section" wx:if="{{detail.hasGroups && detail.groups && detail.groups.length > 0}}">
   <view class="card shadow-card groups-section">
@@ -140,6 +152,15 @@
 
     <!-- 当前分组详情 -->
     <view wx:if="{{detail.groups[currentGroupIndex]}}" class="group-detail-section">
+      <!-- 审核提示 -->
+      <view wx:if="{{detail.groups[currentGroupIndex].needReview}}" class="detail-info-card detail-info-card--review">
+        <view class="info-icon">🔍</view>
+        <view class="info-content">
+          <text class="info-label">报名审核</text>
+          <text class="info-text">本分组需要审核，报名后请耐心等待组织者审核通过</text>
+        </view>
+      </view>
+
       <!-- 费用信息 -->
       <view class="detail-info-card detail-info-card--primary">
         <view class="info-icon">💰</view>
@@ -173,6 +194,15 @@
 <!-- 无分组时的费用和说明信息 -->
 <view class="section" wx:if="{{!detail.hasGroups}}">
   <view class="card shadow-card">
+    <!-- 审核提示 -->
+    <view wx:if="{{detail.needReview}}" class="info-item" style="background: #fef3c7; padding: 20rpx; border-radius: 12rpx; border-left: 4rpx solid #f59e0b; margin-bottom: 24rpx;">
+      <view class="info-item__icon" style="background:#FEF3C7; color:#D97706;">🔍</view>
+      <view class="flex-col info-item__body">
+        <text class="info-label" style="color: #92400e;">报名审核</text>
+        <text class="info-value" style="color: #78350f; font-size: 26rpx;">本活动需要审核，报名后请耐心等待组织者审核通过</text>
+      </view>
+    </view>
+
     <view class="info-item">
       <view class="info-item__icon" style="background:#E0E7FF; color:#4338CA;">💰</view>
       <view class="flex-col info-item__body">
@@ -203,7 +233,11 @@
     <view class="participants-row" wx:if="{{members.length > 0}}">
       <block wx:for="{{members}}" wx:key="id" wx:for-item="item" wx:for-index="idx">
         <view wx:if="{{idx < 8}}" class="participants-avatar-item">
-          <image src="{{item.avatar}}" mode="cover" class="participants-avatar-img" />
+          <!-- 优先显示用户真实头像，否则显示首字母头像 -->
+          <image wx:if="{{item.avatar}}" src="{{item.avatar}}" mode="cover" class="participants-avatar-img" />
+          <view wx:else class="participants-avatar-initial" style="background: {{item.bgColor}}">
+            <text class="initial-text">{{item.initial}}</text>
+          </view>
         </view>
       </block>
       <!-- 如果超过8个，显示更多提示 -->
@@ -222,7 +256,33 @@
 <view class="fixed-footer {{canManage ? 'fixed-footer--three-btn' : ''}}">
   <button wx:if="{{canManage}}" class="btn btn--secondary footer-btn" bindtap="goManagement">管理</button>
   <button class="btn btn--secondary footer-btn" open-type="share">分享</button>
-  <button class="btn {{isRegistered ? 'btn--danger' : 'btn--primary'}} footer-btn" bindtap="{{isRegistered ? 'cancelRegistration' : 'goRegister'}}">{{isRegistered ? '取消报名' : '报名'}}</button>
+
+  <!-- 已报名用户：显示签到或取消报名 -->
+  <block wx:if="{{isRegistered}}">
+    <!-- 如果已审核通过且在签到时间内，显示签到按钮 -->
+    <button
+      wx:if="{{isApproved && canCheckin}}"
+      class="btn btn--primary footer-btn"
+      bindtap="goCheckin">
+      签到
+    </button>
+    <!-- 否则显示取消报名按钮 -->
+    <button
+      wx:else
+      class="btn btn--danger footer-btn"
+      bindtap="cancelRegistration">
+      取消报名
+    </button>
+  </block>
+
+  <!-- 未报名用户：显示报名按钮 -->
+  <button
+    wx:else
+    class="btn {{canRegister ? 'btn--primary' : 'btn--disabled'}} footer-btn"
+    bindtap="goRegister"
+    disabled="{{!canRegister}}">
+    {{registerButtonText}}
+  </button>
 </view>
 </view>
 <!-- 结束 wx:else -->

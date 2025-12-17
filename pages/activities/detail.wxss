@@ -461,6 +461,23 @@
   border-radius: 9999rpx;
 }
 
+/* 首字母头像 */
+.participants-avatar-initial {
+  width: 100%;
+  height: 100%;
+  border-radius: 9999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.initial-text {
+  color: #ffffff;
+  font-size: 32rpx;
+  font-weight: 600;
+  line-height: 1;
+}
+
 .participants-more {
   flex-shrink: 0;
   width: 80rpx;
@@ -592,6 +609,59 @@
   line-height: 1;
 }
 
+/* 签到提示卡片 */
+.checkin-notice-card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 24rpx;
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border-left: 4rpx solid #10b981;
+  animation: pulse-border 2s ease-in-out infinite;
+}
+
+@keyframes pulse-border {
+  0%, 100% {
+    border-left-color: #10b981;
+  }
+  50% {
+    border-left-color: #059669;
+  }
+}
+
+.checkin-notice-icon {
+  font-size: 56rpx;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.checkin-notice-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.checkin-notice-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #047857;
+  line-height: 1.3;
+}
+
+.checkin-notice-text {
+  font-size: 26rpx;
+  color: #065f46;
+  line-height: 1.5;
+}
+
+.checkin-notice-card .btn {
+  flex-shrink: 0;
+  padding: 16rpx 28rpx;
+  font-size: 26rpx;
+  box-shadow: 0 4rpx 12rpx rgba(16, 185, 129, 0.3);
+}
+
 .status-ok {
   background: #d1fae5;
   color: #047857;
@@ -654,6 +724,11 @@
 .detail-info-card--info {
   background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
   border-left-color: #10b981;
+}
+
+.detail-info-card--review {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-left-color: #f59e0b;
 }
 
 .info-icon {

@@ -1,6 +1,5 @@
 // pages/registration/index.js
-const { activityAPI } = require('../../utils/api.js');
-const { registrationAPI } = require('../../utils/api.js');
+const { activityAPI, registrationAPI, userAPI } = require('../../utils/api.js');
 const { validateRegistrationForm } = require('../../utils/validator.js');
 const { formatMobile, formatMoney, getAvatarColor, calculateActivityStatus } = require('../../utils/formatter.js');
 const { formatDateCN, isBeforeRegisterDeadline } = require('../../utils/datetime.js');
@@ -338,18 +337,49 @@ Page({
     });
   },
 
-  // 自动填充用户信息
-  autoFillUserInfo() {
+  // 自动填充用户信息（从用户资料API获取）
+  async autoFillUserInfo() {
     try {
-      // 尝试从缓存获取用户信息
-      const userInfo = wx.getStorageSync('userInfo');
-      if (userInfo && userInfo.nickName) {
-        this.setData({
-          'formData.name': userInfo.nickName
-        });
+      // 从后端API获取用户资料
+      const result = await userAPI.getProfile();
+
+      if (result.code === 0 && result.data) {
+        const profile = result.data;
+        const updates = {};
+
+        // 填充昵称（如果字段存在）
+        if (this.data.customFields.find(f => f.id === 'name')) {
+          updates['formData.name'] = profile.nickname || '';
+        }
+
+        // 填充手机号（如果字段存在）
+        if (this.data.customFields.find(f => f.id === 'mobile')) {
+          updates['formData.mobile'] = profile.phone || '';
+        }
+
+        // 批量更新数据
+        if (Object.keys(updates).length > 0) {
+          this.setData(updates);
+          console.log('已自动填充用户信息:', {
+            nickname: profile.nickname || '(空)',
+            phone: profile.phone || '(空)'
+          });
+        }
       }
     } catch (err) {
-      console.error('获取用户信息失败:', err);
+      console.warn('获取用户资料失败，尝试使用缓存:', err);
+
+      // 降级方案：从缓存获取微信昵称
+      try {
+        const userInfo = wx.getStorageSync('userInfo');
+        if (userInfo && userInfo.nickName) {
+          this.setData({
+            'formData.name': userInfo.nickName
+          });
+        }
+      } catch (cacheErr) {
+        console.error('获取缓存用户信息也失败:', cacheErr);
+      }
     }
   },
 
@@ -655,7 +685,18 @@ Page({
           wx.hideLoading();
 
           if (result.code === 0) {
-            const message = detail.needReview ? '报名成功，等待审核' : '报名成功';
+            // 判断是否需要审核：检查活动级别或分组级别的needReview
+            let needReview = detail.needReview; // 默认检查活动级别
+
+            // 如果有分组，检查分组级别的needReview
+            if (selectedGroupId && detail.hasGroups && detail.groups) {
+              const selectedGroup = detail.groups.find(g => g.id === selectedGroupId);
+              if (selectedGroup && selectedGroup.needReview !== undefined) {
+                needReview = selectedGroup.needReview;
+              }
+            }
+
+            const message = needReview ? '报名成功，等待审核' : '报名成功';
             wx.showToast({ title: message, icon: 'success' });
 
             // 【修复】清除活动详情和报名列表的缓存，确保返回后显示最新数据

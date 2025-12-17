@@ -1,5 +1,5 @@
 // pages/activities/create.js
-const { activityAPI, registrationAPI } = require('../../utils/api.js');
+const { activityAPI, registrationAPI, userAPI } = require('../../utils/api.js');
 const { validateActivityForm } = require('../../utils/validator.js');
 const { formatDateTime } = require('../../utils/datetime.js');
 const { parseDate } = require('../../utils/date-helper.js');
@@ -1921,12 +1921,37 @@ Page({
       // 草稿模式
       this.loadDraft(draftId);
     } else {
-      // 创建模式
-      // 不自动加载草稿，用户可以通过"复制活动"功能选择草稿
+      // 创建模式 - 加载用户资料作为默认联系人信息
+      this.loadUserProfileForCreate();
     }
 
     // 初始检查是否可以发布
     this.checkCanPublish();
+  },
+
+  // 创建模式：加载用户资料作为默认联系人信息
+  async loadUserProfileForCreate() {
+    try {
+      const result = await userAPI.getProfile();
+
+      if (result.code === 0 && result.data) {
+        const profile = result.data;
+
+        // 更新表单的联系人信息
+        this.setData({
+          'form.organizerPhone': profile.phone || '',
+          'form.organizerWechat': profile.nickname || ''
+        });
+
+        console.log('已加载用户资料作为默认联系人信息:', {
+          phone: profile.phone || '(空)',
+          wechat: profile.nickname || '(空)'
+        });
+      }
+    } catch (err) {
+      console.warn('加载用户资料失败，使用空默认值:', err);
+      // 失败时不影响创建流程，保持空值即可
+    }
   },
 
   // 加载活动数据用于编辑

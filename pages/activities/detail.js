@@ -1,6 +1,7 @@
 // pages/activities/detail.js
 const { activityAPI, registrationAPI, userAPI, favoriteAPI } = require('../../utils/api.js');
 const { parseDate } = require('../../utils/date-helper.js');
+const { isInCheckinWindow } = require('../../utils/datetime.js');
 const {
   formatMoney,
   formatParticipants,
@@ -41,6 +42,7 @@ Page({
     feeInfo: '',
     statusInfo: {},
     canRegister: true,
+    registerButtonText: '报名', // 报名按钮文本
     canCheckin: false,
     isRegistered: false,
     loading: true,
@@ -190,8 +192,10 @@ Page({
 
       const members = filteredRegs.map(reg => ({
         id: reg.userId,
-        name: reg.name,
-        avatar: `/activityassistant_avatar_0${Math.floor(Math.random() * 4) + 1}.png`,
+        name: reg.name, // 使用报名时填写的昵称
+        avatar: reg.userAvatar || null, // 使用用户头像（如果后端返回）
+        initial: getNameInitial(reg.name), // 生成首字母用于头像显示
+        bgColor: getAvatarColor(reg.name), // 生成背景色
         groupId: reg.groupId
       }));
 
@@ -268,6 +272,16 @@ Page({
 
       const canRegister = isBeforeDeadline && hasCapacity;
 
+      // 计算报名按钮文本（用于显示截止原因）
+      let registerButtonText = '报名';
+      if (!canRegister) {
+        if (!isBeforeDeadline) {
+          registerButtonText = '报名已截止';
+        } else if (!hasCapacity) {
+          registerButtonText = '活动已满员';
+        }
+      }
+
       console.log('canRegister计算:', {
         isBeforeDeadline,
         hasValidTotal,
@@ -275,14 +289,13 @@ Page({
         canRegister
       });
 
-      // 判断是否可以签到
-      const startTime = parseDate(detail.startTime);
-      const canCheckin = dynamicStatus === '进行中' ||
-        (Math.abs(now.getTime() - startTime.getTime()) <= 30 * 60 * 1000);
+      // 判断是否可以签到（活动开始前30分钟 至 活动结束时间）
+      const canCheckin = isInCheckinWindow(detail.startTime, 30, detail.endTime);
 
       // ========== 【关键】检查当前用户是否已报名 ==========
       // 【修复】使用 allStatusRegs 而不是 activityRegs，确保能检测到 pending 状态的报名
       let isRegistered = false;
+      let isApproved = false;  // 【新增】是否已审核通过
       let currentUserRegistration = null;  // 【新增】保存当前用户的报名记录
       if (currentUserId) {
         // 只有登录用户才检查是否已报名（包含所有状态）
@@ -291,8 +304,10 @@ Page({
           (r.status === 'approved' || r.status === 'pending')
         );
         isRegistered = !!currentUserRegistration;
+        // 只有审核通过的用户才算真正"已批准"，可以签到
+        isApproved = currentUserRegistration && currentUserRegistration.status === 'approved';
       }
-      console.log('是否已报名:', isRegistered, '(登录状态:', !!currentUserId, ')');
+      console.log('是否已报名:', isRegistered, '是否已审核通过:', isApproved, '(登录状态:', !!currentUserId, ')');
       if (currentUserRegistration) {
         console.log('当前用户的报名ID:', currentUserRegistration.id, '状态:', currentUserRegistration.status);
       }
@@ -351,8 +366,10 @@ Page({
         extra,
         statusInfo,
         canRegister,
+        registerButtonText, // 报名按钮文本
         canCheckin,
         isRegistered,
+        isApproved,  // 【新增】是否已审核通过（用于控制签到功能显示）
         currentUserRegistration,  // 【新增】保存当前用户的报名记录
         canManage: managementPermission.hasPermission,
         managementRole: managementPermission.role || '',
@@ -394,8 +411,10 @@ Page({
 
     const members = filteredRegs.map(reg => ({
       id: reg.userId,
-      name: reg.name,
-      avatar: `/activityassistant_avatar_0${Math.floor(Math.random() * 4) + 1}.png`,
+      name: reg.name, // 使用报名时填写的昵称
+      avatar: reg.userAvatar || null, // 使用用户头像（如果后端返回）
+      initial: getNameInitial(reg.name), // 生成首字母用于头像显示
+      bgColor: getAvatarColor(reg.name), // 生成背景色
       groupId: reg.groupId
     }));
 

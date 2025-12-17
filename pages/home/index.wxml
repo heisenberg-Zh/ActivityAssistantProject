@@ -79,11 +79,20 @@
         <view class="list-status-badge list-status-badge--{{item.statusClass}}">
           <text class="list-badge-text-white">{{item.status}}</text>
         </view>
+
+        <!-- 创建人昵称 - 左下角 -->
+        <view class="organizer-badge">
+          <text class="organizer-text">👤 {{item.organizerName || '组织者'}}</text>
+        </view>
+
+        <!-- 活动编号 - 右下角 -->
+        <view class="activity-id-badge">
+          <text class="activity-id-text">No. {{item.id}}</text>
+        </view>
       </view>
 
       <view class="card--pad">
-        <text class="text-lg mb-8">{{item.title}}</text>
-        <text class="text-sm mb-12">{{item.desc}}</text>
+        <text class="text-lg mb-12">{{item.title}}</text>
         <view class="row text-sm mb-12">
           <text>{{item.date}}</text>
           <text style="margin-left: 24rpx;">{{item.place}}</text>
