@@ -118,6 +118,19 @@ Page({
 
       // 检查是否在签到时间窗口内（活动开始前30分钟 至 活动结束时间）
       const inWindow = isInCheckinWindow(activity.startTime, 30, activity.endTime);
+
+      // 【调试】输出签到时间检查详情
+      console.log('===== 签到时间检查 =====');
+      console.log('活动标题:', activity.title);
+      console.log('活动状态:', activity.status);
+      console.log('开始时间 (startTime):', activity.startTime);
+      console.log('结束时间 (endTime):', activity.endTime);
+      console.log('当前时间:', new Date().toISOString());
+      console.log('签到窗口开始:', new Date(new Date(activity.startTime).getTime() - 30 * 60 * 1000).toISOString());
+      console.log('签到窗口结束:', activity.endTime);
+      console.log('是否在签到窗口内 (inWindow):', inWindow);
+      console.log('======================');
+
       const message = inWindow
         ? '可以签到'
         : '签到时间：活动开始前30分钟至活动结束';
@@ -200,6 +213,41 @@ Page({
         : [];
 
       console.log(`活动${activityId}报名人数: ${activityRegs.length}, 签到人数: ${activityCheckins.length}`);
+
+      // 【关键修复】获取当前用户ID，检查当前用户是否已签到
+      const currentUserId = getCurrentUserId();
+      const { registrationId } = this.data;
+
+      // 查找当前用户的签到记录
+      let myCheckin = null;
+      if (registrationId) {
+        myCheckin = activityCheckins.find(c => c.registrationId === registrationId);
+      }
+
+      // 如果没有通过 registrationId 找到，尝试通过 userId 查找
+      if (!myCheckin && currentUserId) {
+        myCheckin = activityCheckins.find(c => c.userId === currentUserId);
+      }
+
+      console.log('===== 当前用户签到状态 =====');
+      console.log('当前用户ID:', currentUserId);
+      console.log('报名ID:', registrationId);
+      console.log('我的签到记录:', myCheckin);
+      console.log('是否已签到:', !!myCheckin);
+      console.log('=========================');
+
+      // 【关键修复】更新当前用户的签到状态
+      if (myCheckin) {
+        this.setData({
+          checked: true,
+          checkTime: formatDateTime(myCheckin.checkinTime, 'HH:mm')
+        });
+      } else {
+        this.setData({
+          checked: false,
+          checkTime: ''
+        });
+      }
 
       // 合并报名和签到信息
       const records = activityRegs.map((reg, index) => {
@@ -289,26 +337,64 @@ Page({
       withinRange,
       canCheckin,
       currentLocation,
-      checked
+      checked,
+      hasRegistered,
+      registrationId
     } = this.data;
 
-    // 检查是否已签到
+    // 【优先级1】检查是否已签到
     if (checked) {
       wx.showToast({ title: '您已签到', icon: 'none' });
       return;
     }
 
-    // 检查时间窗口
-    if (!canCheckin) {
-      wx.showToast({ title: '不在签到时间范围内', icon: 'none' });
+    // 【优先级2】检查是否已报名且审核通过
+    if (!hasRegistered || !registrationId) {
+      wx.showToast({
+        title: '您还未报名此活动或报名未审核通过',
+        icon: 'none',
+        duration: 2500
+      });
       return;
     }
 
-    // 检查位置
+    // 【优先级3】检查时间窗口
+    if (!canCheckin) {
+      // 计算更详细的时间提示
+      const now = new Date();
+      const startTime = new Date(activity.startTime);
+      const endTime = activity.endTime ? new Date(activity.endTime) : null;
+      const checkinStartTime = new Date(startTime.getTime() - 30 * 60 * 1000);
+
+      let timeMessage = '不在签到时间范围内';
+
+      if (now < checkinStartTime) {
+        // 签到未开始
+        const minutes = Math.ceil((checkinStartTime - now) / (60 * 1000));
+        if (minutes > 60) {
+          const hours = Math.floor(minutes / 60);
+          timeMessage = `签到将在活动开始前30分钟开放（约${hours}小时后）`;
+        } else {
+          timeMessage = `签到将在活动开始前30分钟开放（约${minutes}分钟后）`;
+        }
+      } else if (endTime && now > endTime) {
+        // 签到已结束
+        timeMessage = '签到时间已过，活动已结束';
+      } else {
+        // 其他情况
+        timeMessage = '不在签到时间范围内（活动开始前30分钟至活动结束）';
+      }
+
+      console.log('签到时间检查失败:', timeMessage);
+      wx.showToast({ title: timeMessage, icon: 'none', duration: 2500 });
+      return;
+    }
+
+    // 【优先级4】检查位置
     if (!withinRange) {
       wx.showModal({
         title: '位置不符',
-        content: '您当前不在签到范围内，是否继续签到？',
+        content: `您当前不在签到范围内。是否继续签到？`,
         success: (res) => {
           if (res.confirm) {
             this.submitCheckin();
@@ -380,12 +466,52 @@ Page({
               this.loadCheckinRecords(activityId);
             }, 1000);
           } else {
-            wx.showToast({ title: result.message || '签到失败', icon: 'none' });
+            // 【关键修复】根据后端返回的错误信息，显示恰当的提示
+            let errorMessage = result.message || '签到失败';
+
+            // 常见错误信息映射，提供更友好的提示
+            if (errorMessage.includes('已签到') || errorMessage.includes('重复签到')) {
+              errorMessage = '您已签到，无需重复签到';
+            } else if (errorMessage.includes('未报名')) {
+              errorMessage = '您还未报名此活动';
+            } else if (errorMessage.includes('未审核') || errorMessage.includes('审核')) {
+              errorMessage = '您的报名申请尚未通过审核';
+            } else if (errorMessage.includes('时间') || errorMessage.includes('范围')) {
+              errorMessage = '不在签到时间范围内';
+            } else if (errorMessage.includes('位置') || errorMessage.includes('距离')) {
+              errorMessage = '您不在签到范围内';
+            }
+
+            console.log('签到失败 - 错误码:', result.code, '错误信息:', result.message);
+            console.log('显示给用户的提示:', errorMessage);
+
+            wx.showToast({
+              title: errorMessage,
+              icon: 'none',
+              duration: 2500
+            });
           }
         } catch (err) {
           wx.hideLoading();
-          console.error('签到失败:', err);
-          wx.showToast({ title: '签到失败，请重试', icon: 'none' });
+          console.error('签到请求异常:', err);
+
+          // 【修复】捕获异常时也要显示恰当的提示
+          let errorMessage = '签到失败，请重试';
+
+          // 如果异常对象包含错误信息，尝试提取
+          if (err && err.message) {
+            if (err.message.includes('已签到') || err.message.includes('重复签到')) {
+              errorMessage = '您已签到，无需重复签到';
+            } else if (err.message.includes('网络') || err.message.includes('timeout')) {
+              errorMessage = '网络连接失败，请检查网络后重试';
+            }
+          }
+
+          wx.showToast({
+            title: errorMessage,
+            icon: 'none',
+            duration: 2500
+          });
         }
       },
       {

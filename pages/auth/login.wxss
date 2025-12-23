@@ -49,35 +49,36 @@
   50% { transform: translate(30rpx, -30rpx); }
 }
 
-/* ==================== 返回按钮 ==================== */
-.back-btn {
-  position: absolute;
-  top: 60rpx;
+/* ==================== 返回按钮（重新设计） ==================== */
+.back-button {
+  position: fixed;
+  top: 40rpx;
   left: 32rpx;
-  z-index: 100;
+  z-index: 1000;
   width: 72rpx;
   height: 72rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
   border-radius: 50%;
   backdrop-filter: blur(20rpx);
-  border: 1rpx solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.1);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2rpx solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
 }
 
-.back-btn:active {
+.back-button:active {
   transform: scale(0.92);
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.35);
 }
 
-.back-icon {
+.back-arrow {
   font-size: 40rpx;
+  font-weight: bold;
   color: #ffffff;
-  font-weight: 600;
   line-height: 1;
+  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.2);
 }
 
 /* ==================== 内容区域 ==================== */
@@ -155,17 +156,18 @@
   width: 100%;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 20rpx;
-  margin-bottom: 120rpx;
+  gap: 14rpx;
+  margin-bottom: 100rpx;
+  padding: 0 28rpx;
 }
 
 .feature-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 32rpx 16rpx;
+  padding: 20rpx 10rpx;
   background: rgba(255, 255, 255, 0.12);
-  border-radius: 24rpx;
+  border-radius: 18rpx;
   backdrop-filter: blur(20rpx);
   border: 1rpx solid rgba(255, 255, 255, 0.2);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -178,34 +180,34 @@
 }
 
 .feature-icon-wrapper {
-  width: 88rpx;
-  height: 88rpx;
+  width: 64rpx;
+  height: 64rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.2);
   border-radius: 50%;
-  margin-bottom: 16rpx;
+  margin-bottom: 10rpx;
   border: 2rpx solid rgba(255, 255, 255, 0.3);
 }
 
 .feature-icon {
-  font-size: 44rpx;
+  font-size: 34rpx;
 }
 
 .feature-title {
-  font-size: 26rpx;
+  font-size: 23rpx;
   font-weight: 600;
   color: #ffffff;
-  margin-bottom: 8rpx;
-  letter-spacing: 1rpx;
+  margin-bottom: 5rpx;
+  letter-spacing: 0.5rpx;
 }
 
 .feature-desc {
-  font-size: 20rpx;
+  font-size: 19rpx;
   color: rgba(255, 255, 255, 0.8);
   text-align: center;
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
 /* ==================== 登录操作区 ==================== */
@@ -214,17 +216,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 0 32rpx;
 }
 
 .login-btn {
   width: 100%;
-  height: 104rpx;
+  max-width: 560rpx;
+  height: 96rpx;
   background: #ffffff;
-  border-radius: 52rpx;
+  border-radius: 48rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 16rpx 48rpx rgba(0, 0, 0, 0.2);
+  box-shadow: 0 12rpx 40rpx rgba(0, 0, 0, 0.18);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: none;
   padding: 0;
@@ -270,12 +274,12 @@
 }
 
 .wechat-icon {
-  font-size: 40rpx;
-  margin-right: 16rpx;
+  font-size: 36rpx;
+  margin-right: 12rpx;
 }
 
 .btn-text {
-  font-size: 34rpx;
+  font-size: 32rpx;
   font-weight: 700;
   color: #667eea;
   letter-spacing: 2rpx;

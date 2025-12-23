@@ -139,7 +139,61 @@ Page({
       wx.showLoading({ title: '加载中...' });
 
       const { activityId } = this.data;
-      const currentUserId = app.globalData.currentUserId || 'u1';
+
+      // 【修复】获取当前用户ID，避免使用默认值
+      let currentUserId = app.globalData.currentUserId;
+
+      // 【关键修复】如果 currentUserId 为空或为默认测试值，尝试从存储中读取
+      if (!currentUserId || currentUserId === 'u1') {
+        console.warn('⚠️ app.globalData.currentUserId 无效，尝试从存储读取');
+
+        // 尝试从本地存储读取
+        try {
+          const { getSecureStorage } = require('../../utils/security.js');
+          currentUserId = getSecureStorage('currentUserId');
+          console.log('✅ 从存储读取到 currentUserId:', currentUserId);
+        } catch (err) {
+          currentUserId = wx.getStorageSync('currentUserId');
+          console.log('✅ 从普通存储读取到 currentUserId:', currentUserId);
+        }
+
+        // 如果还是读取不到，检查 token 是否存在
+        if (!currentUserId) {
+          const token = wx.getStorageSync('token');
+          if (!token) {
+            wx.hideLoading();
+            wx.showModal({
+              title: '未登录',
+              content: '请先登录后再管理活动',
+              confirmText: '去登录',
+              showCancel: false,
+              success: () => {
+                wx.navigateTo({ url: '/pages/auth/login' });
+              }
+            });
+            return;
+          }
+
+          // 有 token 但没有 currentUserId，说明数据不一致
+          console.error('❌ 数据异常：存在token但currentUserId为空');
+          wx.hideLoading();
+          wx.showModal({
+            title: '数据异常',
+            content: '登录信息不完整，请重新登录',
+            confirmText: '去登录',
+            showCancel: false,
+            success: () => {
+              // 清除异常数据
+              app.clearUserInfo();
+              wx.navigateTo({ url: '/pages/auth/login' });
+            }
+          });
+          return;
+        }
+
+        // 更新全局数据
+        app.globalData.currentUserId = currentUserId;
+      }
 
       // 从后端API获取活动详情
       const detailResult = await activityAPI.getDetail(activityId);
@@ -161,9 +215,8 @@ Page({
       console.log('========== 管理权限检查 ==========');
       console.log('活动ID:', activityId);
       console.log('活动标题:', activity.title);
-      console.log('活动创建者ID (organizerId):', activity.organizerId);
-      console.log('当前用户ID (currentUserId):', currentUserId);
-      console.log('活动对象:', activity);
+      console.log('活动创建者ID (organizerId):', activity.organizerId, '类型:', typeof activity.organizerId);
+      console.log('当前用户ID (currentUserId):', currentUserId, '类型:', typeof currentUserId);
       console.log('==================================');
 
       // 检查管理权限
@@ -173,16 +226,18 @@ Page({
 
       if (!permission.hasPermission) {
         wx.hideLoading();
-        console.error('权限检查失败！');
-        console.error('  - 活动创建者:', activity.organizerId);
-        console.error('  - 当前用户:', currentUserId);
-        console.error('  - 是否相等:', activity.organizerId === currentUserId);
-        console.error('  - organizerId类型:', typeof activity.organizerId);
-        console.error('  - currentUserId类型:', typeof currentUserId);
+        console.error('========== 权限检查失败详情 ==========');
+        console.error('活动创建者 (organizerId):', activity.organizerId);
+        console.error('当前用户 (currentUserId):', currentUserId);
+        console.error('organizerId 类型:', typeof activity.organizerId);
+        console.error('currentUserId 类型:', typeof currentUserId);
+        console.error('字符串比较结果:', String(activity.organizerId) === String(currentUserId));
+        console.error('活动管理员列表:', activity.administrators);
+        console.error('======================================');
 
         wx.showModal({
           title: '无管理权限',
-          content: `您不是此活动的创建者或管理员，无法访问管理页面。\n\n调试信息：\n创建者ID: ${activity.organizerId}\n当前用户ID: ${currentUserId}`,
+          content: `您不是此活动的创建者或管理员，无法访问管理页面。\n\n调试信息：\n创建者ID: ${activity.organizerId} (${typeof activity.organizerId})\n当前用户ID: ${currentUserId} (${typeof currentUserId})`,
           showCancel: false,
           success: () => {
             wx.navigateBack();

@@ -276,6 +276,59 @@ const deepClone = (obj) => {
   return clonedObj;
 };
 
+/**
+ * 修复后端返回的不完整URL
+ * 后端可能返回以下格式：
+ * - "tmp/xxx.jpeg" -> 需要补全baseUrl（仅适用于后端确实返回相对路径的场景）
+ * - "http://xxx" 或 "https://xxx" -> 完整URL，无需处理
+ * - "/xxx" -> 相对路径，无需处理
+ *
+ * 注意：如遇到小程序临时文件协议（wxfile://）或 http://tmp 等不可持久化/不可访问的地址，将直接返回空字符串以触发页面降级显示。
+ *
+ * @param {String} url - 原始URL
+ * @returns {String} 修复后的完整URL
+ */
+const fixImageUrl = (url) => {
+  if (!url) return '';
+  if (typeof url !== 'string') return '';
+
+  const trimmedUrl = url.trim();
+  if (!trimmedUrl) return '';
+
+  // 小程序临时文件/不应持久化的地址：直接返回空，交由页面降级显示（首字母/默认图）
+  if (
+    trimmedUrl.startsWith('wxfile://') ||
+    trimmedUrl.startsWith('wxfile:') ||
+    trimmedUrl.startsWith('http://tmp/') ||
+    trimmedUrl.startsWith('tmp/') ||
+    trimmedUrl.startsWith('tmp_')
+  ) {
+    return '';
+  }
+
+  // 其他非 http(s) scheme 直接丢弃（避免拼出类似 https://xxx/wxfile://tmp... 这种错误URL）
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmedUrl) && !(trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://'))) {
+    return '';
+  }
+
+  // 如果已经是完整的URL（以http://或https://开头，但不是错误的http://tmp/格式），直接返回
+  if (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) {
+    return trimmedUrl;
+  }
+
+  // 如果是相对路径（以/开头），直接返回
+  if (trimmedUrl.startsWith('/')) {
+    return trimmedUrl;
+  }
+
+  // 获取API配置
+  const { API_CONFIG } = require('./config.js');
+  const baseUrl = API_CONFIG.baseUrl;
+
+  // 补全不完整的URL
+  return `${baseUrl}/${trimmedUrl}`;
+};
+
 module.exports = {
   formatDateTime,
   formatMobile,
@@ -295,5 +348,6 @@ module.exports = {
   formatActivityType,
   objectToQueryString,
   queryStringToObject,
-  deepClone
+  deepClone,
+  fixImageUrl  // 新增：修复图片URL
 };

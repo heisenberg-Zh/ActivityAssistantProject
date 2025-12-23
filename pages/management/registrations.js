@@ -3,6 +3,7 @@ const { activityAPI, registrationAPI, blacklistAPI } = require('../../utils/api.
 const {
   checkManagementPermission
 } = require('../../utils/activity-management-helper.js');
+const { fixImageUrl } = require('../../utils/formatter.js');
 const app = getApp();
 
 Page({
@@ -93,7 +94,7 @@ Page({
       const allRegistrations = activityRegs.map(reg => ({
         ...reg,
         userName: reg.name,
-        userAvatar: reg.avatar || '/activityassistant_avatar_01.png',
+        userAvatar: fixImageUrl(reg.avatar || ''),
         statusText: this.getStatusText(reg.status),
         statusColor: this.getStatusColor(reg.status),
         registeredAt: reg.createdAt || '未知时间'

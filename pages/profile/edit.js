@@ -1,11 +1,13 @@
 // pages/profile/edit.js
-const { userAPI } = require('../../utils/api.js');
+const { userAPI, uploadAPI } = require('../../utils/api.js');
 const { getSecureStorage } = require('../../utils/security.js');
+const { requestCache } = require('../../utils/request-manager.js');
 const app = getApp();
 
 Page({
   data: {
     avatarUrl: '/activityassistant_avatar_01.png', // 默认头像
+    avatarUrlRaw: '', // 保存用：不带缓存参数的URL
     nickname: '',
     phone: '',
     role: '', // 用户角色
@@ -44,8 +46,13 @@ Page({
 
       if (result && result.data) {
         const userData = result.data;
+        let rawAvatarUrl = (userData.avatar || '').split('?')[0];
+        if (rawAvatarUrl.startsWith('wxfile://') || rawAvatarUrl.startsWith('http://tmp/')) {
+          rawAvatarUrl = '';
+        }
         this.setData({
-          avatarUrl: userData.avatar || '/activityassistant_avatar_01.png',
+          avatarUrl: rawAvatarUrl || '/activityassistant_avatar_01.png',
+          avatarUrlRaw: rawAvatarUrl,
           nickname: userData.nickname || '',
           phone: userData.phone || '',
           role: this.getRoleText(userData.role),
@@ -57,8 +64,13 @@ Page({
         // 如果API失败，从本地存储获取基本信息（兼容加密和普通存储）
         const userInfo = getSecureStorage('userInfo') || wx.getStorageSync('userInfo') || {};
         const userId = getSecureStorage('currentUserId') || wx.getStorageSync('currentUserId') || '';
+        let rawAvatarUrl = (userInfo.avatarUrl || '').split('?')[0];
+        if (rawAvatarUrl.startsWith('wxfile://') || rawAvatarUrl.startsWith('http://tmp/')) {
+          rawAvatarUrl = '';
+        }
         this.setData({
-          avatarUrl: userInfo.avatarUrl || '/activityassistant_avatar_01.png',
+          avatarUrl: rawAvatarUrl || '/activityassistant_avatar_01.png',
+          avatarUrlRaw: rawAvatarUrl,
           nickname: userInfo.nickName || '',
           phone: userInfo.phone || '',
           role: '用户', // 默认角色
@@ -72,8 +84,13 @@ Page({
       // 降级处理：从本地存储获取（兼容加密和普通存储）
       const userInfo = getSecureStorage('userInfo') || wx.getStorageSync('userInfo') || {};
       const userId = getSecureStorage('currentUserId') || wx.getStorageSync('currentUserId') || '';
+      let rawAvatarUrl = (userInfo.avatarUrl || '').split('?')[0];
+      if (rawAvatarUrl.startsWith('wxfile://') || rawAvatarUrl.startsWith('http://tmp/')) {
+        rawAvatarUrl = '';
+      }
       this.setData({
-        avatarUrl: userInfo.avatarUrl || '/activityassistant_avatar_01.png',
+        avatarUrl: rawAvatarUrl || '/activityassistant_avatar_01.png',
+        avatarUrlRaw: rawAvatarUrl,
         nickname: userInfo.nickName || '',
         phone: userInfo.phone || '',
         role: '用户',
@@ -97,7 +114,7 @@ Page({
   /**
    * 选择头像
    */
-  onChooseAvatar(e) {
+  async onChooseAvatar(e) {
     // 检查是否取消选择
     if (!e.detail.avatarUrl) {
       console.log('用户取消选择头像');
@@ -105,18 +122,61 @@ Page({
     }
 
     const { avatarUrl } = e.detail;
-    console.log('选择头像:', avatarUrl);
+    console.log('选择头像，临时路径:', avatarUrl);
 
-    this.setData({
-      avatarUrl,
-      hasChanges: true
-    });
+    try {
+      // 显示上传提示
+      wx.showLoading({
+        title: '上传中...',
+        mask: true
+      });
 
-    wx.showToast({
-      title: '头像已选择',
-      icon: 'success',
-      duration: 1500
-    });
+      // 上传头像到服务器
+      const uploadResult = await uploadAPI.uploadAvatar(avatarUrl);
+
+      wx.hideLoading();
+
+      if (uploadResult.code === 0) {
+        // 使用服务器返回的URL
+        const serverAvatarUrl = uploadResult.data.url;
+        console.log('头像上传成功，服务器URL:', serverAvatarUrl);
+        console.log('准备更新页面头像...');
+
+        // 【关键修复】强制更新头像URL，添加时间戳避免缓存
+        const urlWithTimestamp = serverAvatarUrl.includes('?')
+          ? `${serverAvatarUrl}&t=${Date.now()}`
+          : `${serverAvatarUrl}?t=${Date.now()}`;
+
+        this.setData({
+          avatarUrl: urlWithTimestamp,
+          avatarUrlRaw: serverAvatarUrl,
+          hasChanges: true
+        }, () => {
+          console.log('头像URL已更新到data:', this.data.avatarUrl);
+        });
+
+        wx.showToast({
+          title: '头像已上传，请点击“保存”生效',
+          icon: 'success',
+          duration: 1500
+        });
+      } else {
+        throw new Error('上传失败');
+      }
+
+    } catch (error) {
+      wx.hideLoading();
+      console.error('头像上传失败:', error);
+
+      wx.showModal({
+        title: '上传失败',
+        content: error.message || '请重试',
+        showCancel: false
+      });
+
+      // 恢复原头像
+      this.loadUserInfo();
+    }
   },
 
   /**
@@ -243,7 +303,7 @@ Page({
       return;
     }
 
-    const { avatarUrl, nickname, phone } = this.data;
+    const { avatarUrl, avatarUrlRaw, nickname, phone } = this.data;
 
     // 验证昵称
     if (!nickname || nickname.trim().length === 0) {
@@ -272,9 +332,14 @@ Page({
 
       // 构建更新数据
       const updateData = {
-        nickname: nickname.trim(),
-        avatar: avatarUrl
+        nickname: nickname.trim()
       };
+
+      // 仅当存在可持久化的头像URL时才提交，避免误把默认头像/无效值覆盖到后端
+      const cleanedAvatar = (avatarUrlRaw || '').split('?')[0].trim();
+      if (cleanedAvatar) {
+        updateData.avatar = cleanedAvatar;
+      }
 
       // 只有填写了手机号才传递
       if (phone && phone.trim().length > 0) {
@@ -285,6 +350,14 @@ Page({
       const result = await userAPI.updateProfile(updateData);
 
       if (result.code === 0) {
+        // 更新成功后清理用户资料缓存，避免个人中心/编辑页命中旧数据（例如历史 wxfile://tmp 脏数据）
+        try {
+          const profileCacheKey = requestCache.generateKey('/api/user/profile', {});
+          requestCache.clear(profileCacheKey);
+        } catch (e) {
+          // 忽略缓存清理失败
+        }
+
         // 更新本地存储
         const userInfo = {
           nickName: result.data.nickname,

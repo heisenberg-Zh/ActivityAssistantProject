@@ -74,7 +74,9 @@ app:
 
   # 文件上传配置
   upload:
-    path: D:/Project/ActivityAssistantProject/backend/uploads
+    path: ./uploads  # 开发环境使用相对路径
+    url-prefix: /uploads  # 访问URL前缀
+    base-url: http://localhost:8082  # 开发环境服务器地址
     max-file-size: 10MB
     max-request-size: 20MB
 

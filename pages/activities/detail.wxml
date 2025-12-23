@@ -111,15 +111,17 @@
   </view>
 </view>
 
-<!-- 签到提示卡片（已审核通过且可签到时显示） -->
-<view class="section" wx:if="{{isApproved && canCheckin}}">
+<!-- 签到提示卡片（已审核通过时显示） -->
+<view class="section" wx:if="{{isApproved && detail.status === '进行中'}}">
   <view class="card shadow-card checkin-notice-card">
     <view class="checkin-notice-icon">✅</view>
     <view class="checkin-notice-content">
-      <text class="checkin-notice-title">签到时间已到</text>
-      <text class="checkin-notice-text">活动正在进行中，点击下方"签到"按钮完成签到</text>
+      <text class="checkin-notice-title" wx:if="{{canCheckin}}">签到时间已到</text>
+      <text class="checkin-notice-title" wx:else>活动进行中</text>
+      <text class="checkin-notice-text" wx:if="{{canCheckin}}">活动正在进行中，点击下方"签到"按钮完成签到</text>
+      <text class="checkin-notice-text" wx:else>{{checkinTimeHint || '签到功能即将开放'}}</text>
     </view>
-    <button class="btn btn--primary btn--small" bindtap="goCheckin">立即签到</button>
+    <button class="btn btn--primary btn--small" bindtap="goCheckin" disabled="{{!canCheckin}}">{{canCheckin ? '立即签到' : '暂不可签到'}}</button>
   </view>
 </view>
 
@@ -259,12 +261,13 @@
 
   <!-- 已报名用户：显示签到或取消报名 -->
   <block wx:if="{{isRegistered}}">
-    <!-- 如果已审核通过且在签到时间内，显示签到按钮 -->
+    <!-- 如果已审核通过且活动进行中，显示签到按钮（根据签到时间窗口决定是否可点击） -->
     <button
-      wx:if="{{isApproved && canCheckin}}"
-      class="btn btn--primary footer-btn"
-      bindtap="goCheckin">
-      签到
+      wx:if="{{isApproved && detail.status === '进行中'}}"
+      class="btn {{canCheckin ? 'btn--primary' : 'btn--secondary'}} footer-btn"
+      bindtap="goCheckin"
+      disabled="{{!canCheckin}}">
+      {{canCheckin ? '签到' : '签到未开放'}}
     </button>
     <!-- 否则显示取消报名按钮 -->
     <button

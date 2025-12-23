@@ -1,6 +1,7 @@
 // pages/profile/index.js
 const { userAPI, statisticsAPI, feedbackAPI } = require('../../utils/api.js');
 const { sanitizeInput } = require('../../utils/security.js');
+const { fixImageUrl } = require('../../utils/formatter.js');
 const app = getApp();
 
 // 统一菜单列表（按需求顺序排列）
@@ -127,6 +128,12 @@ Page({
 
           // 调试日志
           console.log('后端返回的头像URL:', avatarUrl);
+
+          // 【修复】使用通用函数修复不完整的URL
+          avatarUrl = fixImageUrl(avatarUrl);
+          if (avatarUrl !== userData.avatar) {
+            console.log('URL修复后:', avatarUrl);
+          }
 
           // 如果头像URL为空，不设置（将显示首字母）
           // 如果想使用默认头像图片，可以设置为 '/activityassistant_avatar_01.png'

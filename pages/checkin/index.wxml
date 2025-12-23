@@ -131,15 +131,3 @@
 
   <view class="bottom-safe-area"></view>
 </view>
-
-<!-- 底部操作栏 -->
-<view class="fixed-bottom-bar">
-  <button class="bottom-action-btn btn-secondary" bindtap="share">
-    <text class="btn-icon">📤</text>
-    <text class="btn-label">分享</text>
-  </button>
-  <navigator class="bottom-action-btn btn-primary" hover-class="none" url="/pages/statistics/index">
-    <text class="btn-icon">📊</text>
-    <text class="btn-label">查看统计</text>
-  </navigator>
-</view>

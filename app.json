@@ -26,7 +26,9 @@
     "pages/management/blacklist",
     "pages/management/registrations",
     "pages/management/reviews",
-    "pages/privacy/index"
+    "pages/privacy/index",
+    "pages/agreement/index",
+    "pages/policy/index"
   ],
   "window": {
     "navigationBarTitleText": "ActivityAssistant",
