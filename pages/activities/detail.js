@@ -8,7 +8,8 @@ const {
   calculateActivityStatus,
   formatActivityStatus,
   getNameInitial,
-  getAvatarColor
+  getAvatarColor,
+  fixImageUrl
 } = require('../../utils/formatter.js');
 const { formatDateCN, getRelativeTime, isBeforeRegisterDeadline } = require('../../utils/datetime.js');
 const { openMapNavigation } = require('../../utils/location.js');
@@ -79,7 +80,30 @@ Page({
       // ========== 【关键】检查登录状态 ==========
       // 如果用户未登录，不应该使用默认的 'u1'，而应该使用 null
       const isLoggedIn = app.checkLoginStatus();
-      const currentUserId = isLoggedIn ? (app.globalData.currentUserId || null) : null;
+      let currentUserId = null;
+
+      if (isLoggedIn) {
+        // 已登录，获取当前用户ID
+        currentUserId = app.globalData.currentUserId;
+
+        // 【修复】如果 currentUserId 为空或为默认测试值，尝试从存储读取
+        if (!currentUserId || currentUserId === 'u1') {
+          console.warn('⚠️ app.globalData.currentUserId 无效，尝试从存储读取');
+          try {
+            const { getSecureStorage } = require('../../utils/security.js');
+            currentUserId = getSecureStorage('currentUserId');
+            console.log('✅ 从存储读取到 currentUserId:', currentUserId);
+          } catch (err) {
+            currentUserId = wx.getStorageSync('currentUserId');
+            console.log('✅ 从普通存储读取到 currentUserId:', currentUserId);
+          }
+
+          // 更新全局数据
+          if (currentUserId && currentUserId !== 'u1') {
+            app.globalData.currentUserId = currentUserId;
+          }
+        }
+      }
 
       console.log('用户登录状态:', isLoggedIn, '当前用户ID:', currentUserId);
       // ========== 登录状态检查结束 ==========
@@ -193,7 +217,7 @@ Page({
       const members = filteredRegs.map(reg => ({
         id: reg.userId,
         name: reg.name, // 使用报名时填写的昵称
-        avatar: reg.userAvatar || null, // 使用用户头像（如果后端返回）
+        avatar: fixImageUrl(reg.userAvatar || ''), // 使用用户头像（如果后端返回）并修复URL
         initial: getNameInitial(reg.name), // 生成首字母用于头像显示
         bgColor: getAvatarColor(reg.name), // 生成背景色
         groupId: reg.groupId
@@ -292,6 +316,42 @@ Page({
       // 判断是否可以签到（活动开始前30分钟 至 活动结束时间）
       const canCheckin = isInCheckinWindow(detail.startTime, 30, detail.endTime);
 
+      // 【调试】输出签到相关的状态信息
+      console.log('===== 签到状态调试 =====');
+      console.log('活动标题:', detail.title);
+      console.log('活动状态 (dynamicStatus):', dynamicStatus);
+      console.log('开始时间 (startTime):', detail.startTime);
+      console.log('结束时间 (endTime):', detail.endTime);
+      console.log('当前时间:', new Date().toISOString());
+      console.log('canCheckin (签到时间窗口):', canCheckin);
+      console.log('isApproved (是否已审核通过):', isApproved);
+      console.log('isRegistered (是否已报名):', isRegistered);
+      console.log('是否显示签到按钮:', isApproved && dynamicStatus === '进行中');
+      console.log('======================');
+
+      // 【新增】生成签到时间提示
+      let checkinTimeHint = '';
+      if (!canCheckin && detail.startTime) {
+        const now = new Date();
+        const startTime = new Date(detail.startTime);
+        const checkinStartTime = new Date(startTime.getTime() - 30 * 60 * 1000); // 开始前30分钟
+        const endTime = detail.endTime ? new Date(detail.endTime) : null;
+
+        if (now < checkinStartTime) {
+          // 签到未开始
+          const minutes = Math.ceil((checkinStartTime - now) / (60 * 1000));
+          if (minutes > 60) {
+            const hours = Math.floor(minutes / 60);
+            checkinTimeHint = `签到将在活动开始前30分钟开放（约${hours}小时后）`;
+          } else {
+            checkinTimeHint = `签到将在活动开始前30分钟开放（约${minutes}分钟后）`;
+          }
+        } else if (endTime && now > endTime) {
+          // 签到已结束
+          checkinTimeHint = '签到时间已过';
+        }
+      }
+
       // ========== 【关键】检查当前用户是否已报名 ==========
       // 【修复】使用 allStatusRegs 而不是 activityRegs，确保能检测到 pending 状态的报名
       let isRegistered = false;
@@ -368,6 +428,7 @@ Page({
         canRegister,
         registerButtonText, // 报名按钮文本
         canCheckin,
+        checkinTimeHint, // 【新增】签到时间提示
         isRegistered,
         isApproved,  // 【新增】是否已审核通过（用于控制签到功能显示）
         currentUserRegistration,  // 【新增】保存当前用户的报名记录
@@ -412,7 +473,7 @@ Page({
     const members = filteredRegs.map(reg => ({
       id: reg.userId,
       name: reg.name, // 使用报名时填写的昵称
-      avatar: reg.userAvatar || null, // 使用用户头像（如果后端返回）
+      avatar: fixImageUrl(reg.userAvatar || ''), // 使用用户头像（如果后端返回）并修复URL
       initial: getNameInitial(reg.name), // 生成首字母用于头像显示
       bgColor: getAvatarColor(reg.name), // 生成背景色
       groupId: reg.groupId

@@ -1,13 +1,13 @@
 <!-- pages/auth/login.wxml -->
 <view class="login-container">
+  <!-- 返回按钮（固定在屏幕左上角） -->
+  <view class="back-button" bindtap="goBack">
+    <text class="back-arrow">←</text>
+  </view>
+
   <!-- 顶部装饰球 -->
   <view class="decoration-sphere decoration-sphere--top"></view>
   <view class="decoration-sphere decoration-sphere--bottom"></view>
-
-  <!-- 返回按钮 -->
-  <view class="back-btn" bindtap="goBack">
-    <view class="back-icon">←</view>
-  </view>
 
   <view class="login-content">
     <!-- Logo区域 -->
@@ -57,9 +57,9 @@
 
       <text class="privacy-text">登录即表示同意</text>
       <view class="privacy-links">
-        <text class="privacy-link">《用户协议》</text>
+        <text class="privacy-link" bindtap="viewAgreement">《用户协议》</text>
         <text class="privacy-separator">和</text>
-        <text class="privacy-link">《隐私政策》</text>
+        <text class="privacy-link" bindtap="viewPolicy">《隐私政策》</text>
       </view>
     </view>
   </view>

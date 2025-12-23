@@ -101,4 +101,8 @@ public class ErrorCode {
     public static final int DATABASE_ERROR = 9001;
     public static final int NETWORK_ERROR = 9002;
     public static final int FILE_UPLOAD_ERROR = 9003;
+    public static final int FILE_UPLOAD_FAILED = 9004;
+    public static final int FILE_TOO_LARGE = 9005;
+    public static final int INVALID_FILE_TYPE = 9006;
+    public static final int INVALID_PARAM = 9007;
 }

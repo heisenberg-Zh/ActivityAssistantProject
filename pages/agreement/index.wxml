@@ -1,0 +1,153 @@
+<!-- pages/agreement/index.wxml -->
+<view class="agreement-container">
+  <view class="agreement-header">
+    <text class="agreement-title">ActivityAssistant 用户协议</text>
+    <text class="update-date">更新日期：2025年12月22日</text>
+    <text class="effective-date">生效日期：2025年12月22日</text>
+  </view>
+
+  <scroll-view class="agreement-content" scroll-y>
+    <view class="section">
+      <text class="section-title">【特别提示】</text>
+      <text class="paragraph">欢迎您使用 ActivityAssistant（活动助手）小程序！</text>
+      <text class="paragraph">在使用本小程序前，请您务必仔细阅读并充分理解本协议。您点击"同意"或实际使用本小程序服务，即表示您已阅读、理解并同意接受本协议的全部内容。如您不同意本协议，请您立即停止使用本小程序。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">一、协议主体</text>
+      <text class="paragraph">本协议是您（以下简称"用户"）与 ActivityAssistant 小程序运营者（以下简称"我们"或"本小程序"）之间关于用户使用本小程序服务所订立的协议。</text>
+      <text class="paragraph highlight">运营者性质：个人开发者</text>
+      <text class="paragraph highlight">ICP备案号：浙ICP备2025200004号-1X</text>
+      <text class="paragraph highlight">联系邮箱：Heisenbergfku@gmail.com</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">二、服务说明</text>
+      <text class="sub-title">2.1 服务内容</text>
+      <text class="paragraph">ActivityAssistant 是一款社交活动管理工具，为用户提供以下服务：</text>
+      <text class="list-item">• 活动创建与发布：支持聚会、培训、户外、运动、会议等多种活动类型</text>
+      <text class="list-item">• 活动报名管理：在线报名、分组管理、审核机制</text>
+      <text class="list-item">• 活动签到：基于地理位置的签到验证</text>
+      <text class="list-item">• 数据统计：活动数据分析和可视化展示</text>
+      <text class="list-item">• 评价反馈：活动评分和用户评价</text>
+      <text class="list-item">• 消息通知：活动相关消息推送</text>
+
+      <text class="sub-title">2.2 服务范围</text>
+      <text class="paragraph">本小程序服务仅限于为用户提供活动组织和管理的工具平台，不对用户在平台上发布的活动内容的真实性、合法性、准确性承担责任。</text>
+
+      <text class="sub-title">2.3 服务变更</text>
+      <text class="paragraph">我们有权根据业务发展需要，对服务内容进行调整、升级或优化，并会提前通过小程序公告、消息推送等方式通知用户。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">三、用户注册与账号</text>
+      <text class="sub-title">3.1 注册资格</text>
+      <text class="paragraph">用户应当具备完全民事行为能力。若您是未成年人，请在法定监护人的陪同下阅读本协议，并在取得监护人的同意后使用本小程序。</text>
+
+      <text class="sub-title">3.2 账号使用</text>
+      <text class="list-item">• 用户通过微信授权登录本小程序，账号信息与用户微信账号关联</text>
+      <text class="list-item">• 用户应妥善保管账号信息，不得将账号出借、转让或分享给他人使用</text>
+      <text class="list-item">• 用户对账号下的所有行为承担全部法律责任</text>
+      <text class="list-item">• 如发现账号被盗用或存在安全隐患，应立即通过邮箱联系我们</text>
+
+      <text class="sub-title">3.3 账号注销</text>
+      <text class="paragraph">用户可通过小程序"设置"页面申请注销账号。账号注销后，相关数据将被删除且无法恢复，请谨慎操作。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">四、用户行为规范</text>
+      <text class="sub-title">4.1 用户承诺</text>
+      <text class="paragraph">在使用本小程序服务时，用户承诺：</text>
+      <text class="list-item">• 遵守中华人民共和国相关法律法规</text>
+      <text class="list-item">• 遵守本协议及小程序相关规则</text>
+      <text class="list-item">• 尊重他人合法权益，不侵犯他人隐私</text>
+      <text class="list-item">• 不利用本小程序从事违法违规活动</text>
+
+      <text class="sub-title">4.2 禁止行为</text>
+      <text class="paragraph">用户不得实施以下行为：</text>
+      <text class="list-item warning">✕ 发布违法、违规、虚假、欺诈性的活动信息</text>
+      <text class="list-item warning">✕ 发布涉及政治、色情、暴力、赌博等违禁内容</text>
+      <text class="list-item warning">✕ 恶意刷单、虚假报名、恶意签到</text>
+      <text class="list-item warning">✕ 侵犯他人知识产权、名誉权、隐私权等合法权益</text>
+      <text class="list-item warning">✕ 传播病毒、木马或其他恶意程序</text>
+      <text class="list-item warning">✕ 干扰、破坏本小程序正常运营</text>
+      <text class="list-item warning">✕ 利用技术手段攻击、入侵本小程序系统</text>
+      <text class="list-item warning">✕ 批量注册账号或使用外挂、插件等非法工具</text>
+
+      <text class="sub-title">4.3 违规处理</text>
+      <text class="paragraph">如发现用户存在违规行为，我们有权采取以下措施：</text>
+      <text class="list-item">• 删除违规内容</text>
+      <text class="list-item">• 限制账号部分功能</text>
+      <text class="list-item">• 暂停或终止账号使用</text>
+      <text class="list-item">• 向有关部门报告并配合调查</text>
+      <text class="paragraph">因用户违规行为造成的一切后果由用户自行承担。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">五、知识产权</text>
+      <text class="sub-title">5.1 平台知识产权</text>
+      <text class="paragraph">本小程序的软件著作权、商标权、专利权等知识产权均归运营者所有。未经许可，任何人不得擅自使用、复制、修改、传播本小程序的任何内容。</text>
+
+      <text class="sub-title">5.2 用户内容授权</text>
+      <text class="paragraph">用户在本小程序发布的活动信息、图片、评价等内容，其知识产权归用户所有。用户发布内容即表示授权本小程序在服务范围内使用、展示、传播该内容。</text>
+
+      <text class="sub-title">5.3 侵权处理</text>
+      <text class="paragraph">如用户认为本小程序内容侵犯其合法权益，可通过邮箱 Heisenbergfku@gmail.com 联系我们，我们将在核实后及时处理。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">六、隐私保护</text>
+      <text class="paragraph">我们高度重视用户隐私保护。关于个人信息的收集、使用、存储、共享等事项，请详细阅读《ActivityAssistant 隐私政策》。</text>
+      <text class="paragraph">用户同意本协议即表示同意我们按照隐私政策的约定处理您的个人信息。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">七、免责声明</text>
+      <text class="sub-title">7.1 服务中断</text>
+      <text class="paragraph">因以下情况导致服务中断或终止，我们不承担责任：</text>
+      <text class="list-item">• 系统维护、升级</text>
+      <text class="list-item">• 不可抗力（如自然灾害、战争、政府行为等）</text>
+      <text class="list-item">• 网络运营商故障</text>
+      <text class="list-item">• 用户设备或网络问题</text>
+      <text class="list-item">• 黑客攻击、病毒入侵等非我方原因</text>
+
+      <text class="sub-title">7.2 第三方内容</text>
+      <text class="paragraph">本小程序可能包含第三方提供的内容或链接，我们不对第三方内容的真实性、准确性、合法性承担责任。</text>
+
+      <text class="sub-title">7.3 用户纠纷</text>
+      <text class="paragraph">用户之间因活动产生的纠纷（如费用分摊、人身伤害等），应由用户自行协商解决，我们不承担任何责任。</text>
+
+      <text class="sub-title">7.4 数据安全</text>
+      <text class="paragraph">我们将采取合理的技术措施保护用户数据安全，但不保证数据绝对不会丢失或泄露。建议用户定期备份重要数据。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">八、协议变更</text>
+      <text class="paragraph">我们有权根据法律法规变化或业务需要修改本协议。协议变更后，我们将通过小程序公告、消息推送等方式通知用户。</text>
+      <text class="paragraph">如用户不同意变更后的协议，应立即停止使用本小程序；如用户继续使用，视为接受变更后的协议。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">九、争议解决</text>
+      <text class="paragraph">本协议的订立、执行和解释及争议的解决均应适用中华人民共和国法律。</text>
+      <text class="paragraph">如双方就本协议内容或其执行发生争议，应友好协商解决；协商不成的，任何一方可向运营者所在地人民法院提起诉讼。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">十、联系我们</text>
+      <text class="paragraph">如您对本协议有任何疑问、意见或建议，可通过以下方式联系我们：</text>
+      <text class="list-item">📧 邮箱：Heisenbergfku@gmail.com</text>
+      <text class="list-item">💬 小程序：通过"我的 - 设置 - 意见反馈"联系</text>
+      <text class="paragraph">我们将在收到您的反馈后尽快处理并回复。</text>
+    </view>
+
+    <view class="footer">
+      <text class="footer-text">感谢您使用 ActivityAssistant！</text>
+      <text class="footer-text">本协议最终解释权归 ActivityAssistant 运营者所有。</text>
+    </view>
+  </scroll-view>
+
+  <view class="agreement-actions">
+    <button class="btn-back" bindtap="goBack">返回</button>
+  </view>
+</view>

@@ -1372,6 +1372,100 @@ const feedbackAPI = {
   })
 };
 
+// 文件上传API
+const uploadAPI = {
+  /**
+   * 上传头像
+   * @param {String} filePath - 微信临时文件路径
+   * @returns {Promise} - 返回头像访问URL
+   */
+  uploadAvatar: (filePath) => {
+    return new Promise((resolve, reject) => {
+      const { API_CONFIG } = require('./config.js');
+      const token = wx.getStorageSync('token');
+
+      console.log('开始上传头像:', filePath);
+
+      wx.uploadFile({
+        url: `${API_CONFIG.baseUrl}/api/upload/avatar`,
+        filePath: filePath,
+        name: 'file',
+        header: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        success: (res) => {
+          console.log('上传成功，响应:', res);
+
+          if (res.statusCode === 200) {
+            try {
+              const result = JSON.parse(res.data);
+              if (result.code === 0) {
+                // 返回完整的URL
+                const avatarUrl = result.data.url;
+                console.log('头像上传成功，URL:', avatarUrl);
+                resolve({ code: 0, data: { url: avatarUrl } });
+              } else {
+                console.error('上传失败:', result.message);
+                reject(new Error(result.message || '上传失败'));
+              }
+            } catch (e) {
+              console.error('解析响应失败:', e);
+              reject(new Error('解析响应失败'));
+            }
+          } else {
+            console.error('上传失败，状态码:', res.statusCode);
+            reject(new Error(`上传失败 (${res.statusCode})`));
+          }
+        },
+        fail: (err) => {
+          console.error('上传请求失败:', err);
+          reject(new Error(err.errMsg || '上传失败'));
+        }
+      });
+    });
+  },
+
+  /**
+   * 上传图片
+   * @param {String} filePath - 微信临时文件路径
+   * @returns {Promise} - 返回图片访问URL
+   */
+  uploadImage: (filePath) => {
+    return new Promise((resolve, reject) => {
+      const { API_CONFIG } = require('./config.js');
+      const token = wx.getStorageSync('token');
+
+      wx.uploadFile({
+        url: `${API_CONFIG.baseUrl}/api/upload/image`,
+        filePath: filePath,
+        name: 'file',
+        header: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        success: (res) => {
+          if (res.statusCode === 200) {
+            try {
+              const result = JSON.parse(res.data);
+              if (result.code === 0) {
+                resolve({ code: 0, data: { url: result.data.url } });
+              } else {
+                reject(new Error(result.message || '上传失败'));
+              }
+            } catch (e) {
+              reject(new Error('解析响应失败'));
+            }
+          } else {
+            reject(new Error(`上传失败 (${res.statusCode})`));
+          }
+        },
+        fail: (err) => {
+          reject(new Error(err.errMsg || '上传失败'));
+        }
+      });
+    });
+  }
+};
+
 module.exports = {
   request,
   activityAPI,
@@ -1385,5 +1479,6 @@ module.exports = {
   administratorAPI,
   whitelistAPI,
   blacklistAPI,
-  feedbackAPI
+  feedbackAPI,
+  uploadAPI
 };

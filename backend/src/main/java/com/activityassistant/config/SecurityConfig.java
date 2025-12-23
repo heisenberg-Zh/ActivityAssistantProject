@@ -69,6 +69,8 @@ public class SecurityConfig {
 
                         // 静态资源
                         .requestMatchers("/static/**", "/public/**", "/favicon.ico").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+                        .requestMatchers(HttpMethod.HEAD, "/uploads/**").permitAll()
 
                         // 活动相关公开接口（游客可浏览）
                         .requestMatchers(HttpMethod.GET, "/api/activities").permitAll()

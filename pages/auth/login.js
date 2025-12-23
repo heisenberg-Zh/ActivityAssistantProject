@@ -396,5 +396,23 @@ Page({
         url: '/pages/home/index'
       });
     }
+  },
+
+  /**
+   * 查看用户协议
+   */
+  viewAgreement() {
+    wx.navigateTo({
+      url: '/pages/agreement/index'
+    });
+  },
+
+  /**
+   * 查看隐私政策
+   */
+  viewPolicy() {
+    wx.navigateTo({
+      url: '/pages/policy/index'
+    });
   }
 });

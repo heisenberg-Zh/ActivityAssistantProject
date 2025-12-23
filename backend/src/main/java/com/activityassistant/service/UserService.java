@@ -144,7 +144,15 @@ public class UserService {
             user.setNickname(request.getNickname());
         }
         if (request.getAvatar() != null) {
-            user.setAvatar(request.getAvatar());
+            String avatar = request.getAvatar().trim();
+            if (avatar.isEmpty()) {
+                user.setAvatar("");
+            } else if (isValidAvatarUrl(avatar)) {
+                user.setAvatar(avatar);
+            } else {
+                // 遇到非法头像URL（如 wxfile://tmp... / http://tmp...），按约定忽略该字段，不影响昵称/手机号保存
+                log.warn("忽略非法头像URL，userId={}, avatar={}", userId, avatar);
+            }
         }
         if (request.getPhone() != null) {
             // 检查手机号是否已被其他用户使用
@@ -158,6 +166,14 @@ public class UserService {
         log.info("用户信息更新成功，userId={}", userId);
 
         return userMapper.toVOWithFullInfo(savedUser);
+    }
+
+    private boolean isValidAvatarUrl(String avatar) {
+        String lower = avatar.toLowerCase(Locale.ROOT);
+        if (lower.startsWith("wxfile:") || lower.startsWith("http://tmp/") || lower.startsWith("tmp/") || lower.startsWith("tmp_")) {
+            return false;
+        }
+        return lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("/");
     }
 
     /**

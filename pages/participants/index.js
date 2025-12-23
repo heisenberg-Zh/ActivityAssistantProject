@@ -1,6 +1,6 @@
 // pages/participants/index.js
 const { registrationAPI } = require('../../utils/api.js');
-const { getAvatarColor, getNameInitial } = require('../../utils/formatter.js');
+const { getAvatarColor, getNameInitial, fixImageUrl } = require('../../utils/formatter.js');
 
 Page({
   data: {
@@ -81,7 +81,7 @@ Page({
         return {
           id: reg.userId,
           name: name,
-          avatar: reg.userAvatar || null, // 使用真实头像，如果没有则为null（WXML中会显示首字母头像）
+          avatar: fixImageUrl(reg.userAvatar || ''), // 使用真实头像并修复URL
           initial: getNameInitial(name),
           bgColor: getAvatarColor(name),
           registeredAt: reg.registeredAt || reg.createdAt,
