@@ -106,6 +106,8 @@ Page({
         ];
 
         // 设置已创建活动的统计数据
+        // 防御性处理：当创建活动数为0时，其他统计项显示空白
+        const hasCreatedActivities = (data.createdActivities || 0) > 0;
         const createdStats = [
           {
             label: '创建活动数',
@@ -116,21 +118,21 @@ Page({
           },
           {
             label: '总报名人数',
-            value: data.totalRegistrations || 0,
+            value: hasCreatedActivities ? (data.totalRegistrations || 0) : '',
             icon: '👥',
             bg: '#dcfce7',
             color: '#047857'
           },
           {
             label: '无效签到',
-            value: data.invalidCheckinCount || 0,
+            value: hasCreatedActivities ? (data.invalidCheckinCount || 0) : '',
             icon: '📈',
             bg: '#fde68a',
             color: '#b45309'
           },
           {
             label: '获得评价数',
-            value: data.totalReviews || 0,
+            value: hasCreatedActivities ? (data.totalReviews || 0) : '',
             icon: '⭐',
             bg: '#ede9fe',
             color: '#6d28d9'

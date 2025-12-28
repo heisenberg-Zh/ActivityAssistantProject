@@ -136,8 +136,18 @@ public class StatisticsService {
         // 3. 统计参与的活动数（已通过报名的）
         long participatedActivities = registrationRepository.countByUserIdAndStatus(targetUserId, "approved");
 
-        // 4. 统计总报名数
-        long totalRegistrations = registrationRepository.countByUserId(targetUserId);
+        // 4. 统计用户创建的活动收到的总报名数
+        // 获取用户创建的所有活动ID
+        List<Activity> createdActivitiesList = activityRepository.findByOrganizerId(targetUserId);
+        List<String> activityIds = createdActivitiesList.stream()
+                .map(Activity::getId)
+                .toList();
+
+        // 统计这些活动的总报名数
+        long totalRegistrations = 0L;
+        for (String activityId : activityIds) {
+            totalRegistrations += registrationRepository.countByActivityId(activityId);
+        }
 
         // 5. 统计总签到数
         long totalCheckins = checkinRepository.countByUserId(targetUserId);

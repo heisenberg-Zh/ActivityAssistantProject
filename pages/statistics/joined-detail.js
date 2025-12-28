@@ -168,49 +168,106 @@ Page({
   },
 
   /**
-   * 初始化柱状图 - 每月参加活动趋势
+   * 初始化柱状图 - 每月参加活动趋势（智能动态范围）
    */
   initBarChart() {
-    console.log('📊 [joined-detail] 初始化柱状图');
+    console.log('📊 [joined-detail] 初始化柱状图（智能动态范围）');
 
     // 从页面数据中获取报名记录
     const userRegistrations = this.data.registrations;
 
     console.log('📋 [柱状图] 找到报名记录:', userRegistrations.length, '条');
 
+    // 如果没有数据，跳过初始化
+    if (userRegistrations.length === 0) {
+      console.log('📊 [柱状图] 无数据，跳过初始化');
+      return;
+    }
+
     // 统计最近6个月的数据
     const now = new Date();
-    const monthData = {};
-    const monthLabels = [];
+    const recentMonthData = {};
+    const recentMonthLabels = [];
 
     // 生成最近6个月的标签
     for (let i = 5; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const month = date.getMonth() + 1;
       const label = `${month}月`;
-      monthLabels.push(label);
-      monthData[label] = 0;
+      recentMonthLabels.push(label);
+      recentMonthData[label] = 0;
     }
 
-    console.log('📅 [柱状图] 月份标签:', monthLabels);
+    console.log('📅 [柱状图] 最近6个月标签:', recentMonthLabels);
 
-    // 统计每月参加活动数
+    // 统计最近6个月的数据
+    let hasDataInRecentMonths = false;
     userRegistrations.forEach(r => {
       const regDate = parseDate(r.registeredAt || r.createdAt);
       const month = regDate.getMonth() + 1;
       const label = `${month}月`;
-      if (monthData.hasOwnProperty(label)) {
-        monthData[label]++;
+      if (recentMonthData.hasOwnProperty(label)) {
+        recentMonthData[label]++;
+        hasDataInRecentMonths = true;
       }
     });
 
-    console.log('📊 [柱状图] 月度数据:', monthData);
+    console.log('📊 [柱状图] 最近6个月数据:', recentMonthData, '是否有数据:', hasDataInRecentMonths);
 
-    const barData = monthLabels.map(label => monthData[label]);
-    console.log('📊 [柱状图] 图表数据:', barData);
+    // 决定使用哪个时间范围
+    let finalLabels, finalData;
+
+    if (hasDataInRecentMonths) {
+      // 有最近6个月的数据，使用最近6个月
+      finalLabels = recentMonthLabels;
+      finalData = recentMonthLabels.map(label => recentMonthData[label]);
+      console.log('✅ [柱状图] 使用最近6个月数据');
+    } else {
+      // 没有最近6个月的数据，使用数据实际所在的月份
+      console.log('⚠️ [柱状图] 最近6个月无数据，切换到数据实际月份');
+
+      // 提取所有报名的月份
+      const allMonths = userRegistrations.map(r => {
+        const regDate = parseDate(r.registeredAt || r.createdAt);
+        return {
+          year: regDate.getFullYear(),
+          month: regDate.getMonth() + 1,
+          timestamp: regDate.getTime()
+        };
+      });
+
+      // 按时间排序并去重
+      const uniqueMonths = [...new Map(
+        allMonths.map(m => [`${m.year}-${m.month}`, m])
+      ).values()].sort((a, b) => a.timestamp - b.timestamp);
+
+      console.log('📅 [柱状图] 数据实际月份:', uniqueMonths);
+
+      // 取最后6个月（或全部，如果不足6个月）
+      const displayMonths = uniqueMonths.slice(-6);
+      finalLabels = displayMonths.map(m => `${m.month}月`);
+
+      // 统计这些月份的数据
+      const dataMonthData = {};
+      finalLabels.forEach(label => dataMonthData[label] = 0);
+
+      userRegistrations.forEach(r => {
+        const regDate = parseDate(r.registeredAt || r.createdAt);
+        const month = regDate.getMonth() + 1;
+        const label = `${month}月`;
+        if (dataMonthData.hasOwnProperty(label)) {
+          dataMonthData[label]++;
+        }
+      });
+
+      finalData = finalLabels.map(label => dataMonthData[label]);
+      console.log('✅ [柱状图] 使用数据实际月份:', finalLabels, finalData);
+    }
+
+    console.log('📊 [柱状图] 最终图表数据:', { labels: finalLabels, data: finalData });
 
     // 计算Y轴最大值，向上取整到合适的刻度
-    const maxValue = Math.max(...barData, 1);
+    const maxValue = Math.max(...finalData, 1);
     // 对于少量数据，设置更合理的Y轴范围
     let yMax;
     if (maxValue <= 3) {
@@ -226,10 +283,10 @@ Page({
     barChart = new wxCharts({
       canvasId: 'bar-canvas',
       type: 'column',
-      categories: monthLabels,
+      categories: finalLabels,
       series: [{
         name: '参加活动数',
-        data: barData,
+        data: finalData,
         color: '#3b82f6'
       }],
       width: this.data.canvasWidth,
@@ -255,6 +312,8 @@ Page({
         }
       }
     });
+
+    console.log('✅ [柱状图] 初始化完成');
   }
 });
 
