@@ -1058,7 +1058,6 @@ Page({
       title: '添加自定义字段',
       editable: true,
       placeholderText: '例如：学号、公司名称',
-      content: '请输入字段名称',
       success: (res) => {
         if (res.confirm && res.content) {
           const fieldLabel = res.content.trim();
@@ -1230,7 +1229,6 @@ Page({
       title: '添加自定义字段',
       editable: true,
       placeholderText: '例如：携带物品、特殊要求',
-      content: '请输入字段名称',
       success: (res) => {
         if (res.confirm && res.content) {
           const fieldLabel = res.content.trim();
