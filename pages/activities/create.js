@@ -47,7 +47,7 @@ Page({
       desc: '',
       type: '',
       typeIndex: 0,
-      isPublic: true, // 是否公开（默认公开，用户可在设置中修改）
+      isPublic: false, // 是否公开（默认关闭）
       organizerPhone: '', // 联系人电话
       organizerWechat: '', // 联系人微信号
       hasGroups: false, // 是否启用分组
@@ -159,6 +159,14 @@ Page({
         if (endDateTime <= startDateTime) {
           wx.showToast({ title: '结束时间必须晚于开始时间', icon: 'none' });
           return false;
+        }
+        // 验证报名截止时间（如果已设置）
+        if (form.registerDeadlineDate && form.registerDeadlineTime) {
+          const registerDeadline = parseDate(`${form.registerDeadlineDate} ${form.registerDeadlineTime}`);
+          if (registerDeadline >= startDateTime) {
+            wx.showToast({ title: '报名截止时间必须早于活动开始时间', icon: 'none' });
+            return false;
+          }
         }
         break;
 
@@ -696,25 +704,8 @@ Page({
     }
 
     const registerDeadline = parseDate(`${form.registerDeadlineDate} ${form.registerDeadlineTime}`);
-    const now = new Date();
 
-    // 1. 不能早于当前时间
-    if (registerDeadline <= now) {
-      wx.showModal({
-        title: '报名截止时间无效',
-        content: '报名截止时间不能早于或等于当前时间，请重新选择。',
-        showCancel: false,
-        success: () => {
-          this.setData({
-            'form.registerDeadlineDate': '',
-            'form.registerDeadlineTime': '09:00'
-          });
-        }
-      });
-      return false;
-    }
-
-    // 2. 不能晚于活动开始时间
+    // 报名截止时间不能晚于活动开始时间
     if (form.startDate && form.startTime) {
       const activityStart = parseDate(`${form.startDate} ${form.startTime}`);
       if (registerDeadline >= activityStart) {
@@ -2087,15 +2078,60 @@ Page({
       groups = activity.groups.map(g => ({ ...g }));
     }
 
+    // 回填自定义报名字段（无分组时用于defaultCustomFields；有分组时用于补齐缺省group.customFields）
+    const defaultCustomFields = Array.isArray(activity.customFields) && activity.customFields.length > 0
+      ? JSON.parse(JSON.stringify(activity.customFields))
+      : JSON.parse(JSON.stringify(this.data.defaultCustomFields));
+
+    // 规范化分组字段，避免编辑时出现空字段
+    let normalizedGroups = groups;
+    if (form.hasGroups) {
+      normalizedGroups = groups.map(g => ({
+        ...g,
+        fee: g.fee || 0,
+        feeType: g.feeType || '免费',
+        requirements: g.requirements || '',
+        description: g.description || '',
+        customFields: Array.isArray(g.customFields) && g.customFields.length > 0
+          ? JSON.parse(JSON.stringify(g.customFields))
+          : JSON.parse(JSON.stringify(defaultCustomFields)),
+        descriptionFields: Array.isArray(g.descriptionFields)
+          ? JSON.parse(JSON.stringify(g.descriptionFields))
+          : []
+      }));
+    }
+
+    // 计算nextFieldId / nextDescFieldId，避免新增字段ID冲突
+    let maxCustomId = 0;
+    const customFieldsForScan = form.hasGroups
+      ? normalizedGroups.reduce((acc, g) => acc.concat(g.customFields || []), [])
+      : defaultCustomFields;
+    customFieldsForScan.forEach(f => {
+      const match = String((f && f.id) || '').match(/^custom_(\d+)$/);
+      if (match) maxCustomId = Math.max(maxCustomId, Number(match[1]));
+    });
+
+    let maxDescId = 0;
+    const descFieldsForScan = form.hasGroups
+      ? normalizedGroups.reduce((acc, g) => acc.concat(g.descriptionFields || []), [])
+      : (this.data.descriptionFields || []);
+    descFieldsForScan.forEach(f => {
+      const match = String((f && f.id) || '').match(/^desc_(\d+)$/);
+      if (match) maxDescId = Math.max(maxDescId, Number(match[1]));
+    });
+
     // 判断活动状态，已发布的活动不显示草稿和复制按钮
     const isPublished = activity.status && activity.status !== '草稿';
 
     this.setData({
       form,
-      groups,
+      groups: normalizedGroups,
       originalActivity: activity,
       currentRegistrations,
       fieldEditability,
+      defaultCustomFields,
+      nextFieldId: Math.max(this.data.nextFieldId || 1, maxCustomId + 1),
+      nextDescFieldId: Math.max(this.data.nextDescFieldId || 1, maxDescId + 1),
       previewImageUrl: getActivityImage(activity.image, activity.type), // 设置预览图片
       // 编辑模式的显示控制
       pageTitle: '活动编辑',
@@ -2214,9 +2250,54 @@ Page({
       const copiedWhitelist = activity.whitelist ? [...activity.whitelist] : [];
       const copiedBlacklist = activity.blacklist ? [...activity.blacklist] : [];
 
+      // 回填自定义报名字段（无分组时用于defaultCustomFields；有分组时用于补齐缺省group.customFields）
+      const defaultCustomFields = Array.isArray(activity.customFields) && activity.customFields.length > 0
+        ? JSON.parse(JSON.stringify(activity.customFields))
+        : JSON.parse(JSON.stringify(this.data.defaultCustomFields));
+
+      // 规范化分组字段，避免复制后出现空字段
+      let normalizedGroups = groups;
+      if (form.hasGroups) {
+        normalizedGroups = groups.map(g => ({
+          ...g,
+          fee: g.fee || 0,
+          feeType: g.feeType || '免费',
+          requirements: g.requirements || '',
+          description: g.description || '',
+          customFields: Array.isArray(g.customFields) && g.customFields.length > 0
+            ? JSON.parse(JSON.stringify(g.customFields))
+            : JSON.parse(JSON.stringify(defaultCustomFields)),
+          descriptionFields: Array.isArray(g.descriptionFields)
+            ? JSON.parse(JSON.stringify(g.descriptionFields))
+            : []
+        }));
+      }
+
+      // 计算nextFieldId / nextDescFieldId，避免新增字段ID冲突
+      let maxCustomId = 0;
+      const customFieldsForScan = form.hasGroups
+        ? normalizedGroups.reduce((acc, g) => acc.concat(g.customFields || []), [])
+        : defaultCustomFields;
+      customFieldsForScan.forEach(f => {
+        const match = String((f && f.id) || '').match(/^custom_(\d+)$/);
+        if (match) maxCustomId = Math.max(maxCustomId, Number(match[1]));
+      });
+
+      let maxDescId = 0;
+      const descFieldsForScan = form.hasGroups
+        ? normalizedGroups.reduce((acc, g) => acc.concat(g.descriptionFields || []), [])
+        : (this.data.descriptionFields || []);
+      descFieldsForScan.forEach(f => {
+        const match = String((f && f.id) || '').match(/^desc_(\d+)$/);
+        if (match) maxDescId = Math.max(maxDescId, Number(match[1]));
+      });
+
       this.setData({
         form,
-        groups,
+        groups: normalizedGroups,
+        defaultCustomFields,
+        nextFieldId: Math.max(this.data.nextFieldId || 1, maxCustomId + 1),
+        nextDescFieldId: Math.max(this.data.nextDescFieldId || 1, maxDescId + 1),
         copiedWhitelist,
         copiedBlacklist
       });
