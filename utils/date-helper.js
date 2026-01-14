@@ -12,18 +12,38 @@
  * @returns {Date} Date 对象
  */
 function parseDate(dateStr) {
-  if (!dateStr) {
-    return new Date();
-  }
+  if (!dateStr) return new Date();
 
   // 如果已经是 Date 对象，直接返回
   if (dateStr instanceof Date) {
     return dateStr;
   }
 
-  // 将所有的 "-" 替换为 "/"，iOS Safari 支持这种格式
-  const formatted = String(dateStr).replace(/-/g, '/');
-  return new Date(formatted);
+  // 支持时间戳
+  if (typeof dateStr === 'number' && Number.isFinite(dateStr)) {
+    return new Date(dateStr);
+  }
+
+  const raw = String(dateStr).trim();
+  if (!raw) return new Date();
+
+  const isValidDate = (d) => d instanceof Date && !Number.isNaN(d.getTime());
+
+  // 先尝试直接解析（兼容 ISO: 2025-12-30T00:19:30）
+  // 移除毫秒（如 2025-12-30T00:19:30.123）以兼容部分环境
+  const direct = new Date(raw.replace(/\.\d+/, ''));
+  if (isValidDate(direct)) return direct;
+
+  // iOS 兼容：将 "YYYY-MM-DD HH:mm:ss" 或 "YYYY-MM-DDTHH:mm:ss" 转为 "YYYY/MM/DD HH:mm:ss"
+  const slash = raw
+    .replace('T', ' ')
+    .replace(/\.\d+/, '')
+    .replace(/-/g, '/');
+  const fallback = new Date(slash);
+  if (isValidDate(fallback)) return fallback;
+
+  // 最后兜底：保持原始行为（返回当前时间，避免出现 NaN）
+  return new Date();
 }
 
 /**

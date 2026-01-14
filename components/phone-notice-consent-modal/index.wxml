@@ -1,0 +1,27 @@
+<view wx:if="{{visible}}" class="overlay" catchtouchmove="noop">
+  <view class="modal" catchtap="noop">
+    <view class="header">
+      <text class="title">使用联系方式用于活动通知</text>
+    </view>
+
+    <view class="body">
+      <text class="desc">联系方式为选填信息。经你同意后，我们将仅用于活动通知（如活动时间/地点变更、取消等）。</text>
+      <text class="desc">联系方式仅本人可见；在你参与的活动中，活动组织者和管理员可查看用于通知。你可随时删除。</text>
+
+      <view class="consent-row" bindtap="toggleChecked">
+        <view class="checkbox {{checked ? 'checkbox--checked' : ''}}">
+          <text wx:if="{{checked}}" class="checkmark">✓</text>
+        </view>
+        <view class="consent-text">
+          <text>我已阅读并同意</text>
+          <text class="link" catchtap="onViewPolicy">《隐私政策》</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="footer">
+      <button class="btn btn--ghost" bindtap="onCancel">暂不填写</button>
+      <button class="btn btn--primary" bindtap="onConfirm">同意并继续</button>
+    </view>
+  </view>
+</view>

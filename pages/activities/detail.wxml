@@ -40,12 +40,27 @@
   <view class="detail-status-badge detail-status-badge--{{detail.statusClass}}">
     <text class="detail-status-text">{{detail.status}}</text>
   </view>
+
+  <!-- 公开/私密标签 - 右下角 -->
+  <view class="detail-privacy-badge detail-privacy-badge--{{detail.privacyClass}}">
+    <text class="detail-privacy-text">{{detail.privacyText}}</text>
+  </view>
 </view>
 
 <view class="section">
   <view class="card shadow-card detail-card">
     <view class="organizer">
-      <view class="organizer-avatar">{{extra.organizerInitial}}</view>
+      <!-- 组织者头像：优先图片，无图片则显示首字母 -->
+      <view class="organizer-avatar-wrapper">
+        <image
+          wx:if="{{organizer.avatar}}"
+          class="organizer-avatar-img"
+          src="{{organizer.avatar}}"
+          mode="aspectFill"
+          binderror="onOrganizerAvatarError"
+        />
+        <view wx:else class="organizer-avatar">{{extra.organizerInitial}}</view>
+      </view>
       <view class="flex-col">
         <text class="text-md text-gray-800">{{extra.organizer}}</text>
         <text class="text-xs text-gray-500">活动组织者</text>
@@ -54,14 +69,8 @@
       <!-- 联系按钮 -->
       <view class="contact-buttons" wx:if="{{canViewContact}}">
         <!-- 电话按钮 -->
-        <view wx:if="{{detail.organizerPhone}}" class="contact-btn" bindtap="callOrganizer">
-          <view class="contact-icon contact-icon--phone"></view>
-          <text class="contact-btn__text">电话</text>
-        </view>
-        <!-- 微信按钮 -->
-        <view wx:if="{{detail.organizerWechat}}" class="contact-btn" bindtap="copyWechat">
-          <view class="contact-icon contact-icon--wechat"></view>
-          <text class="contact-btn__text">微信</text>
+        <view wx:if="{{detail.organizerPhone}}" class="contact-btn contact-btn--v1" bindtap="callOrganizer" aria-label="拨打电话">
+          <view class="contact-glyph contact-glyph--phone"></view>
         </view>
       </view>
 
@@ -100,7 +109,7 @@
         </view>
       </view>
       <view class="info-item">
-        <view class="info-item__icon" style="background:#FEF3C7; color:#D97706;">🔖</view>
+        <view class="info-item__icon" style="background:#FEF3C7; color:#D97706;">🆔</view>
         <view class="flex-col info-item__body">
           <text class="info-label">活动编号</text>
           <text class="info-value">{{detail.id}}</text>
@@ -112,16 +121,31 @@
 </view>
 
 <!-- 签到提示卡片（已审核通过时显示） -->
-<view class="section" wx:if="{{isApproved && detail.status === '进行中'}}">
+<view class="section" wx:if="{{detail.needCheckin !== false && isApproved && detail.status === '进行中'}}">
   <view class="card shadow-card checkin-notice-card">
-    <view class="checkin-notice-icon">✅</view>
+    <view class="checkin-notice-icon">⏰</view>
     <view class="checkin-notice-content">
-      <text class="checkin-notice-title" wx:if="{{canCheckin}}">签到时间已到</text>
+      <text class="checkin-notice-title" wx:if="{{isCheckedIn}}">已签到</text>
+      <text class="checkin-notice-title" wx:elif="{{canCheckin}}">签到时间已到</text>
       <text class="checkin-notice-title" wx:else>活动进行中</text>
-      <text class="checkin-notice-text" wx:if="{{canCheckin}}">活动正在进行中，点击下方"签到"按钮完成签到</text>
+      <text class="checkin-notice-text" wx:if="{{isCheckedIn}}">{{checkinCheckedHint}}</text>
+      <text class="checkin-notice-text" wx:elif="{{canCheckin}}">活动正在进行中，点击下方"签到"按钮完成签到</text>
       <text class="checkin-notice-text" wx:else>{{checkinTimeHint || '签到功能即将开放'}}</text>
     </view>
-    <button class="btn btn--primary btn--small" bindtap="goCheckin" disabled="{{!canCheckin}}">{{canCheckin ? '立即签到' : '暂不可签到'}}</button>
+    <button class="btn btn--primary btn--small {{isCheckedIn ? 'btn--disabled' : ''}}" bindtap="goCheckin" disabled="{{!canCheckin || isCheckedIn}}">{{isCheckedIn ? '已签到' : (canCheckin ? '立即签到' : '暂不可签到')}}</button>
+  </view>
+</view>
+
+<!-- 活动描述（有分组时：固定不随分组切换变化，展示在分组模块之上） -->
+<view class="section" wx:if="{{detail.hasGroups && detail.desc}}">
+  <view class="card shadow-card activity-desc-card">
+    <view class="desc-header">
+      <view class="desc-icon">📋</view>
+      <text class="desc-title">活动描述</text>
+    </view>
+    <view class="desc-content">
+      <text class="desc-text">{{detail.desc}}</text>
+    </view>
   </view>
 </view>
 
@@ -168,25 +192,25 @@
         <view class="info-icon">💰</view>
         <view class="info-content">
           <text class="info-label">活动费用</text>
-          <text class="info-value">{{detail.groups[currentGroupIndex].feeType}} {{detail.groups[currentGroupIndex].feeType !== '免费' ? '¥' + detail.groups[currentGroupIndex].fee : ''}}</text>
+          <text class="info-value">{{detail.groups[currentGroupIndex].feeType}} {{detail.groups[currentGroupIndex].feeType !== '免费' ? '￥' + detail.groups[currentGroupIndex].fee : ''}}</text>
         </view>
       </view>
 
-      <!-- 报名要求 -->
-      <view wx:if="{{detail.groups[currentGroupIndex].requirements}}" class="detail-info-card detail-info-card--warning">
-        <view class="info-icon">⚠️</view>
+      <!-- 报名要求（随分组切换；若分组无值则回退到顶层 requirements；为空则隐藏） -->
+      <view wx:if="{{detail.groups[currentGroupIndex].requirements || detail.requirements}}" class="detail-info-card detail-info-card--info">
+        <view class="info-icon">📌</view>
         <view class="info-content">
           <text class="info-label">报名要求</text>
-          <text class="info-text">{{detail.groups[currentGroupIndex].requirements}}</text>
+          <text class="info-text">{{detail.groups[currentGroupIndex].requirements || detail.requirements}}</text>
         </view>
       </view>
 
-      <!-- 活动说明 -->
-      <view wx:if="{{detail.groups[currentGroupIndex].description}}" class="detail-info-card detail-info-card--info">
+      <!-- 活动说明及注意事项（随分组切换；若分组无值则回退到顶层 description；为空则隐藏） -->
+      <view wx:if="{{detail.groups[currentGroupIndex].description || detail.description}}" class="detail-info-card detail-info-card--info">
         <view class="info-icon">📝</view>
         <view class="info-content">
-          <text class="info-label">活动说明</text>
-          <text class="info-text">{{detail.groups[currentGroupIndex].description}}</text>
+          <text class="info-label">活动说明及注意事项</text>
+          <text class="info-text">{{detail.groups[currentGroupIndex].description || detail.description}}</text>
         </view>
       </view>
     </view>
@@ -212,16 +236,30 @@
         <text class="info-value">{{extra.feeInfo}}</text>
       </view>
     </view>
+  </view>
+</view>
 
-    <view wx:if="{{detail.requirements}}" style="margin-top: 24rpx; padding: 20rpx; background: #fffbeb; border-radius: 12rpx; border-left: 4rpx solid #f59e0b;">
-      <text class="text-sm text-gray-700" style="display: block; font-weight: 600; margin-bottom: 8rpx;">⚠️ 报名要求</text>
-      <text class="text-sm text-gray-600">{{detail.requirements}}</text>
+<!-- 活动描述（醒目展示） -->
+<view class="section" wx:if="{{!detail.hasGroups && detail.desc}}">
+  <view class="card shadow-card activity-desc-card">
+    <view class="desc-header">
+      <view class="desc-icon">📋</view>
+      <text class="desc-title">活动描述</text>
     </view>
+    <view class="desc-content">
+      <text class="desc-text">{{detail.desc}}</text>
+    </view>
+  </view>
+</view>
 
-    <view wx:if="{{detail.description}}" style="margin-top: 16rpx; padding: 20rpx; background: #eff6ff; border-radius: 12rpx; border-left: 4rpx solid #3b82f6;">
-      <text class="text-sm text-gray-700" style="display: block; font-weight: 600; margin-bottom: 8rpx;">📝 活动说明</text>
-      <text class="text-sm text-gray-600">{{detail.description}}</text>
+<!-- 报名信息入口（仅创建者/管理员可见） -->
+<view class="section" wx:if="{{canManage}}">
+  <view class="card shadow-card participants-card">
+    <view class="row-between mb-16">
+      <text class="text-lg text-gray-800">报名信息（管理员可见）</text>
+      <view class="text-sm text-blue-500" bindtap="goRegistrationManagement" hover-class="none">报名管理</view>
     </view>
+    <text class="text-sm text-gray-500">可查看报名者填写的手机号、部门等报名信息</text>
   </view>
 </view>
 
@@ -255,19 +293,18 @@
 </view>
 
 <view class="bottom-space"></view>
-<view class="fixed-footer {{canManage ? 'fixed-footer--three-btn' : ''}}">
+<view class="fixed-footer">
   <button wx:if="{{canManage}}" class="btn btn--secondary footer-btn" bindtap="goManagement">管理</button>
-  <button class="btn btn--secondary footer-btn" open-type="share">分享</button>
 
   <!-- 已报名用户：显示签到或取消报名 -->
   <block wx:if="{{isRegistered}}">
     <!-- 如果已审核通过且活动进行中，显示签到按钮（根据签到时间窗口决定是否可点击） -->
     <button
-      wx:if="{{isApproved && detail.status === '进行中'}}"
-      class="btn {{canCheckin ? 'btn--primary' : 'btn--secondary'}} footer-btn"
+      wx:if="{{detail.needCheckin !== false && isApproved && detail.status === '进行中'}}"
+      class="btn {{isCheckedIn ? 'btn--disabled' : (canCheckin ? 'btn--primary' : 'btn--secondary')}} footer-btn"
       bindtap="goCheckin"
-      disabled="{{!canCheckin}}">
-      {{canCheckin ? '签到' : '签到未开放'}}
+      disabled="{{!canCheckin || isCheckedIn}}">
+      {{isCheckedIn ? '已签到' : (canCheckin ? '签到' : '签到未开放')}}
     </button>
     <!-- 否则显示取消报名按钮 -->
     <button

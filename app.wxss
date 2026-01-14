@@ -61,6 +61,18 @@ page {
   box-shadow: 0 4rpx 12rpx rgba(59, 130, 246, 0.3);
 }
 
+.btn--registered {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  box-shadow: 0 4rpx 12rpx rgba(16, 185, 129, 0.25);
+}
+
+.btn--pending {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  box-shadow: 0 4rpx 12rpx rgba(245, 158, 11, 0.25);
+}
+
 .btn--secondary {
   background: #f3f4f6;
   color: #4b5563;

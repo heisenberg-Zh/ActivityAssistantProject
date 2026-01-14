@@ -123,6 +123,57 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
+.filter-row {
+  margin-top: 16rpx;
+}
+
+.filter-row:first-child {
+  margin-top: 0;
+}
+
+.filter-row--status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.filter-row__left {
+  flex: 1;
+  min-width: 0;
+}
+
+.filter-row__right {
+  display: inline-flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-shrink: 0;
+}
+
+.filter-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12rpx 20rpx;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 24rpx;
+  font-weight: 600;
+  border-radius: 20rpx;
+  border: 1rpx solid transparent;
+  white-space: nowrap;
+}
+
+.filter-action:active {
+  transform: scale(0.96);
+}
+
+.filter-action--active {
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
 .filter-scroll-view {
   white-space: nowrap;
 }
@@ -130,7 +181,7 @@
 .filter-tabs {
   display: inline-flex;
   gap: 12rpx;
-  padding-bottom: 8rpx;
+  padding-bottom: 2rpx;
 }
 
 .filter-tab {

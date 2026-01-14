@@ -25,7 +25,7 @@
   <!-- 白名单列表 -->
   <view class="list-container">
     <view wx:if="{{whitelist.length > 0}}" class="user-list">
-      <block wx:for="{{whitelist}}" wx:key="phone">
+      <block wx:for="{{whitelist}}" wx:key="id">
         <view class="user-card">
           <view class="user-card-main">
             <view wx:if="{{item.avatar}}" class="user-avatar-wrapper">
@@ -33,15 +33,15 @@
               <view class="user-badge user-badge--success">✓</view>
             </view>
             <view wx:else class="user-avatar-wrapper">
-              <view class="user-avatar-placeholder">{{item.name.charAt(0)}}</view>
+              <view class="user-avatar-placeholder">{{item.avatarInitial || 'U'}}</view>
               <view class="user-badge user-badge--success">✓</view>
             </view>
             <view class="user-card-info">
-              <text class="user-card-name">{{item.name}}</text>
-              <text class="user-card-mobile">{{item.phone}}</text>
+              <text class="user-card-name">{{item.nickname || '未知用户'}}</text>
+              <text class="user-card-mobile">{{item.phone || item.id}}</text>
             </view>
           </view>
-          <view class="user-card-action" bindtap="removeItem" data-phone="{{item.phone}}" data-name="{{item.name}}">
+          <view class="user-card-action" bindtap="removeItem" data-user-id="{{item.id}}" data-name="{{item.nickname}}">
             <view class="action-icon-btn action-icon-btn--danger">
               <text class="action-icon">×</text>
             </view>
@@ -128,7 +128,7 @@
                   </view>
                   <view wx:for="{{phoneValidation.valid}}" wx:key="*this" class="preview-item preview-item--valid">
                     <text class="preview-phone">{{item}}</text>
-                    <view wx:if="{{phoneValidation.existing.includes(item)}}" class="preview-tag preview-tag--warning">已存在</view>
+                    <view wx:if="{{phoneValidation.existingMap[item]}}" class="preview-tag preview-tag--warning">已存在</view>
                   </view>
                 </view>
 
@@ -231,8 +231,8 @@
                   </view>
                   <image src="{{item.avatar}}" mode="cover" class="user-select-avatar"></image>
                   <view class="user-select-info">
-                    <text class="user-select-name">{{item.name}}</text>
-                    <text class="user-select-mobile">{{item.mobile}}</text>
+                    <text class="user-select-name">{{item.nickname}}</text>
+                    <text class="user-select-mobile">{{item.phone}}</text>
                   </view>
                 </view>
               </block>
@@ -250,8 +250,8 @@
                   </view>
                   <image src="{{item.avatar}}" mode="cover" class="user-select-avatar"></image>
                   <view class="user-select-info">
-                    <text class="user-select-name">{{item.name}}</text>
-                    <text class="user-select-mobile">{{item.mobile}}</text>
+                    <text class="user-select-name">{{item.nickname}}</text>
+                    <text class="user-select-mobile">{{item.phone}}</text>
                   </view>
                   <view class="user-select-status">已添加</view>
                 </view>

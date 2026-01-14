@@ -1,11 +1,21 @@
 // pages/agreement/index.js
 Page({
   data: {
+    effectiveDate: ''
   },
 
   onLoad(options) {
     wx.setNavigationBarTitle({
       title: '用户协议'
+    });
+
+    // 设置生效日期为当天
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    this.setData({
+      effectiveDate: `${year}年${month}月${day}日`
     });
   },
 

@@ -13,10 +13,12 @@
     <!-- Logo区域 -->
     <view class="logo-section">
       <view class="logo-wrapper">
-        <view class="logo-icon">📅</view>
+        <view class="logo-circle">
+          <image class="logo-image" src="/images/mylogo.png" mode="aspectFill"></image>
+        </view>
         <view class="logo-glow"></view>
       </view>
-      <text class="app-name">活动助手</text>
+      <text class="app-name">活动记鹿</text>
       <text class="app-slogan">让每一场活动都精彩</text>
     </view>
 
@@ -55,11 +57,16 @@
         </view>
       </button>
 
-      <text class="privacy-text">登录即表示同意</text>
-      <view class="privacy-links">
-        <text class="privacy-link" bindtap="viewAgreement">《用户协议》</text>
-        <text class="privacy-separator">和</text>
-        <text class="privacy-link" bindtap="viewPolicy">《隐私政策》</text>
+      <view class="privacy-consent" bindtap="togglePrivacyConsent">
+        <view class="checkbox {{privacyConsent ? 'checkbox--checked' : ''}}">
+          <text class="checkmark" wx:if="{{privacyConsent}}">✓</text>
+        </view>
+        <view class="consent-text">
+          <text class="privacy-text">我已阅读并同意</text>
+          <text class="privacy-link" catchtap="viewAgreement">《用户协议》</text>
+          <text class="privacy-separator">和</text>
+          <text class="privacy-link" catchtap="viewPolicy">《隐私政策》</text>
+        </view>
       </view>
     </view>
   </view>

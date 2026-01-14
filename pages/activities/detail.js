@@ -16,6 +16,7 @@ const { openMapNavigation } = require('../../utils/location.js');
 const { checkActivityViewPermission } = require('../../utils/activity-helper.js');
 const { checkManagementPermission } = require('../../utils/activity-management-helper.js');
 const { getActivityImage } = require('../../utils/default-images.js');
+const { markActivityRead } = require('../../utils/activity-read.js');
 const app = getApp();
 
 // 状态到CSS类名的映射
@@ -32,6 +33,19 @@ const getStatusClass = (status) => {
   return STATUS_CLASS_MAP[status] || '';
 };
 
+const formatCheckinShortTime = (dateStr) => {
+  if (!dateStr) return '';
+  const raw = String(dateStr);
+  const date = raw.includes('T') ? new Date(raw) : new Date(raw.replace(/-/g, '/'));
+  if (isNaN(date.getTime())) return '';
+
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  return `${month}-${day} ${hour}:${minute}`;
+};
+
 Page({
   data: {
     id: '',
@@ -46,12 +60,18 @@ Page({
     registerButtonText: '报名', // 报名按钮文本
     canCheckin: false,
     isRegistered: false,
+    isCheckedIn: false,
+    checkinCheckedHint: '',
     loading: true,
+    hasLoadedOnce: false,
     currentGroupIndex: 0, // 当前查看的分组索引
+    currentGroupId: null, // 当前分组ID（用于分组报名信息入口）
     // 权限相关
     hasPermission: true,
     permissionDeniedReason: '',
     fromShare: false, // 是否通过分享链接访问
+    shareToken: '', // 私密活动分享token（从分享/后端获取）
+    shareReady: false, // 私密活动分享token是否已就绪（未就绪时禁用分享）
     // 管理权限
     canManage: false,
     managementRole: '', // 'creator' 或 'admin'
@@ -59,17 +79,36 @@ Page({
     isFavorited: false // 是否已收藏
   },
 
+  onOrganizerAvatarError() {
+    if (this.data.organizer && this.data.organizer.avatar) {
+      this.setData({ 'organizer.avatar': '' });
+    }
+  },
+
   onLoad(query) {
     // 确保ID是字符串类型，并去除可能的空格
     const id = String(query.id || 'a1').trim();
     const fromShare = query.from === 'share'; // 检查是否通过分享链接访问
+    const shareToken = query.shareToken ? String(query.shareToken).trim() : '';
 
     console.log('详情页接收到的原始 query:', query);
     console.log('处理后的活动 ID:', id, '类型:', typeof id);
     console.log('是否通过分享访问:', fromShare);
 
-    this.setData({ id, fromShare });
+    // 私密活动的分享需要 shareToken；未准备好时先隐藏分享入口
+    try {
+      wx.hideShareMenu();
+    } catch (e) {}
+
+    this.setData({ id, fromShare, shareToken, shareReady: false });
+    markActivityRead(id);
     this.loadActivityDetail(id);
+  },
+
+  onShow() {
+    if (this.data.id && this.data.hasLoadedOnce && !this.data.loading) {
+      this.loadActivityDetail(this.data.id);
+    }
   },
 
   // 加载活动详情
@@ -108,9 +147,34 @@ Page({
       console.log('用户登录状态:', isLoggedIn, '当前用户ID:', currentUserId);
       // ========== 登录状态检查结束 ==========
 
+      // 分享进入：未登录先拦截（避免直接展示“加载失败”）
+      if (this.data.fromShare && !isLoggedIn) {
+        wx.hideLoading();
+        this.setData({ loading: false });
+        wx.showModal({
+          title: '需要登录',
+          content: '请先登录后查看该活动',
+          confirmText: '去登录',
+          cancelText: '暂不',
+          confirmColor: '#3b82f6',
+          success: (res) => {
+            if (res.confirm) {
+              wx.navigateTo({ url: '/pages/auth/login' });
+            } else {
+              this.goBack();
+            }
+          }
+        });
+        return;
+      }
+
+      const detailParams = {};
+      if (this.data.fromShare) detailParams.from = 'share';
+      if (this.data.shareToken) detailParams.shareToken = this.data.shareToken;
+
       // 并行请求活动详情和报名记录
       const [detailResult, registrationsResult] = await Promise.all([
-        activityAPI.getDetail(id),
+        activityAPI.getDetail(id, detailParams),
         registrationAPI.getByActivity(id, { page: 0, size: 100 })
       ]);
 
@@ -126,6 +190,9 @@ Page({
         wx.showToast({ title: '活动不存在', icon: 'none' });
         return;
       }
+
+      // 私密活动：确保 shareToken 就绪后再开放分享（避免分享出去的链接不带 token）
+      await this.ensurePrivateShareTokenReady(detail, id, isLoggedIn);
 
       // 【调试】输出活动详细数据，帮助排查问题
       console.log('===== 活动详情数据 =====');
@@ -176,18 +243,30 @@ Page({
       let organizerInfo = {
         id: detail.organizerId,
         name: detail.organizerName || '组织者',
-        avatar: '/activityassistant_avatar_01.png'
+        avatar: fixImageUrl(detail.organizerAvatar || '')
       };
 
       // 尝试获取组织者详细信息
       try {
         const organizerResult = await userAPI.getUserInfo(detail.organizerId);
-        if (organizerResult.code === 0) {
+        if (organizerResult.code === 0 && organizerResult.data) {
+          const organizerData = organizerResult.data;
+          const organizerName = organizerData.nickname || organizerData.name || organizerInfo.name;
+          const organizerAvatar = fixImageUrl(
+            organizerData.avatar ||
+            organizerData.avatarUrl ||
+            organizerData.avatar_url ||
+            organizerInfo.avatar ||
+            ''
+          );
+
           organizerInfo = {
             ...organizerInfo,
-            ...organizerResult.data,
-            initial: getNameInitial(organizerResult.data.nickname || organizerResult.data.name),
-            bgColor: getAvatarColor(organizerResult.data.nickname || organizerResult.data.name)
+            ...organizerData,
+            name: organizerName,
+            avatar: organizerAvatar,
+            initial: getNameInitial(organizerName),
+            bgColor: getAvatarColor(organizerName)
           };
         }
       } catch (err) {
@@ -314,7 +393,8 @@ Page({
       });
 
       // 判断是否可以签到（活动开始前30分钟 至 活动结束时间）
-      const canCheckin = isInCheckinWindow(detail.startTime, 30, detail.endTime);
+      const needCheckin = detail.needCheckin !== false;
+      const canCheckin = needCheckin && isInCheckinWindow(detail.startTime, 30, detail.endTime);
 
       // 【调试】输出签到相关的状态信息
       console.log('===== 签到状态调试 =====');
@@ -331,7 +411,7 @@ Page({
 
       // 【新增】生成签到时间提示
       let checkinTimeHint = '';
-      if (!canCheckin && detail.startTime) {
+      if (needCheckin && !canCheckin && detail.startTime) {
         const now = new Date();
         const startTime = new Date(detail.startTime);
         const checkinStartTime = new Date(startTime.getTime() - 30 * 60 * 1000); // 开始前30分钟
@@ -373,6 +453,18 @@ Page({
       }
       // ========== 报名状态检查结束 ==========
 
+      let isCheckedIn = false;
+      let checkinCheckedHint = '';
+      if (currentUserRegistration) {
+        const checkinStatus = currentUserRegistration.checkinStatus;
+        const checkinTime = currentUserRegistration.checkinTime;
+        isCheckedIn = needCheckin && (checkinStatus === 'checked' || checkinStatus === 'late' || !!checkinTime);
+        if (isCheckedIn) {
+          const shortTime = formatCheckinShortTime(checkinTime);
+          checkinCheckedHint = shortTime ? `已于 ${shortTime} 签到` : '已完成签到';
+        }
+      }
+
       // 检查管理权限（只有登录用户才能管理）
       const managementPermission = currentUserId
         ? checkManagementPermission(detail, currentUserId)
@@ -382,8 +474,9 @@ Page({
       // 规则：已报名且审核通过的用户、管理员、组织者都可以查看
       // 游客无法查看联系方式
       const isOrganizer = currentUserId && currentUserId === detail.organizerId;
-      const isAdministrator = currentUserId && detail.administrators && detail.administrators.some(admin => admin.userId === currentUserId);
-      const canViewContact = currentUserId && (isRegistered || isOrganizer || isAdministrator || managementPermission.hasPermission);
+      const isAdministrator = currentUserId && detail.administrators && detail.administrators.some(admin => (admin.id || admin.userId) === currentUserId);
+      // 联系方式查看口径：仅审核通过(approved)的报名者 / 组织者 / 管理员可见（pending 不算）
+      const canViewContact = currentUserId && (isApproved || isOrganizer || isAdministrator || managementPermission.hasPermission);
 
       // 检查是否已收藏（从后端API获取）
       let isFavorited = false;
@@ -408,12 +501,19 @@ Page({
         activityId: detail.id
       };
 
+      // 公开/私密标识（两种都显示；兼容布尔/字符串/数字；默认按“公开”处理，除非明确为 false）
+      const normalizedIsPublic = !(detail.isPublic === false || detail.isPublic === 'false' || detail.isPublic === 0);
+      const privacyText = normalizedIsPublic ? '公开' : '私密';
+      const privacyClass = normalizedIsPublic ? 'public' : 'private';
+
       // 设置活动详情（使用动态计算的状态）
       const enrichedDetail = {
         ...detail,
         status: dynamicStatus, // 使用动态计算的状态
         statusClass: getStatusClass(dynamicStatus), // 添加状态CSS类名
-        imageUrl: getActivityImage(detail.image, detail.type) // 添加图片URL（自定义或默认）
+        imageUrl: getActivityImage(detail.image, detail.type), // 添加图片URL（自定义或默认）
+        privacyText,
+        privacyClass
       };
 
       this.setData({
@@ -431,7 +531,12 @@ Page({
         checkinTimeHint, // 【新增】签到时间提示
         isRegistered,
         isApproved,  // 【新增】是否已审核通过（用于控制签到功能显示）
+        isCheckedIn,
+        checkinCheckedHint,
         currentUserRegistration,  // 【新增】保存当前用户的报名记录
+        hasLoadedOnce: true,
+        currentGroupIndex: 0,
+        currentGroupId,
         canManage: managementPermission.hasPermission,
         managementRole: managementPermission.role || '',
         canViewContact, // 是否可以查看联系方式
@@ -443,17 +548,135 @@ Page({
     } catch (err) {
       wx.hideLoading();
       console.error('加载活动详情失败:', err);
-      wx.showToast({ title: '加载失败', icon: 'none' });
+
+      const message = (err && err.message) ? String(err.message) : '加载失败';
+
+      if (this.data.fromShare) {
+        // 报名截止（非相关人）
+        if (message.includes('报名已截止')) {
+          wx.showModal({
+            title: '报名已截止',
+            content: '该活动报名已截止。已报名用户请前往「我的活动」查看该活动。谢谢理解。',
+            showCancel: false,
+            confirmText: '去我的活动',
+            confirmColor: '#3b82f6',
+            success: () => {
+              wx.navigateTo({ url: '/pages/my-activities/index' });
+            }
+          });
+          return;
+        }
+
+        // 链接失效/无效
+        if (message.includes('分享链接已失效') || message.includes('分享链接无效')) {
+          wx.showModal({
+            title: '链接不可用',
+            content: message,
+            showCancel: false,
+            confirmText: '我知道了',
+            confirmColor: '#3b82f6',
+            success: () => {
+              this.goBack();
+            }
+          });
+          return;
+        }
+
+        // 未登录
+        if (message.includes('请先登录')) {
+          wx.showModal({
+            title: '需要登录',
+            content: '请先登录后查看该活动',
+            confirmText: '去登录',
+            cancelText: '暂不',
+            confirmColor: '#3b82f6',
+            success: (res) => {
+              if (res.confirm) {
+                wx.navigateTo({ url: '/pages/auth/login' });
+              } else {
+                this.goBack();
+              }
+            }
+          });
+          return;
+        }
+      }
+
+      wx.showToast({ title: message || '加载失败', icon: 'none' });
     }
+  },
+
+  // 私密活动：拉取 shareToken 并控制分享入口
+  async ensurePrivateShareTokenReady(detail, activityId, isLoggedIn) {
+    // 公共活动：直接开放分享
+    if (!detail || detail.isPublic !== false) {
+      this.setData({ shareReady: true });
+      try {
+        wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+      } catch (e) {}
+      return;
+    }
+
+    // 私密活动必须登录后才允许分享
+    if (!isLoggedIn) {
+      this.setData({ shareReady: false });
+      try { wx.hideShareMenu(); } catch (e) {}
+      return;
+    }
+
+    // 已有 token：直接开放
+    if (this.data.shareToken && String(this.data.shareToken).trim().length > 0) {
+      this.setData({ shareReady: true });
+      try {
+        wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+      } catch (e) {}
+      return;
+    }
+
+    // 需要向后端获取 token
+    try {
+      const res = await activityAPI.getShareToken(activityId);
+      if (res && res.code === 0 && res.data) {
+        this.setData({ shareToken: String(res.data), shareReady: true });
+        try {
+          wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] });
+        } catch (e) {}
+        return;
+      }
+    } catch (e) {}
+
+    // 获取失败：按方案A，禁用分享并提示
+    this.setData({ shareReady: false });
+    try { wx.hideShareMenu(); } catch (e) {}
+    wx.showToast({ title: '分享链接生成失败，请稍后重试', icon: 'none', duration: 2500 });
   },
 
   // 切换分组
   switchGroup(e) {
     const index = e.currentTarget.dataset.index;
-    this.setData({ currentGroupIndex: index });
+    const { detail } = this.data;
+    const groupId = detail && detail.groups && detail.groups[index] ? detail.groups[index].id : null;
+    this.setData({ currentGroupIndex: index, currentGroupId: groupId });
 
     // 更新参与成员列表，显示当前分组的成员
     this.updateMembersByGroup(index);
+  },
+
+  // 进入报名管理（按当前分组范围）
+  goRegistrationManagement() {
+    const { id, canManage, detail, currentGroupId } = this.data;
+
+    if (!canManage) {
+      wx.showToast({ title: '无管理权限', icon: 'none' });
+      return;
+    }
+
+    let url = `/pages/management/registrations?id=${id}`;
+    if (detail && detail.hasGroups && currentGroupId) {
+      url += `&groupId=${encodeURIComponent(currentGroupId)}`;
+    }
+
+    wx.navigateTo({ url });
   },
 
   // 根据分组更新参与成员列表
@@ -485,7 +708,7 @@ Page({
 
   // 跳转报名页
   goRegister() {
-    const { id, canRegister, isRegistered, detail } = this.data;
+    const { id, canRegister, isRegistered, detail, shareToken, fromShare, shareReady } = this.data;
 
     // 【调试】输出报名前的状态检查
     console.log('===== 报名状态检查 =====');
@@ -512,6 +735,12 @@ Page({
           }
         }
       });
+      return;
+    }
+
+    // 私密活动：若分享 token 未就绪，避免进入报名页后再“加载失败”
+    if (detail && detail.isPublic === false && (!shareReady || !shareToken)) {
+      wx.showToast({ title: '分享链接生成失败，请稍后重试', icon: 'none', duration: 2000 });
       return;
     }
 
@@ -555,7 +784,13 @@ Page({
       return;
     }
 
-    wx.navigateTo({ url: `/pages/registration/index?id=${id}` });
+    let url = `/pages/registration/index?id=${id}`;
+    if (detail && detail.isPublic === false) {
+      if (shareToken) url += `&shareToken=${encodeURIComponent(shareToken)}`;
+      // 报名页需要与详情页一致的分享标记（用于错误提示/策略）
+      if (fromShare) url += `&from=share`;
+    }
+    wx.navigateTo({ url });
   },
 
   // 取消报名
@@ -638,7 +873,12 @@ Page({
 
   // 跳转签到页
   goCheckin() {
-    const { id, canCheckin } = this.data;
+    const { id, canCheckin, detail } = this.data;
+
+    if (detail && detail.needCheckin === false) {
+      wx.showToast({ title: '本活动无需签到', icon: 'none' });
+      return;
+    }
 
     // 【优先级1】先检查登录状态
     if (!app.checkLoginStatus()) {
@@ -821,9 +1061,12 @@ Page({
 
     console.log('分享活动给好友:', shareTitle);
 
+    const token = this.data.shareToken ? encodeURIComponent(this.data.shareToken) : '';
+    const tokenParam = token ? `&shareToken=${token}` : '';
+
     return {
       title: shareTitle,
-      path: `/pages/activities/detail?id=${id}&from=share`, // 添加 from=share 参数追踪分享来源
+      path: `/pages/activities/detail?id=${id}&from=share${tokenParam}`, // 私密活动携带shareToken
       imageUrl: detail.poster || '' // 如果有海报图片则使用
     };
   },
@@ -845,9 +1088,12 @@ Page({
 
     console.log('分享活动到朋友圈:', shareTitle);
 
+    const token = this.data.shareToken ? encodeURIComponent(this.data.shareToken) : '';
+    const tokenParam = token ? `&shareToken=${token}` : '';
+
     return {
       title: shareTitle,
-      query: `id=${id}&from=timeline`, // 朋友圈分享通过query传参
+      query: `id=${id}&from=share${tokenParam}`, // 私密活动携带shareToken
       imageUrl: detail.poster || ''
     };
   },

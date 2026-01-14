@@ -27,9 +27,20 @@
       <text class="field-label">活动名称 *</text>
       <input class="field-input" placeholder="请输入活动名称" bindinput="onInput" data-field="title" value="{{form.title}}" />
     </view>
-    <view class="form-field">
-      <text class="field-label">活动描述</text>
-      <textarea class="field-textarea" placeholder="请描述活动内容、目的和注意事项" bindinput="onInput" data-field="desc" value="{{form.desc}}" />
+    <view class="option-row">
+      <view class="option-label">
+        <text class="text-md text-gray-800">是否需要打卡签到</text>
+        <text class="text-xs text-gray-500">关闭后，用户端不显示签到入口</text>
+      </view>
+      <switch checked="{{form.needCheckin}}" bindchange="onSwitch" data-field="needCheckin" color="#3b82f6" />
+    </view>
+
+    <view class="form-field" wx:if="{{form.needCheckin}}">
+      <view class="field-label-row">
+        <text class="field-label">活动描述</text>
+        <view class="field-action-btn" bindtap="openFullScreenEditor" data-scope="form" data-field="desc">全屏编辑</view>
+      </view>
+      <textarea class="field-textarea" placeholder="请描述活动内容、目的和注意事项" bindinput="onInput" data-field="desc" value="{{form.desc}}" maxlength="2000" />
     </view>
     <view class="form-field">
       <text class="field-label">活动类型 *</text>
@@ -38,23 +49,11 @@
       </picker>
     </view>
 
-    <!-- 联系方式 -->
-    <view class="form-field">
-      <text class="field-label">联系人电话</text>
-      <input class="field-input" type="number" placeholder="请输入联系电话" bindinput="onInput" data-field="organizerPhone" value="{{form.organizerPhone}}" maxlength="11" />
-      <text class="field-hint">选填，建议填写11位手机号，便于参与者联系您</text>
-    </view>
-    <view class="form-field">
-      <text class="field-label">联系人微信号</text>
-      <input class="field-input" placeholder="请输入您的微信号/微信绑定手机号" bindinput="onInput" data-field="organizerWechat" value="{{form.organizerWechat}}" />
-      <text class="field-hint">便于参与者联系您咨询活动相关问题</text>
-    </view>
-
     <!-- 是否公开 -->
     <view class="option-row" style="margin-top: 24rpx;">
       <view class="option-label">
         <text class="text-md text-gray-800">公开活动</text>
-        <text class="text-xs text-gray-500">关闭后仅创建者和已报名者可见，可通过分享邀请他人</text>
+        <text class="text-xs text-gray-500">关闭后仅创建者和已报名者可见</text>
       </view>
       <switch checked="{{form.isPublic}}" bindchange="onSwitch" data-field="isPublic" color="#3b82f6" />
     </view>
@@ -99,6 +98,14 @@
         </view>
         <text class="field-hint">为每个分组设置清晰的名称，方便参与者识别</text>
       </view>
+    </view>
+
+    <view class="option-row">
+      <view class="option-label">
+        <text class="text-md text-gray-800">是否消息通知用户</text>
+        <text class="text-xs text-gray-500">开启后将通过消息中心通知已通过审核的报名用户（临近/开始/结束/信息变更）</text>
+      </view>
+      <switch checked="{{form.notifyUsers}}" bindchange="onSwitch" data-field="notifyUsers" color="#3b82f6" />
     </view>
   </view>
 </view>
@@ -334,12 +341,18 @@
     <!-- 无分组的配置 -->
     <block wx:if="{{!form.hasGroups}}">
       <view class="form-field">
-        <text class="field-label">报名要求</text>
-        <textarea class="field-textarea" placeholder="请输入报名要求" bindinput="onInput" data-field="requirements" value="{{form.requirements}}" />
+        <view class="field-label-row">
+          <text class="field-label">报名要求</text>
+          <view class="field-action-btn" bindtap="openFullScreenEditor" data-scope="form" data-field="requirements">全屏编辑</view>
+        </view>
+        <textarea class="field-textarea" placeholder="请输入报名要求" bindinput="onInput" data-field="requirements" value="{{form.requirements}}" maxlength="5000" />
       </view>
       <view class="form-field">
-        <text class="field-label">活动说明及注意事项</text>
-        <textarea class="field-textarea" placeholder="请输入活动说明及注意事项" bindinput="onInput" data-field="description" value="{{form.description}}" />
+        <view class="field-label-row">
+          <text class="field-label">活动说明及注意事项</text>
+          <view class="field-action-btn" bindtap="openFullScreenEditor" data-scope="form" data-field="description">全屏编辑</view>
+        </view>
+        <textarea class="field-textarea" placeholder="请输入活动说明及注意事项" bindinput="onInput" data-field="description" value="{{form.description}}" maxlength="5000" />
       </view>
 
       <!-- 自定义说明字段 -->
@@ -362,16 +375,28 @@
         </view>
       </block>
 
-      <!-- 添加字段按钮 -->
-      <view class="add-field-btn-container">
-        <view class="ghost-btn ghost-btn--accent" bindtap="addDescriptionField">+ 添加字段</view>
-      </view>
+       <!-- 添加字段按钮 -->
+       <view class="add-field-btn-container">
+         <view class="ghost-btn ghost-btn--accent" bindtap="addDescriptionField">+ 添加字段</view>
+       </view>
 
-      <view class="form-field">
-        <text class="field-label">费用类型</text>
-        <picker mode="selector" range="{{feeTypes}}" bindchange="onFeeTypeChange">
-          <view class="picker-field">{{form.feeType || '请选择费用类型'}}</view>
-        </picker>
+       <!-- 联系方式（选填） -->
+       <view class="form-field">
+         <text class="field-label">联系方式</text>
+         <input class="field-input" type="number" placeholder="建议填写联系电话" bindinput="onInput" data-field="organizerPhone" value="{{form.organizerPhone}}" maxlength="11" />
+         <text class="field-hint">选填，便于参与者联系您</text>
+       </view>
+       <view class="form-field">
+         <text class="field-label">联系人昵称</text>
+         <input class="field-input" placeholder="建议填写联系人昵称" bindinput="onInput" data-field="organizerWechat" value="{{form.organizerWechat}}" maxlength="50" />
+         <text class="field-hint">选填，便于参与者识别并联系您</text>
+       </view>
+
+       <view class="form-field">
+         <text class="field-label">费用类型</text>
+         <picker mode="selector" range="{{feeTypes}}" bindchange="onFeeTypeChange">
+           <view class="picker-field">{{form.feeType || '请选择费用类型'}}</view>
+         </picker>
       </view>
       <view class="form-field" wx:if="{{form.feeType !== '免费'}}">
         <text class="field-label">费用金额（元）</text>
@@ -382,7 +407,10 @@
     <!-- 有分组的配置 -->
     <block wx:if="{{form.hasGroups && groups[currentGroupIndex]}}">
       <view class="form-field">
-        <text class="field-label">报名要求</text>
+        <view class="field-label-row">
+          <text class="field-label">报名要求</text>
+          <view class="field-action-btn" bindtap="openFullScreenEditor" data-scope="group" data-index="{{currentGroupIndex}}" data-field="requirements">全屏编辑</view>
+        </view>
         <textarea
           class="field-textarea"
           placeholder="请输入报名要求"
@@ -390,10 +418,14 @@
           data-field="requirements"
           data-index="{{currentGroupIndex}}"
           value="{{groups[currentGroupIndex].requirements}}"
+          maxlength="5000"
         />
       </view>
       <view class="form-field">
-        <text class="field-label">活动说明及注意事项</text>
+        <view class="field-label-row">
+          <text class="field-label">活动说明及注意事项</text>
+          <view class="field-action-btn" bindtap="openFullScreenEditor" data-scope="group" data-index="{{currentGroupIndex}}" data-field="description">全屏编辑</view>
+        </view>
         <textarea
           class="field-textarea"
           placeholder="请输入活动说明及注意事项"
@@ -401,6 +433,7 @@
           data-field="description"
           data-index="{{currentGroupIndex}}"
           value="{{groups[currentGroupIndex].description}}"
+          maxlength="5000"
         />
       </view>
 
@@ -424,16 +457,28 @@
         </view>
       </block>
 
-      <!-- 添加字段按钮 -->
-      <view class="add-field-btn-container">
-        <view class="ghost-btn ghost-btn--accent" bindtap="addDescriptionField">+ 添加字段</view>
-      </view>
+       <!-- 添加字段按钮 -->
+       <view class="add-field-btn-container">
+         <view class="ghost-btn ghost-btn--accent" bindtap="addDescriptionField">+ 添加字段</view>
+       </view>
 
-      <view class="form-field">
-        <text class="field-label">费用类型</text>
-        <picker mode="selector" range="{{feeTypes}}" bindchange="onGroupFeeTypeChange" data-index="{{currentGroupIndex}}">
-          <view class="picker-field">{{groups[currentGroupIndex].feeType || '请选择费用类型'}}</view>
-        </picker>
+       <!-- 联系方式（选填） -->
+       <view class="form-field">
+         <text class="field-label">联系方式</text>
+         <input class="field-input" type="number" placeholder="建议填写联系电话" bindinput="onInput" data-field="organizerPhone" value="{{form.organizerPhone}}" maxlength="11" />
+         <text class="field-hint">选填，便于参与者联系您</text>
+       </view>
+       <view class="form-field">
+         <text class="field-label">联系人昵称</text>
+         <input class="field-input" placeholder="建议填写联系人昵称" bindinput="onInput" data-field="organizerWechat" value="{{form.organizerWechat}}" maxlength="50" />
+         <text class="field-hint">选填，便于参与者识别并联系您</text>
+       </view>
+
+       <view class="form-field">
+         <text class="field-label">费用类型</text>
+         <picker mode="selector" range="{{feeTypes}}" bindchange="onGroupFeeTypeChange" data-index="{{currentGroupIndex}}">
+           <view class="picker-field">{{groups[currentGroupIndex].feeType || '请选择费用类型'}}</view>
+         </picker>
       </view>
       <view class="form-field" wx:if="{{groups[currentGroupIndex].feeType !== '免费'}}">
         <text class="field-label">费用金额（元）</text>
@@ -533,6 +578,50 @@
   </view>
   <view class="btn btn--primary footer-btn" bindtap="next">
     {{currentStep === 7 ? publishButtonText : '下一步'}}
+  </view>
+</view>
+
+<!-- 复制活动：是否附带复制白名单/黑名单/管理员 -->
+<view wx:if="{{showCopyExtrasDialog}}" class="copy-extras-mask" catchtouchmove="noop">
+  <view class="copy-extras-modal">
+    <view class="copy-extras-header">
+      <text class="copy-extras-title">复制附带信息</text>
+    </view>
+    <text class="copy-extras-subtitle">勾选需要一并复制的内容（仅显示数量）</text>
+
+    <view class="copy-extras-actions">
+      <text class="copy-extras-action" bindtap="copyExtrasSelectAll" data-value="1">全选</text>
+      <text class="copy-extras-action" bindtap="copyExtrasSelectAll" data-value="0">全不选</text>
+    </view>
+
+    <checkbox-group bindchange="onCopyExtrasChange">
+      <label class="copy-extras-item">
+        <checkbox value="whitelist" checked="{{copyExtrasOptions.whitelist}}" />
+        <view class="copy-extras-item-body">
+          <text class="copy-extras-item-title">白名单</text>
+          <text class="copy-extras-item-desc">{{copyExtrasCounts.whitelist}} 人</text>
+        </view>
+      </label>
+      <label class="copy-extras-item">
+        <checkbox value="blacklist" checked="{{copyExtrasOptions.blacklist}}" />
+        <view class="copy-extras-item-body">
+          <text class="copy-extras-item-title">黑名单</text>
+          <text class="copy-extras-item-desc">{{copyExtrasCounts.blacklist}} 人</text>
+        </view>
+      </label>
+      <label class="copy-extras-item">
+        <checkbox value="administrators" checked="{{copyExtrasOptions.administrators}}" />
+        <view class="copy-extras-item-body">
+          <text class="copy-extras-item-title">活动管理员</text>
+          <text class="copy-extras-item-desc">{{copyExtrasCounts.administrators}} 人</text>
+        </view>
+      </label>
+    </checkbox-group>
+
+    <view class="copy-extras-footer">
+      <view class="btn btn--small copy-extras-btn--ghost" bindtap="cancelCopyExtras">取消</view>
+      <view class="btn btn--small btn--primary copy-extras-btn--primary" bindtap="confirmCopyExtras">确认</view>
+    </view>
   </view>
 </view>
 

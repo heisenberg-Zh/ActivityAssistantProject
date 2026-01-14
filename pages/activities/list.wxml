@@ -1,6 +1,6 @@
 <!-- pages/activities/list.wxml -->
 <view class="page-container">
-  <view class="header-section">
+  <view class="header-section" wx:if="{{!needsLogin}}">
     <view class="search-section">
       <view class="search-box">
         <text class="search-icon">搜</text>
@@ -9,56 +9,90 @@
     </view>
 
     <view class="filter-section">
-      <scroll-view scroll-x class="filter-scroll-view" show-scrollbar="false">
-        <view class="filter-tabs">
-          <block wx:for="{{filters}}" wx:key="key" wx:for-item="item">
-            <view class="filter-tab {{item.active ? 'filter-tab--active' : ''}}" bindtap="onFilterTap" data-key="{{item.key}}">
-              {{item.name}}
-            </view>
-          </block>
-        </view>
-      </scroll-view>
+      <view class="filter-row">
+        <scroll-view scroll-x class="filter-scroll-view" show-scrollbar="false">
+          <view class="filter-tabs">
+            <block wx:for="{{statusFilters}}" wx:key="key" wx:for-item="item">
+              <view class="filter-tab {{item.active ? 'filter-tab--active' : ''}}" bindtap="onStatusTap" data-key="{{item.key}}">
+                {{item.name}}
+              </view>
+            </block>
+          </view>
+        </scroll-view>
+      </view>
+      <view class="filter-row">
+        <scroll-view scroll-x class="filter-scroll-view" show-scrollbar="false">
+          <view class="filter-tabs">
+            <block wx:for="{{typeFilters}}" wx:key="key" wx:for-item="item">
+              <view class="filter-tab {{item.active ? 'filter-tab--active' : ''}}" bindtap="onTypeTap" data-key="{{item.key}}">
+                {{item.name}}
+              </view>
+            </block>
+          </view>
+        </scroll-view>
+      </view>
     </view>
   </view>
 
   <view class="content-section">
-    <block wx:for="{{filtered}}" wx:key="id" wx:for-item="item">
-      <view class="card shadow-card activity-card">
-        <view class="row-between activity-card__header">
-          <view class="row gap-12">
-            <view class="badge {{ item.status === '进行中' ? 'badge--ok' : (item.status === '即将开始' ? 'badge--info' : 'badge--muted') }}">{{item.status}}</view>
-            <view wx:if="{{item.privacyTag}}" class="badge badge--warning">🔒 {{item.privacyTag}}</view>
-          </view>
-          <view class="badge badge--light">{{item.type}}</view>
-        </view>
-        <view class="activity-card__body">
-          <text class="text-lg text-gray-800 mb-8">{{item.title}}</text>
-          <text class="text-sm text-gray-500 mb-12">{{item.desc}}</text>
-          <view class="row text-sm text-gray-500 mb-8">
-            <text>时间：{{item.timeRange}}</text>
-          </view>
-          <view class="row text-sm text-gray-500 mb-12">
-            <text>地点：{{item.place}}</text>
-          </view>
-          <view class="row-between mb-12">
-            <text class="text-sm text-gray-600">已报 {{item.joined}} / {{item.total}}</text>
-            <view class="row gap-12">
-              <!-- 报名按钮 - 根据状态动态显示 -->
-              <view
-                wx:if="{{item.showRegisterButton}}"
-                class="btn {{item.buttonStyle}} btn--small"
-                catchtap="{{item.buttonDisabled ? '' : 'goRegister'}}"
-                data-id="{{item.id}}"
-                data-action="{{item.buttonAction}}">
-                {{item.buttonText}}
+    <view wx:if="{{needsLogin}}" class="empty-state">
+      <view class="empty-state__title">登录后查看活动</view>
+      <view class="empty-state__desc">登录后可查看公开活动，以及与你相关的私密活动（创建/管理/白名单/已报名）。</view>
+      <view class="empty-state__actions">
+        <view class="btn btn--primary" catchtap="goLogin">去登录</view>
+        <view class="btn btn--secondary" catchtap="goHome">去首页</view>
+      </view>
+    </view>
+
+    <view wx:elif="{{!loading && filtered.length === 0}}" class="empty-state">
+      <view class="empty-state__title">暂无活动</view>
+      <view class="empty-state__desc">试试调整筛选条件或搜索关键词。</view>
+    </view>
+
+    <view wx:else>
+      <block wx:for="{{filtered}}" wx:key="id" wx:for-item="item">
+        <view class="card shadow-card activity-card">
+          <view class="row-between activity-card__header">
+            <view class="row gap-12 activity-card__header-left">
+              <view class="activity-type-logo" style="background: {{item.typeIconBg}};">
+                <text class="activity-type-logo__icon">{{item.typeIcon}}</text>
               </view>
-              <!-- 查看详情按钮 -->
-              <view class="btn btn--secondary btn--small" catchtap="goDetail" data-id="{{item.id}}">查看详情</view>
+              <view class="badge {{item.statusBadgeClass}}">{{item.status}}</view>
+              <view wx:if="{{item.relationTag}}" class="badge badge--dark">{{item.relationTag}}</view>
+              <view wx:if="{{item.privacyTag}}" class="badge badge--warning">{{item.privacyTag}}</view>
+            </view>
+            <view class="row gap-8 items-center activity-card__header-right">
+              <view wx:if="{{!item.isRead}}" class="activity-unread-dot"></view>
+              <view class="badge badge--light">{{item.type}}</view>
+            </view>
+          </view>
+          <view class="activity-card__body">
+            <view class="activity-card__title ellipsis-1 mb-8">{{item.title}}</view>
+            <view class="activity-card__desc ellipsis-1 mb-12">{{item.desc ? item.desc : '暂无简介'}}</view>
+            <view class="row text-sm text-gray-500 mb-8 activity-card__meta-row">
+              <text>时间：{{item.timeRange ? item.timeRange : '时间待定'}}</text>
+            </view>
+            <view class="row text-sm text-gray-500 mb-12 activity-card__meta-row">
+              <text>地点：{{item.place ? item.place : '地点待定'}}</text>
+            </view>
+            <view class="row-between mb-12">
+              <text class="text-sm text-gray-600">已报 {{item.joined}} / {{item.total}}</text>
+              <view class="row gap-12">
+                <view
+                  wx:if="{{item.showRegisterButton}}"
+                  class="btn {{item.buttonStyle}} btn--small"
+                  catchtap="{{item.buttonDisabled ? '' : 'goRegister'}}"
+                  data-id="{{item.id}}"
+                  data-action="{{item.buttonAction}}">
+                  {{item.buttonText}}
+                </view>
+                <view class="btn btn--secondary btn--small" catchtap="goDetail" data-id="{{item.id}}">查看详情</view>
+              </view>
             </view>
           </view>
         </view>
-      </view>
-    </block>
+      </block>
+    </view>
   </view>
 
   <view class="bottom-space"></view>

@@ -1,6 +1,5 @@
 <!-- pages/profile/edit.wxml -->
 <view class="container">
-  <!-- 列表式布局 -->
   <view class="profile-list">
     <!-- 头像 -->
     <view class="list-item">
@@ -8,8 +7,8 @@
       <view class="item-value-wrapper">
         <button class="avatar-button" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
           <image class="avatar-preview" src="{{avatarUrl}}" mode="aspectFill" binderror="onAvatarError"></image>
-          <text class="item-arrow">›</text>
         </button>
+        <text class="item-arrow">›</text>
       </view>
     </view>
 
@@ -17,98 +16,85 @@
     <view class="list-item" bindtap="editNickname">
       <text class="item-label">昵称</text>
       <view class="item-value-wrapper">
-        <text class="item-value">{{nickname || '请输入昵称'}}</text>
+        <text class="item-value {{nickname ? '' : 'placeholder'}}">{{nickname || '未填写'}}</text>
         <text class="item-arrow">›</text>
       </view>
     </view>
 
-    <!-- 手机号 -->
+    <!-- 联系方式（手机号） -->
     <view class="list-item" bindtap="editPhone">
-      <text class="item-label">手机号</text>
+      <text class="item-label">联系方式</text>
       <view class="item-value-wrapper">
-        <text class="item-value {{phone ? '' : 'placeholder'}}">{{phone || '选填'}}</text>
+        <text class="item-value {{phone ? '' : 'placeholder'}}">{{phone || '建议填写手机号（需授权）'}}</text>
         <text class="item-arrow">›</text>
       </view>
     </view>
 
-    <!-- 账户类型（只读） -->
+    <!-- 角色（只读） -->
     <view class="list-item readonly">
-      <text class="item-label">账户类型</text>
+      <text class="item-label">角色</text>
       <view class="item-value-wrapper">
         <text class="item-value readonly-value">{{role}}</text>
       </view>
     </view>
+  </view>
 
-    <!-- 用户ID（只读） -->
-    <view class="list-item readonly">
-      <text class="item-label">用户ID</text>
-      <view class="item-value-wrapper">
-        <text class="item-value readonly-value">{{userId}}</text>
+  <view class="tips-section">
+    <text class="tips-text">头像、昵称修改后请点击下方“保存”生效。</text>
+    <text class="tips-text">联系方式选填，仅用于活动通知；仅本人、活动组织者和管理员可见，可随时删除。</text>
+  </view>
+
+  <view class="save-section">
+    <button class="save-btn" bindtap="saveProfile" disabled="{{!hasChanges || !canSave}}">保存</button>
+  </view>
+
+  <!-- 昵称编辑弹窗 -->
+  <view wx:if="{{showNicknameModal}}" class="modal-overlay" catchtouchmove="true">
+    <view class="modal-content">
+      <view class="modal-header">
+        <text class="modal-title">修改昵称</text>
+        <view class="modal-close" bindtap="closeNicknameModal">×</view>
+      </view>
+      <view class="modal-body">
+        <input class="modal-input" value="{{tempNickname}}" maxlength="20" placeholder="请输入昵称" bindinput="onTempNicknameInput" />
+        <text class="input-counter">{{tempNickname.length}}/20</text>
+        <button class="nickname-sync-btn" bindtap="syncWechatNickname">同步微信昵称</button>
+      </view>
+      <view class="modal-footer">
+        <button class="modal-btn cancel" bindtap="closeNicknameModal">取消</button>
+        <button class="modal-btn confirm" bindtap="confirmNickname">确定</button>
       </view>
     </view>
   </view>
 
-  <!-- 提示信息 -->
-  <view class="tips-section">
-    <text class="tips-text">💡 昵称和头像通过微信官方组件获取，符合隐私保护规范</text>
+  <!-- 联系方式编辑弹窗 -->
+  <view wx:if="{{showPhoneModal}}" class="modal-overlay" catchtouchmove="true">
+    <view class="modal-content">
+      <view class="modal-header">
+        <text class="modal-title">编辑联系方式</text>
+        <view class="modal-close" bindtap="closePhoneModal">×</view>
+      </view>
+      <view class="modal-body">
+        <view class="consent-inline" bindtap="openPhoneNoticeConsent">
+          <text class="consent-inline-text">授权状态：{{phoneNoticeConsentOk ? '已授权' : '未授权'}}</text>
+          <text class="consent-inline-link">查看/去授权</text>
+        </view>
+        <input class="modal-input" value="{{tempPhone}}" type="number" maxlength="11" placeholder="建议填写手机号（需授权）" bindinput="onTempPhoneInput" />
+        <text class="input-hint">用于活动通知（如活动时间/地点变更、取消等）。</text>
+        <text class="input-hint">仅本人可见；在你参与的活动中，活动组织者和管理员可查看用于通知。</text>
+      </view>
+      <view class="modal-footer">
+        <button class="modal-btn cancel" bindtap="closePhoneModal">取消</button>
+        <button wx:if="{{phone}}" class="modal-btn cancel" bindtap="clearPhone">删除</button>
+        <button class="modal-btn confirm" bindtap="confirmPhone" disabled="{{phoneConfirmDisabled}}">确定</button>
+      </view>
+    </view>
   </view>
 
-  <!-- 保存按钮 -->
-  <view class="save-section">
-    <button class="save-btn" bindtap="saveProfile" disabled="{{!canSave}}">
-      {{canSave ? '保存' : '保存中...'}}
-    </button>
-  </view>
-</view>
-
-<!-- 昵称编辑弹窗 -->
-<view wx:if="{{showNicknameModal}}" class="modal-overlay" bindtap="closeNicknameModal">
-  <view class="modal-content" catchtap>
-    <view class="modal-header">
-      <text class="modal-title">编辑昵称</text>
-      <view class="modal-close" bindtap="closeNicknameModal">✕</view>
-    </view>
-    <view class="modal-body">
-      <input
-        type="nickname"
-        class="modal-input"
-        value="{{tempNickname}}"
-        placeholder="请输入昵称"
-        bindinput="onTempNicknameInput"
-        maxlength="20"
-        focus="{{showNicknameModal}}"
-      />
-      <text class="input-counter">{{tempNickname.length}}/20</text>
-    </view>
-    <view class="modal-footer">
-      <button class="modal-btn cancel" bindtap="closeNicknameModal">取消</button>
-      <button class="modal-btn confirm" bindtap="confirmNickname">确定</button>
-    </view>
-  </view>
-</view>
-
-<!-- 手机号编辑弹窗 -->
-<view wx:if="{{showPhoneModal}}" class="modal-overlay" bindtap="closePhoneModal">
-  <view class="modal-content" catchtap>
-    <view class="modal-header">
-      <text class="modal-title">编辑手机号</text>
-      <view class="modal-close" bindtap="closePhoneModal">✕</view>
-    </view>
-    <view class="modal-body">
-      <input
-        type="number"
-        class="modal-input"
-        value="{{tempPhone}}"
-        placeholder="请输入手机号（选填）"
-        bindinput="onTempPhoneInput"
-        maxlength="11"
-        focus="{{showPhoneModal}}"
-      />
-      <text class="input-hint">用于接收活动通知</text>
-    </view>
-    <view class="modal-footer">
-      <button class="modal-btn cancel" bindtap="closePhoneModal">取消</button>
-      <button class="modal-btn confirm" bindtap="confirmPhone">确定</button>
-    </view>
-  </view>
+  <phone-notice-consent-modal
+    visible="{{showPhoneNoticeConsent}}"
+    bind:cancel="onPhoneNoticeConsentCancel"
+    bind:confirm="onPhoneNoticeConsentConfirm"
+    bind:viewpolicy="onPhoneNoticeConsentViewPolicy"
+  />
 </view>

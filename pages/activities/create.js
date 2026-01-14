@@ -1,5 +1,5 @@
 // pages/activities/create.js
-const { activityAPI, registrationAPI, userAPI } = require('../../utils/api.js');
+const { activityAPI, registrationAPI, userAPI, administratorAPI } = require('../../utils/api.js');
 const { validateActivityForm } = require('../../utils/validator.js');
 const { formatDateTime } = require('../../utils/datetime.js');
 const { parseDate } = require('../../utils/date-helper.js');
@@ -15,10 +15,53 @@ const app = getApp();
 
 const TYPE_OPTIONS = ['聚会', '培训', '户外', '运动', '会议', '其他'];
 
+const normalizeGroupsForNewActivity = (groups) => {
+  if (!Array.isArray(groups)) return [];
+  return groups.map(g => ({
+    ...g,
+    joined: 0
+  }));
+};
+
+const normalizeToJsonString = (value) => {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return '';
+    return trimmed;
+  }
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value);
+    } catch (e) {
+      return '';
+    }
+  }
+  return '';
+};
+
+const hasNonEmptyJsonString = (value) => {
+  if (!value || typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  return trimmed.length > 0 && trimmed !== '[]' && trimmed !== '{}' && trimmed !== 'null';
+};
+
+const getJsonArrayLength = (value) => {
+  const jsonStr = normalizeToJsonString(value);
+  if (!jsonStr) return 0;
+  try {
+    const parsed = JSON.parse(jsonStr);
+    return Array.isArray(parsed) ? parsed.length : 0;
+  } catch (e) {
+    return 0;
+  }
+};
+
 Page({
   data: {
     mode: 'create', // 'create', 'edit', 'copy'
     activityId: '', // 编辑或复制的活动ID
+    currentDraftId: '', // 当前正在编辑/保存的草稿ID（用于“保存草稿”更新同一条记录）
     originalActivity: null, // 原始活动数据（编辑模式）
     currentRegistrations: 0, // 当前报名数量
     fieldEditability: {}, // 字段可编辑性映射
@@ -33,6 +76,12 @@ Page({
     showDraftButtons: true, // 是否显示草稿和复制按钮
     publishButtonText: '发布', // 发布按钮文本
     previewImageUrl: '../../images/default-other.jpg', // 预览图片URL
+    copiedWhitelist: '', // 复制来源的白名单（JSON字符串）
+    copiedBlacklist: '', // 复制来源的黑名单（JSON字符串）
+    copiedAdministratorIds: [], // 复制来源的活动管理员ID列表
+    showCopyExtrasDialog: false, // 是否显示“复制附带信息”弹窗
+    copyExtrasCounts: { whitelist: 0, blacklist: 0, administrators: 0 }, // 弹窗中仅展示数量
+    copyExtrasOptions: { whitelist: true, blacklist: true, administrators: true }, // 默认全选
     steps: [
       { index: 1, label: '基本信息', active: true, completed: false },
       { index: 2, label: '时间设置', active: false, completed: false },
@@ -65,7 +114,9 @@ Page({
       checkinRadius: 500,
       total: 20,
       minParticipants: 5,
-      needReview: false
+      needReview: false,
+      needCheckin: true,
+      notifyUsers: false
     },
     // 分组配置
     groups: [],
@@ -73,7 +124,7 @@ Page({
     // 默认的自定义字段（用于无分组或复制到分组）
     defaultCustomFields: [
       { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
-      { id: 'mobile', label: '手机号', required: false, desc: '用于联系参与者', isCustom: false }
+      { id: 'mobile', label: '联系方式', required: false, desc: '用于联系参与者', isCustom: false }
     ],
     feeTypes: ['免费', 'AA', '统一收费'],
     nextFieldId: 1, // 用于生成自定义字段的唯一ID
@@ -175,7 +226,7 @@ Page({
           wx.showToast({ title: '请选择活动地点', icon: 'none' });
           return false;
         }
-        if (!form.checkinRadius || form.checkinRadius < 10) {
+        if (form.needCheckin && (!form.checkinRadius || form.checkinRadius < 10)) {
           wx.showToast({ title: '签到范围不能少于10米', icon: 'none' });
           return false;
         }
@@ -1345,20 +1396,77 @@ Page({
       const fields = groups[groupIndex].descriptionFields;
       const fieldIndex = fields.findIndex(f => f.id === fieldId);
       if (fieldIndex >= 0) {
-        this.setData({
-          [`groups[${groupIndex}].descriptionFields[${fieldIndex}].value`]: value
-        });
+        this.setData({ [`groups[${groupIndex}].descriptionFields[${fieldIndex}].value`]: value });
       }
     } else {
       // 无分组模式
       const fields = this.data.descriptionFields;
       const fieldIndex = fields.findIndex(f => f.id === fieldId);
       if (fieldIndex >= 0) {
-        this.setData({
-          [`descriptionFields[${fieldIndex}].value`]: value
-        });
+        this.setData({ [`descriptionFields[${fieldIndex}].value`]: value });
       }
     }
+  },
+
+  // 全屏编辑（用于长文本字段：活动描述/报名要求/活动说明及注意事项）
+  openFullScreenEditor(e) {
+    const scope = e.currentTarget.dataset.scope;
+    const field = e.currentTarget.dataset.field;
+    const indexRaw = e.currentTarget.dataset.index;
+    const index = typeof indexRaw !== 'undefined' ? Number(indexRaw) : null;
+
+    const titleMap = {
+      desc: '编辑活动描述',
+      requirements: '编辑报名要求',
+      description: '编辑活动说明及注意事项'
+    };
+    const placeholderMap = {
+      desc: '请描述活动内容、目的和注意事项',
+      requirements: '请输入报名要求',
+      description: '请输入活动说明及注意事项'
+    };
+    const maxLengthMap = { desc: 2000, requirements: 5000, description: 5000 };
+
+    let value = '';
+    if (scope === 'form') {
+      value = (this.data.form && this.data.form[field]) ? String(this.data.form[field]) : '';
+    } else if (scope === 'group' && typeof index === 'number' && index >= 0) {
+      const group = (this.data.groups && this.data.groups[index]) || {};
+      value = group[field] ? String(group[field]) : '';
+    } else {
+      wx.showToast({ title: '无法打开编辑页', icon: 'none' });
+      return;
+    }
+
+    const key = `text_editor_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    wx.setStorageSync(key, {
+      scope,
+      field,
+      index: scope === 'group' ? index : null,
+      title: titleMap[field] || '全屏编辑',
+      placeholder: placeholderMap[field] || '请输入内容',
+      maxLength: maxLengthMap[field] || 5000,
+      value
+    });
+
+    wx.navigateTo({
+      url: `/pages/activities/text-editor?key=${key}`,
+      success: (res) => {
+        const channel = res.eventChannel;
+        if (!channel || !channel.on) return;
+
+        channel.on('save', (payload) => {
+          if (!payload || payload.field !== field || payload.scope !== scope) return;
+          const nextValue = payload.value != null ? String(payload.value) : '';
+
+          if (scope === 'form') {
+            this.setData({ [`form.${field}`]: nextValue }, () => this.checkCanPublish());
+          } else if (scope === 'group' && typeof payload.index === 'number') {
+            this.setData({ [`groups[${payload.index}].${field}`]: nextValue });
+          }
+        });
+      }
+    });
   },
 
   // 上传海报
@@ -1411,7 +1519,7 @@ Page({
   // 保存草稿
   saveDraft() {
     try {
-      const { form, groups, defaultCustomFields, descriptionFields } = this.data;
+      const { form, groups, defaultCustomFields, descriptionFields, currentDraftId } = this.data;
 
       // 验证必填项
       if (!form.title || form.title.trim().length < 2) {
@@ -1421,29 +1529,47 @@ Page({
 
       // 获取现有草稿列表
       let drafts = wx.getStorageSync('activity_drafts') || [];
+      const nowIso = new Date().toISOString();
 
-      // 创建草稿对象
-      const draft = {
-        draftId: `draft_${Date.now()}`,
+      const buildDraftPayload = (draftId, createdAt) => ({
+        draftId,
         form: { ...form },
         groups: groups.map(g => ({ ...g })),
         defaultCustomFields: JSON.parse(JSON.stringify(defaultCustomFields)),
         descriptionFields: JSON.parse(JSON.stringify(descriptionFields)),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
+        createdAt: createdAt || nowIso,
+        updatedAt: nowIso
+      });
 
-      // 添加到草稿列表
-      drafts.unshift(draft); // 最新的放在最前面
+      if (currentDraftId) {
+        const existingIndex = drafts.findIndex(d => d.draftId === currentDraftId);
+        if (existingIndex >= 0) {
+          const existing = drafts[existingIndex] || {};
+          const updated = buildDraftPayload(currentDraftId, existing.createdAt);
+          drafts.splice(existingIndex, 1);
+          drafts.unshift(updated); // 更新后置顶
+          drafts = drafts.slice(0, 10);
+          wx.setStorageSync('activity_drafts', drafts);
+          wx.showToast({ title: '草稿已更新', icon: 'success' });
+          return;
+        }
 
-      // 最多保存10个草稿
-      if (drafts.length > 10) {
+        // 找不到对应草稿：重新生成一条并提示
+        const newId = `draft_${Date.now()}`;
+        drafts.unshift(buildDraftPayload(newId, nowIso));
         drafts = drafts.slice(0, 10);
+        wx.setStorageSync('activity_drafts', drafts);
+        this.setData({ currentDraftId: newId });
+        wx.showToast({ title: '草稿不存在，已重新生成并保存', icon: 'success' });
+        return;
       }
 
-      // 保存到本地存储
+      // 首次保存：生成新草稿并记住 draftId，后续保存更新同一条
+      const newId = `draft_${Date.now()}`;
+      drafts.unshift(buildDraftPayload(newId, nowIso)); // 最新的放在最前面
+      drafts = drafts.slice(0, 10);
       wx.setStorageSync('activity_drafts', drafts);
-
+      this.setData({ currentDraftId: newId });
       wx.showToast({ title: '草稿已保存', icon: 'success' });
     } catch (err) {
       console.error('保存草稿失败:', err);
@@ -1471,13 +1597,81 @@ Page({
       this.loadDraftData(selectedId);
     } else {
       // 加载活动
-      this.loadActivityData(selectedId);
+      this.loadActivityForCopy(selectedId);
     }
+  },
+
+  // 复制活动：附带信息选择弹窗
+  openCopyExtrasDialog(pendingPayload, pendingExtras, counts) {
+    this._pendingCopyPayload = pendingPayload;
+    this._pendingCopyExtras = pendingExtras;
+
+    this.setData({
+      showCopyExtrasDialog: true,
+      copyExtrasCounts: counts || { whitelist: 0, blacklist: 0, administrators: 0 },
+      copyExtrasOptions: { whitelist: true, blacklist: true, administrators: true }
+    });
+  },
+
+  noop() {},
+
+  copyExtrasSelectAll(e) {
+    const value = String(e.currentTarget?.dataset?.value || '1');
+    const checked = value === '1';
+    this.setData({
+      copyExtrasOptions: { whitelist: checked, blacklist: checked, administrators: checked }
+    });
+  },
+
+  onCopyExtrasChange(e) {
+    const values = Array.isArray(e.detail?.value) ? e.detail.value : [];
+    this.setData({
+      copyExtrasOptions: {
+        whitelist: values.includes('whitelist'),
+        blacklist: values.includes('blacklist'),
+        administrators: values.includes('administrators')
+      }
+    });
+  },
+
+  cancelCopyExtras() {
+    this._pendingCopyPayload = null;
+    this._pendingCopyExtras = null;
+    this.setData({ showCopyExtrasDialog: false });
+  },
+
+  confirmCopyExtras() {
+    const payload = this._pendingCopyPayload;
+    const extras = this._pendingCopyExtras;
+    const { copyExtrasOptions } = this.data;
+
+    if (!payload || !extras) {
+      this.setData({ showCopyExtrasDialog: false });
+      return;
+    }
+
+    const copiedWhitelist = copyExtrasOptions.whitelist ? (extras.copiedWhitelist || '') : '';
+    const copiedBlacklist = copyExtrasOptions.blacklist ? (extras.copiedBlacklist || '') : '';
+    const copiedAdministratorIds = copyExtrasOptions.administrators ? (extras.copiedAdministratorIds || []) : [];
+
+    this.setData({
+      ...payload,
+      copiedWhitelist,
+      copiedBlacklist,
+      copiedAdministratorIds,
+      showCopyExtrasDialog: false
+    });
+
+    this._pendingCopyPayload = null;
+    this._pendingCopyExtras = null;
+
+    this.checkCanPublish();
+    wx.showToast({ title: '复制成功', icon: 'success' });
   },
 
   // 发布活动
   async publish() {
-    const { mode, activityId, form, groups, defaultCustomFields, canPublish, copiedWhitelist, copiedBlacklist } = this.data;
+    const { mode, activityId, form, groups, defaultCustomFields, canPublish, copiedWhitelist, copiedBlacklist, copiedAdministratorIds } = this.data;
 
     // 检查是否可以发布
     if (!canPublish) {
@@ -1498,11 +1692,11 @@ Page({
     if (!hasPhone && !hasWechat) {
       wx.showModal({
         title: '缺少联系方式',
-        content: '为便于参与者联系您，必须至少填写一种联系方式（手机号或微信号）',
+        content: '为便于参与者联系您，必须至少填写一种联系方式（联系方式或联系人昵称）',
         confirmText: '前往填写',
         showCancel: false,
         success: () => {
-          this.setCurrentStep(1); // 返回步骤1填写联系方式
+          this.setCurrentStep(6); // 返回步骤6填写联系方式
         }
       });
       return;
@@ -1588,14 +1782,18 @@ Page({
       latitude: form.latitude,
       longitude: form.longitude,
       checkinRadius: form.checkinRadius,
+      needCheckin: form.needCheckin,
       needReview: form.needReview,
+      notifyUsers: form.notifyUsers,
       hasGroups: form.hasGroups
     };
 
     // 分组配置
     if (form.hasGroups) {
+      // 新建/复制活动时，分组初始无人报名：joined 强制归零，避免出现“3/12”或“/12”
+      const groupsForSubmit = mode === 'edit' ? groups : normalizeGroupsForNewActivity(groups);
       // 计算总人数
-      const totalCount = groups.reduce((sum, g) => sum + (parseInt(g.total) || 0), 0);
+      const totalCount = groupsForSubmit.reduce((sum, g) => sum + (parseInt(g.total) || 0), 0);
 
       // 【修复】：防止total为0导致"满员"误判
       if (totalCount <= 0) {
@@ -1613,7 +1811,7 @@ Page({
 
       activityData.total = totalCount;
       activityData.minParticipants = Math.floor(totalCount * 0.5); // 默认一半成行
-      activityData.groups = groups;
+      activityData.groups = groupsForSubmit;
     } else {
       // 无分组配置
 
@@ -1640,14 +1838,13 @@ Page({
       activityData.customFields = defaultCustomFields;
     }
 
-    // 复制模式下添加白名单和黑名单
-    if (mode === 'copy') {
-      if (copiedWhitelist && copiedWhitelist.length > 0) {
-        activityData.whitelist = copiedWhitelist;
-      }
-      if (copiedBlacklist && copiedBlacklist.length > 0) {
-        activityData.blacklist = copiedBlacklist;
-      }
+    // 复制（含列表复制/页内复制）后可带入白名单/黑名单
+    // 说明：后端以 JSON 字符串存储名单，这里传递 JSON 字符串，避免 String<->Array 类型不一致导致 400
+    if (hasNonEmptyJsonString(copiedWhitelist)) {
+      activityData.whitelist = copiedWhitelist;
+    }
+    if (hasNonEmptyJsonString(copiedBlacklist)) {
+      activityData.blacklist = copiedBlacklist;
     }
 
     // 定时发布处理
@@ -1705,10 +1902,16 @@ Page({
         result = await activityAPI.create(activityData);
       }
 
-      wx.hideLoading();
-
       if (result.code === 0) {
         const targetId = isEdit ? activityId : result.data.id;
+        let adminCopyResult = null;
+
+        // 复制活动管理员（仅创建/复制场景）
+        if (!isEdit) {
+          adminCopyResult = await this.copyAdministratorsAfterCreate(targetId, copiedAdministratorIds);
+        }
+
+        wx.hideLoading();
 
         // 如果启用了定时发布，添加定时任务
         if (enableScheduledPublish) {
@@ -1726,7 +1929,29 @@ Page({
           wx.showToast({ title: successText, icon: 'success' });
         }
 
-        // 清除草稿
+        // 管理员复制失败提示（不阻断发布）
+        if (adminCopyResult && adminCopyResult.failed > 0) {
+          setTimeout(() => {
+            wx.showToast({
+              title: `管理员复制失败(${adminCopyResult.success}/${adminCopyResult.total})`,
+              icon: 'none',
+              duration: 2500
+            });
+          }, 1600);
+        }
+
+        // 发布成功后：自动删除对应草稿（按 currentDraftId），并兼容清理旧 key
+        try {
+          const draftId = this.data.currentDraftId;
+          if (draftId) {
+            const drafts = wx.getStorageSync('activity_drafts') || [];
+            const nextDrafts = drafts.filter(d => d.draftId !== draftId);
+            wx.setStorageSync('activity_drafts', nextDrafts);
+            this.setData({ currentDraftId: '' });
+          }
+        } catch (e) {
+          console.warn('发布成功后清理草稿失败（不影响发布）:', e);
+        }
         wx.removeStorageSync('activity_draft');
 
         // 跳转到我的活动页面
@@ -1744,6 +1969,7 @@ Page({
           }
         }, 1500);
       } else {
+        wx.hideLoading();
         // 处理参数校验失败等错误
         this.showErrorDialog(result);
       }
@@ -1770,6 +1996,29 @@ Page({
     }
   },
 
+  // 创建/复制活动后：按需复制活动管理员（不阻断发布）
+  async copyAdministratorsAfterCreate(activityId, administratorIds) {
+    const currentUserId = app.globalData.currentUserId || '';
+    const ids = Array.isArray(administratorIds) ? administratorIds : [];
+    const uniqueIds = Array.from(new Set(ids)).filter(id => id && id !== currentUserId);
+
+    if (uniqueIds.length === 0) {
+      return { total: 0, success: 0, failed: 0 };
+    }
+
+    let success = 0;
+    for (const userId of uniqueIds) {
+      try {
+        const res = await administratorAPI.addAdministratorSilent(activityId, userId);
+        if (res && res.code === 0) success += 1;
+      } catch (e) {
+        // 忽略单个失败，整体不阻断发布
+      }
+    }
+
+    return { total: uniqueIds.length, success, failed: uniqueIds.length - success };
+  },
+
   /**
    * 显示错误信息弹窗
    * 解析后端返回的参数校验错误，友好展示给用户
@@ -1778,7 +2027,7 @@ Page({
     const { code, message, data } = result;
 
     // 字段名到中文名称的映射
-    const fieldNameMap = {
+      const fieldNameMap = {
       'title': '活动标题',
       'type': '活动类型',
       'startTime': '开始时间',
@@ -1799,9 +2048,9 @@ Page({
       'customFields': '自定义字段',
       'scheduledPublishTime': '定时发布时间',
       'description': '活动描述',
-      'organizerPhone': '联系人电话',
-      'organizerWechat': '联系人微信'
-    };
+      'organizerPhone': '联系方式',
+      'organizerWechat': '联系人昵称'
+      };
 
     // 如果有详细的字段错误信息（参数校验失败）
     if (code === 400 && data && typeof data === 'object') {
@@ -1892,7 +2141,7 @@ Page({
     const activityId = options.id || '';
     const draftId = options.draftId || '';
 
-    this.setData({ mode, activityId });
+    this.setData({ mode, activityId, currentDraftId: mode === 'draft' ? draftId : '' });
 
     if (mode === 'edit') {
       // 编辑模式
@@ -2061,9 +2310,11 @@ Page({
       latitude: activity.latitude,
       longitude: activity.longitude,
       checkinRadius: activity.checkinRadius || 500,
+      needCheckin: activity.needCheckin !== undefined ? activity.needCheckin : true,
       total: activity.total,
       minParticipants: activity.minParticipants || 0,
       needReview: activity.needReview || false,
+      notifyUsers: activity.notifyUsers === true,
       fee: activity.fee || 0,
       feeType: activity.feeType || '免费',
       requirements: activity.requirements || '',
@@ -2229,9 +2480,13 @@ Page({
         latitude: activity.latitude,
         longitude: activity.longitude,
         checkinRadius: activity.checkinRadius || 500,
+        needCheckin: activity.needCheckin !== undefined ? activity.needCheckin : true,
+        needCheckin: activity.needCheckin !== undefined ? activity.needCheckin : true,
         total: activity.total,
         minParticipants: activity.minParticipants || 0,
         needReview: activity.needReview || false,
+        notifyUsers: activity.notifyUsers === true,
+        notifyUsers: activity.notifyUsers === true,
         fee: activity.fee || 0,
         feeType: activity.feeType || '免费',
         requirements: activity.requirements || '',
@@ -2241,12 +2496,17 @@ Page({
       // 如果有分组，复制分组数据
       let groups = [];
       if (activity.hasGroups && activity.groups) {
-        groups = activity.groups.map(g => ({ ...g }));
+        groups = normalizeGroupsForNewActivity(activity.groups.map(g => ({ ...g })));
       }
 
       // 复制白名单和黑名单
-      const copiedWhitelist = activity.whitelist ? [...activity.whitelist] : [];
-      const copiedBlacklist = activity.blacklist ? [...activity.blacklist] : [];
+      const copiedWhitelist = normalizeToJsonString(activity.whitelist);
+      const copiedBlacklist = normalizeToJsonString(activity.blacklist);
+      const copiedAdministratorIds = Array.isArray(activity.administrators)
+        ? Array.from(new Set(activity.administrators
+          .map(a => a && (a.id || a.userId))
+          .filter(Boolean)))
+        : [];
 
       // 回填自定义报名字段（无分组时用于defaultCustomFields；有分组时用于补齐缺省group.customFields）
       const defaultCustomFields = Array.isArray(activity.customFields) && activity.customFields.length > 0
@@ -2290,24 +2550,30 @@ Page({
         if (match) maxDescId = Math.max(maxDescId, Number(match[1]));
       });
 
-      this.setData({
+      const steps = this.data.steps.map(s => ({ ...s, completed: true }));
+
+      const pendingPayload = {
         form,
         groups: normalizedGroups,
         defaultCustomFields,
         nextFieldId: Math.max(this.data.nextFieldId || 1, maxCustomId + 1),
         nextDescFieldId: Math.max(this.data.nextDescFieldId || 1, maxDescId + 1),
-        copiedWhitelist,
-        copiedBlacklist
-      });
+        previewImageUrl: getActivityImage(activity.image, activity.type),
+        steps
+      };
 
-      // 标记所有步骤为已完成
-      const steps = this.data.steps.map(s => ({ ...s, completed: true }));
-      this.setData({ steps });
-
-      this.checkCanPublish();
+      const counts = {
+        whitelist: getJsonArrayLength(copiedWhitelist),
+        blacklist: getJsonArrayLength(copiedBlacklist),
+        administrators: copiedAdministratorIds.length
+      };
 
       wx.hideLoading();
-      wx.showToast({ title: '已加载活动数据', icon: 'success' });
+      this.openCopyExtrasDialog(
+        pendingPayload,
+        { copiedWhitelist, copiedBlacklist, copiedAdministratorIds },
+        counts
+      );
     } catch (err) {
       wx.hideLoading();
       console.error('加载活动数据失败:', err);
@@ -2340,11 +2606,12 @@ Page({
 
       // 恢复草稿数据
       this.setData({
+        currentDraftId: draftId,
         form: draft.form,
         groups: draft.groups || [],
         defaultCustomFields: draft.defaultCustomFields || [
           { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
-          { id: 'mobile', label: '手机号', required: false, desc: '用于联系参与者', isCustom: false }
+          { id: 'mobile', label: '联系方式', required: false, desc: '用于联系参与者', isCustom: false }
         ],
         descriptionFields: draft.descriptionFields || [],
         pageTitle: '编辑草稿',
@@ -2388,7 +2655,12 @@ Page({
         form: { ...draft.form },
         groups: draft.groups.map(g => ({ ...g })),
         defaultCustomFields: JSON.parse(JSON.stringify(draft.defaultCustomFields)),
-        descriptionFields: JSON.parse(JSON.stringify(draft.descriptionFields))
+        descriptionFields: JSON.parse(JSON.stringify(draft.descriptionFields)),
+        // 加载草稿时不带入上一次复制的名单
+        copiedWhitelist: '',
+        copiedBlacklist: '',
+        copiedAdministratorIds: [],
+        previewImageUrl: getActivityImage(null, draft.form.type)
       });
 
       // 标记已完成的步骤
@@ -2463,12 +2735,15 @@ Page({
       // 如果有分组，加载分组数据
       let groups = [];
       if (activity.hasGroups && activity.groups) {
-        groups = activity.groups.map(g => ({ ...g }));
+        groups = normalizeGroupsForNewActivity(activity.groups.map(g => ({ ...g })));
       }
 
       this.setData({
         form,
-        groups
+        groups,
+        previewImageUrl: getActivityImage(activity.image, activity.type),
+        copiedWhitelist: normalizeToJsonString(activity.whitelist),
+        copiedBlacklist: normalizeToJsonString(activity.blacklist)
       });
 
       // 标记所有步骤为已完成

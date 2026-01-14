@@ -606,13 +606,19 @@ const mockRequest = (url, method, data) => {
       return { code: -1, data: null, message: '活动不存在' };
     }
 
-    // 返回白名单列表（包含用户详情）
-    const whitelist = (activity.whitelist || []).map(item => {
-      const user = participants.find(p => p.id === item.userId);
+    // 统一为 userId 维度：返回 { id, nickname, avatar, phone }
+    const rawList = Array.isArray(activity.whitelist) ? activity.whitelist : [];
+    const userIds = rawList
+      .map(item => (typeof item === 'string' ? item : (item.userId || item.id)))
+      .filter(Boolean);
+
+    const whitelist = userIds.map(uid => {
+      const user = participants.find(p => p.id === uid);
       return {
-        ...item,
-        name: user?.name || '未知用户',
-        avatar: user?.avatar || ''
+        id: uid,
+        nickname: user?.name || '未知用户',
+        avatar: user?.avatar || '',
+        phone: user?.phone || user?.mobile || ''
       };
     });
 
@@ -630,31 +636,30 @@ const mockRequest = (url, method, data) => {
       return { code: -1, data: null, message: '活动不存在' };
     }
 
-    // 初始化白名单数组
-    if (!activity.whitelist) {
+    // 初始化白名单数组（存 userId 字符串）
+    if (!Array.isArray(activity.whitelist)) {
       activity.whitelist = [];
     }
-
-    const now = new Date();
-    const addedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const addedBy = 'u1';  // TODO: 应该从当前用户获取
+    // 若是旧格式对象数组，先迁移为 userId 字符串数组
+    activity.whitelist = activity.whitelist
+      .map(item => (typeof item === 'string' ? item : (item.userId || item.id)))
+      .filter(Boolean);
 
     let addedCount = 0;
+    const unresolvedPhones = [];
 
-    // 按手机号添加
+    // 按手机号添加（解析为 userId，手机号需绑定账号）
     if (phones && Array.isArray(phones)) {
       phones.forEach(phone => {
-        // 检查是否已存在
-        const exists = activity.whitelist.some(w => w.phone === phone);
-        if (!exists) {
-          // 查找对应的用户ID
-          const user = participants.find(p => p.phone === phone || p.mobile === phone);
-          activity.whitelist.push({
-            phone,
-            userId: user?.id || null,
-            addedAt,
-            addedBy
-          });
+        const p = String(phone || '').trim();
+        if (!p) return;
+        const user = participants.find(u => u.phone === p || u.mobile === p);
+        if (!user) {
+          unresolvedPhones.push(p);
+          return;
+        }
+        if (!activity.whitelist.includes(user.id)) {
+          activity.whitelist.push(user.id);
           addedCount++;
         }
       });
@@ -662,18 +667,11 @@ const mockRequest = (url, method, data) => {
 
     // 按用户ID添加
     if (userIds && Array.isArray(userIds)) {
-      userIds.forEach(userId => {
-        // 检查是否已存在
-        const exists = activity.whitelist.some(w => w.userId === userId);
-        if (!exists) {
-          // 从participants获取用户信息
-          const user = participants.find(p => p.id === userId);
-          activity.whitelist.push({
-            phone: user?.phone || user?.mobile || '',
-            userId,
-            addedAt,
-            addedBy
-          });
+      userIds.forEach(uid => {
+        const id = String(uid || '').trim();
+        if (!id) return;
+        if (!activity.whitelist.includes(id)) {
+          activity.whitelist.push(id);
           addedCount++;
         }
       });
@@ -681,8 +679,10 @@ const mockRequest = (url, method, data) => {
 
     return {
       code: 0,
-      data: { addedCount },
-      message: `成功添加 ${addedCount} 个条目`
+      data: { addedCount, unresolvedPhones },
+      message: unresolvedPhones.length > 0
+        ? `添加白名单成功，新增${addedCount}人，${unresolvedPhones.length}个手机号未绑定账号已跳过`
+        : `添加白名单成功，新增${addedCount}人`
     };
   }
 
@@ -690,7 +690,7 @@ const mockRequest = (url, method, data) => {
   if (url.match(/^\/api\/activities\/[^/]+\/whitelist\/[^/]+$/) && method === 'DELETE') {
     const pathParts = url.split('/');
     const activityId = pathParts[3];
-    const phone = decodeURIComponent(pathParts[5]);  // 手机号可能包含特殊字符，需要解码
+    const key = decodeURIComponent(pathParts[5]);  // userId或手机号
 
     const activity = activities.find(a => a.id === activityId);
 
@@ -698,13 +698,19 @@ const mockRequest = (url, method, data) => {
       return { code: -1, data: null, message: '活动不存在' };
     }
 
-    if (!activity.whitelist) {
+    if (!Array.isArray(activity.whitelist)) {
       return { code: -1, data: null, message: '该条目不存在' };
     }
 
-    // 移除白名单条目
-    const index = activity.whitelist.findIndex(w => w.phone === phone);
-    if (index === -1) {
+    // 兼容：手机号 -> userId
+    let userId = key;
+    if (/^1[3-9]\d{9}$/.test(key)) {
+      const user = participants.find(u => u.phone === key || u.mobile === key);
+      userId = user?.id || key;
+    }
+
+    const index = activity.whitelist.findIndex(u => u === userId);
+    if (index < 0) {
       return { code: -1, data: null, message: '该条目不存在' };
     }
 
@@ -717,19 +723,21 @@ const mockRequest = (url, method, data) => {
   if (url.match(/^\/api\/activities\/[^/]+\/registered-users$/) && method === 'GET') {
     const activityId = url.split('/')[3];
 
-    // 获取活动的所有已通过审核的报名记录
+    // 获取活动的 pending + approved 报名记录
     const activityRegs = registrations.filter(r =>
-      r.activityId === activityId && r.status === 'approved'
+      r.activityId === activityId && (r.status === 'approved' || r.status === 'pending')
     );
 
-    // 映射为包含用户信息的格式
     const registeredUsers = activityRegs.map(reg => {
       const user = participants.find(p => p.id === reg.userId);
       return {
         userId: reg.userId,
-        name: reg.name,
-        mobile: reg.mobile || reg.phone || '',
-        avatar: user?.avatar || ''
+        nickname: user?.name || reg.name || '未知用户',
+        avatar: user?.avatar || '',
+        phone: user?.phone || reg.mobile || reg.phone || '',
+        registrationStatus: reg.status,
+        registrationId: reg.id,
+        registeredAt: reg.registeredAt || reg.createdAt || ''
       };
     });
 
@@ -746,13 +754,23 @@ const mockRequest = (url, method, data) => {
       return { code: -1, data: null, message: '活动不存在' };
     }
 
-    // 返回黑名单列表（包含用户详情）
-    const blacklist = (activity.blacklist || []).map(item => {
-      const user = participants.find(p => p.id === item.userId);
+    // 返回黑名单列表（userId维度）
+    const rawList = Array.isArray(activity.blacklist) ? activity.blacklist : [];
+    const blacklist = rawList.map(item => {
+      const entry = item || {};
+      const uid = typeof entry === 'string' ? entry : (entry.userId || entry.id || '');
+      const user = participants.find(p => p.id === uid) ||
+                   participants.find(p => entry.phone && (p.phone === entry.phone || p.mobile === entry.phone));
+
       return {
-        ...item,
-        name: user?.name || '未知用户',
-        avatar: user?.avatar || ''
+        userId: user?.id || uid || null,
+        nickname: user?.name || '未知用户',
+        avatar: user?.avatar || '',
+        phone: user?.phone || user?.mobile || entry.phone || '',
+        reason: entry.reason || '',
+        isActive: entry.isActive !== false,
+        expiresAt: entry.expiresAt || entry.expiryTime || null,
+        addedAt: entry.addedAt || ''
       };
     });
 
@@ -762,7 +780,7 @@ const mockRequest = (url, method, data) => {
   // 批量添加黑名单
   if (url.match(/^\/api\/activities\/[^/]+\/blacklist$/) && method === 'POST') {
     const activityId = url.split('/')[3];
-    const { phones, reason, expiryDays } = data;  // phones: 手机号数组, reason: 拉黑原因, expiryDays: 过期天数(null表示永久)
+    const { userIds, phones, reason, expiryDays } = data;  // userIds/phones 二选一或混用，最终落库为 userId
 
     const activity = activities.find(a => a.id === activityId);
 
@@ -770,8 +788,7 @@ const mockRequest = (url, method, data) => {
       return { code: -1, data: null, message: '活动不存在' };
     }
 
-    // 初始化黑名单数组
-    if (!activity.blacklist) {
+    if (!Array.isArray(activity.blacklist)) {
       activity.blacklist = [];
     }
 
@@ -789,32 +806,55 @@ const mockRequest = (url, method, data) => {
       expiresAt = expiryDate.toISOString();
     }
 
-    // 按手机号添加
-    if (phones && Array.isArray(phones)) {
-      phones.forEach(phone => {
-        // 检查是否已存在
-        const exists = activity.blacklist.some(b => b.phone === phone);
-        if (!exists) {
-          // 查找对应的用户ID
-          const user = participants.find(p => p.phone === phone || p.mobile === phone);
-          activity.blacklist.push({
-            phone,
-            userId: user?.id || null,
-            reason: reason || '',
-            isActive: true,
-            expiresAt,
-            addedAt,
-            addedBy
-          });
-          addedCount++;
-        }
+    const existingUserIdSet = new Set(
+      activity.blacklist
+        .map(item => (typeof item === 'string' ? item : (item.userId || item.id)))
+        .filter(Boolean)
+    );
+
+    const targetUserIds = [];
+    const unresolvedPhones = [];
+
+    if (userIds && Array.isArray(userIds)) {
+      userIds.forEach(uid => {
+        const id = String(uid || '').trim();
+        if (id) targetUserIds.push(id);
       });
     }
 
+    if (phones && Array.isArray(phones)) {
+      phones.forEach(phone => {
+        const p = String(phone || '').trim();
+        if (!p) return;
+        const user = participants.find(u => u.phone === p || u.mobile === p);
+        if (!user) {
+          unresolvedPhones.push(p);
+          return;
+        }
+        targetUserIds.push(user.id);
+      });
+    }
+
+    targetUserIds.forEach(uid => {
+      if (existingUserIdSet.has(uid)) return;
+      activity.blacklist.push({
+        userId: uid,
+        reason: reason || '',
+        isActive: true,
+        expiresAt,
+        addedAt,
+        addedBy
+      });
+      existingUserIdSet.add(uid);
+      addedCount++;
+    });
+
     return {
       code: 0,
-      data: { addedCount },
-      message: `成功添加 ${addedCount} 个条目`
+      data: { addedCount, unresolvedPhones },
+      message: unresolvedPhones.length > 0
+        ? `添加黑名单成功，新增${addedCount}人，${unresolvedPhones.length}个手机号未绑定账号已跳过`
+        : `添加黑名单成功，新增${addedCount}人`
     };
   }
 
@@ -822,7 +862,7 @@ const mockRequest = (url, method, data) => {
   if (url.match(/^\/api\/activities\/[^/]+\/blacklist\/[^/]+$/) && method === 'DELETE') {
     const pathParts = url.split('/');
     const activityId = pathParts[3];
-    const phone = decodeURIComponent(pathParts[5]);
+    const key = decodeURIComponent(pathParts[5]); // userId 或手机号
 
     const activity = activities.find(a => a.id === activityId);
 
@@ -830,12 +870,17 @@ const mockRequest = (url, method, data) => {
       return { code: -1, data: null, message: '活动不存在' };
     }
 
-    if (!activity.blacklist) {
+    if (!Array.isArray(activity.blacklist)) {
       return { code: -1, data: null, message: '该条目不存在' };
     }
 
-    // 移除黑名单条目
-    const index = activity.blacklist.findIndex(b => b.phone === phone);
+    let userId = key;
+    if (/^1[3-9]\d{9}$/.test(key)) {
+      const user = participants.find(u => u.phone === key || u.mobile === key);
+      userId = user?.id || key;
+    }
+
+    const index = activity.blacklist.findIndex(b => (b.userId || b.id) === userId);
     if (index === -1) {
       return { code: -1, data: null, message: '该条目不存在' };
     }
@@ -849,7 +894,7 @@ const mockRequest = (url, method, data) => {
   if (url.match(/^\/api\/activities\/[^/]+\/blacklist\/[^/]+\/toggle$/) && method === 'PUT') {
     const pathParts = url.split('/');
     const activityId = pathParts[3];
-    const phone = decodeURIComponent(pathParts[5]);
+    const key = decodeURIComponent(pathParts[5]); // userId 或手机号
 
     const activity = activities.find(a => a.id === activityId);
 
@@ -857,12 +902,17 @@ const mockRequest = (url, method, data) => {
       return { code: -1, data: null, message: '活动不存在' };
     }
 
-    if (!activity.blacklist) {
+    if (!Array.isArray(activity.blacklist)) {
       return { code: -1, data: null, message: '该条目不存在' };
     }
 
-    // 查找黑名单条目
-    const item = activity.blacklist.find(b => b.phone === phone);
+    let userId = key;
+    if (/^1[3-9]\d{9}$/.test(key)) {
+      const user = participants.find(u => u.phone === key || u.mobile === key);
+      userId = user?.id || key;
+    }
+
+    const item = activity.blacklist.find(b => (b.userId || b.id) === userId);
     if (!item) {
       return { code: -1, data: null, message: '该条目不存在' };
     }
@@ -915,6 +965,16 @@ const mockRequest = (url, method, data) => {
     };
   }
 
+  // 系统管理员身份检查（Mock模式下默认非管理员）
+  // 应用配置（Mock模式下默认关闭开关）
+  if (url === '/api/app-config/create-activity' && method === 'GET') {
+    return { code: 0, data: { createActivityAdminOnly: false }, message: 'success' };
+  }
+
+  if (url === '/api/admin/me' && method === 'GET') {
+    return { code: 0, data: { systemAdmin: false }, message: 'success' };
+  }
+
   return { code: -1, data: null, message: '接口未实现' };
 };
 
@@ -930,10 +990,26 @@ const activityAPI = {
   }),
 
   // 获取活动详情（启用缓存）
-  getDetail: (id) => request(`/api/activities/${id}`, {
+  getDetail: (id, params = {}) => request(`/api/activities/${id}`, {
     method: 'GET',
+    data: params,
     useCache: true,
     cacheMaxAge: 5 * 60 * 1000, // 缓存5分钟
+    showLoading: false
+  }),
+
+  // 获取私密活动分享token（仅相关人可获取）
+  getShareToken: (id) => request(`/api/activities/${id}/share-token`, {
+    method: 'GET',
+    useCache: false,
+    showLoading: false
+  }),
+
+  // 获取与当前用户相关的私密活动列表（组织者/管理员/白名单/已报名）
+  getRelatedPrivateActivities: (params = {}) => request('/api/activities/related-private', {
+    method: 'GET',
+    data: params,
+    useCache: false,
     showLoading: false
   }),
 
@@ -941,6 +1017,15 @@ const activityAPI = {
   getMyActivities: (params = {}) => request('/api/activities/my-activities', {
     method: 'GET',
     data: params,  // 支持分页参数
+    useCache: true,
+    cacheMaxAge: 2 * 60 * 1000,
+    showLoading: false
+  }),
+
+  // 获取我管理的活动列表（管理员）
+  getManagedActivities: (params = {}) => request('/api/activities/managed-activities', {
+    method: 'GET',
+    data: params,
     useCache: true,
     cacheMaxAge: 2 * 60 * 1000,
     showLoading: false
@@ -1281,6 +1366,13 @@ const administratorAPI = {
     loadingText: '添加中...'
   }),
 
+  // 添加管理员（静默：不显示loading，用于批量复制等场景）
+  addAdministratorSilent: (activityId, userId) => request(`/api/activities/${activityId}/administrators`, {
+    method: 'POST',
+    data: { userId },
+    showLoading: false
+  }),
+
   // 移除管理员
   removeAdministrator: (activityId, userId) => request(`/api/activities/${activityId}/administrators/${userId}`, {
     method: 'DELETE',
@@ -1358,6 +1450,13 @@ const blacklistAPI = {
     method: 'PUT',
     showLoading: true,
     loadingText: '处理中...'
+  }),
+
+  // 获取活动已报名用户列表（用于选择添加到黑名单）
+  getRegisteredUsers: (activityId) => request(`/api/activities/${activityId}/registered-users`, {
+    method: 'GET',
+    useCache: false,
+    showLoading: false
   })
 };
 
@@ -1369,6 +1468,67 @@ const feedbackAPI = {
     data,  // { content: '反馈内容', contactInfo: '联系方式（可选）' }
     showLoading: true,
     loadingText: '提交中...'
+  })
+};
+
+// 系统管理员API
+// 应用配置API（需要登录，前端用于开关控制）
+const appConfigAPI = {
+  // 获取“创建活动仅管理员可创建”开关
+  getCreateActivityConfig: () => request('/api/app-config/create-activity', {
+    method: 'GET',
+    useCache: false,
+    showLoading: false
+  })
+};
+
+const adminAPI = {
+  // 查询当前用户是否系统管理员
+  me: () => request('/api/admin/me', {
+    method: 'GET',
+    useCache: false,
+    showLoading: false
+  }),
+
+  // 系统管理员：查询活动列表（不含草稿/待发布）
+  listActivities: (params = {}) => request('/api/admin/activities', {
+    method: 'GET',
+    data: params, // { page, size, sortBy, sortDirection, type, keyword }
+    useCache: false,
+    showLoading: false
+  }),
+
+  // 系统管理员：更新“创建活动开关”（开启后仅系统管理员可创建活动）
+  updateCreateActivityAdminOnly: (adminOnly) => request('/api/admin/system-settings/create-activity-admin-only', {
+    method: 'PUT',
+    data: { adminOnly: !!adminOnly },
+    useCache: false,
+    showLoading: true,
+    loadingText: '保存中..'
+  }),
+
+  // 查询反馈列表（系统管理员）
+  listFeedback: (params = {}) => request('/api/admin/feedback', {
+    method: 'GET',
+    data: params, // { page, size, status, type, keyword }
+    useCache: false,
+    showLoading: false
+  }),
+
+  // 查询反馈详情（系统管理员）
+  getFeedbackDetail: (id) => request(`/api/admin/feedback/${id}`, {
+    method: 'GET',
+    useCache: false,
+    showLoading: false
+  }),
+
+  // 更新反馈（状态/备注）
+  updateFeedback: (id, data) => request(`/api/admin/feedback/${id}`, {
+    method: 'PUT',
+    data, // { status, note }
+    useCache: false,
+    showLoading: true,
+    loadingText: '保存中...'
   })
 };
 
@@ -1480,5 +1640,7 @@ module.exports = {
   whitelistAPI,
   blacklistAPI,
   feedbackAPI,
+  appConfigAPI,
+  adminAPI,
   uploadAPI
 };

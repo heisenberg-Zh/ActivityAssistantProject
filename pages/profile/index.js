@@ -1,20 +1,33 @@
 // pages/profile/index.js
-const { userAPI, statisticsAPI, feedbackAPI } = require('../../utils/api.js');
+const { userAPI, statisticsAPI, feedbackAPI, adminAPI } = require('../../utils/api.js');
 const { sanitizeInput } = require('../../utils/security.js');
 const { fixImageUrl } = require('../../utils/formatter.js');
 const app = getApp();
 
 // 统一菜单列表（按需求顺序排列）
 // 注意：消息中心的badge数量会在页面加载时动态更新
-const menuLinks = [
+const baseMenuLinks = [
   { key: 'my-activities', label: '我的活动', icon: '📋', bg: '#93c5fd', color: '#1e3a8a' },
   { key: 'messages', label: '消息中心', icon: '📬', bg: '#fca5a5', color: '#7f1d1d', badge: '' },
   { key: 'favorites', label: '我的收藏', icon: '⭐', bg: '#c4b5fd', color: '#4c1d95' },
   { key: 'feedback', label: '帮助与反馈', icon: '💬', bg: '#fcd34d', color: '#78350f' },
-  { key: 'about', label: '关于我们', icon: 'ℹ️', bg: '#a5b4fc', color: '#312e81' },
   { key: 'privacy', label: '隐私政策', icon: '🔒', bg: '#d8b4fe', color: '#581c87' },
-  { key: 'settings', label: '设置', icon: '⚙️', bg: '#f9a8d4', color: '#831843' }
 ];
+
+const systemAdminMenuItem = { key: 'system-admin', label: '系统管理', icon: '🛡️', bg: '#c7d2fe', color: '#312e81' };
+
+const buildMenuLinks = (isSystemAdmin) => {
+  const links = baseMenuLinks.map(item => ({ ...item }));
+  if (!isSystemAdmin) return links;
+
+  const insertIndex = links.findIndex(item => item.key === 'privacy');
+  if (insertIndex >= 0) {
+    links.splice(insertIndex, 0, { ...systemAdminMenuItem });
+  } else {
+    links.push({ ...systemAdminMenuItem });
+  }
+  return links;
+};
 
 Page({
   data: {
@@ -31,7 +44,8 @@ Page({
       { label: '参与活动', value: 0, icon: '📅', bg: '#86efac', color: '#14532d' },
       { label: '签到率', value: '0%', icon: '✅', bg: '#fca5a5', color: '#7f1d1d' }
     ],
-    menuLinks,
+    isSystemAdmin: false,
+    menuLinks: buildMenuLinks(false),
     // 帮助与反馈弹窗相关
     showFeedbackModal: false,
     feedbackContent: '',
@@ -98,6 +112,8 @@ Page({
             { label: '参与活动', value: '-', icon: '📅', bg: '#86efac', color: '#14532d' },
             { label: '签到率', value: '-', icon: '✅', bg: '#fca5a5', color: '#7f1d1d' }
           ],
+          isSystemAdmin: false,
+          menuLinks: buildMenuLinks(false),
           loading: false
         });
         return;
@@ -112,10 +128,17 @@ Page({
         this.loadMockUserData();
       } else {
         // 在线模式：并行请求用户信息和统计数据
-        const [profileRes, statsRes] = await Promise.all([
+        const [profileRes, statsRes, adminRes] = await Promise.all([
           userAPI.getProfile(),
-          statisticsAPI.getMyStatistics()
+          statisticsAPI.getMyStatistics(),
+          adminAPI.me()
         ]);
+
+        const isSystemAdmin = adminRes && adminRes.code === 0 && adminRes.data && adminRes.data.systemAdmin === true;
+        this.setData({
+          isSystemAdmin,
+          menuLinks: buildMenuLinks(isSystemAdmin)
+        });
 
         // 处理用户信息
         if (profileRes && profileRes.data) {
@@ -303,6 +326,8 @@ Page({
           { label: '参与活动', value: 25, icon: '📅', bg: '#86efac', color: '#14532d' },
           { label: '签到率', value: '95%', icon: '✅', bg: '#fca5a5', color: '#7f1d1d' }
         ],
+        isSystemAdmin: false,
+        menuLinks: buildMenuLinks(false),
         loading: false
       });
 
@@ -373,7 +398,7 @@ Page({
     const isLoggedIn = app.checkLoginStatus();
 
     // 需要登录才能访问的功能
-    const requireLoginFeatures = ['my-activities', 'messages', 'favorites', 'settings'];
+    const requireLoginFeatures = ['my-activities', 'messages', 'favorites', 'system-admin'];
 
     if (!isLoggedIn && requireLoginFeatures.includes(key)) {
       // 显示登录引导
@@ -405,15 +430,14 @@ Page({
       case 'favorites':
         this.goFavorites();
         break;
+      case 'system-admin':
+        wx.navigateTo({ url: '/pages/admin/index' });
+        break;
       case 'feedback':
         this.showFeedback();
         break;
-      case 'settings':
-        this.goSettings();
-        break;
-      case 'about':
       case 'privacy':
-        wx.showToast({ title: '功能开发中', icon: 'none' });
+        wx.navigateTo({ url: '/pages/policy/index' });
         break;
       default:
         break;

@@ -5,6 +5,8 @@ const { formatMobile, formatMoney, getAvatarColor, calculateActivityStatus } = r
 const { formatDateCN, isBeforeRegisterDeadline } = require('../../utils/datetime.js');
 const { getCurrentUserId } = require('../../utils/user-helper.js');
 const { submitGuard } = require('../../utils/submit-guard.js');
+const { getActivityImage } = require('../../utils/default-images.js');
+const { markActivityRead } = require('../../utils/activity-read.js');
 
 // 生成温馨提示
 const generateGuidelines = (detail) => {
@@ -21,7 +23,7 @@ const generateGuidelines = (detail) => {
   guidelines.push('报名截止时间后将无法取消报名，请谨慎操作');
 
   // 签到提示
-  guidelines.push('活动开始前后30分钟内可进行现场签到');
+  guidelines.push('请在规定的时间范围内进行现场签到（默认为活动开始前后30分钟）');
   guidelines.push('签到需在活动地点范围内（通常为50-500米）');
 
   // 联系方式提示
@@ -57,14 +59,24 @@ Page({
     allRegistrations: [], // 存储所有报名记录，用于分组筛选
     customFields: [], // 动态字段配置
     formData: {}, // 动态表单数据
+    displayRequirements: '', // 展示用：报名要求（无分组取活动级，有分组取所选/已报分组）
+    displayDescription: '', // 展示用：活动说明及注意事项（无分组取活动级，有分组取所选/已报分组）
     agree: false,
     isRegistered: false,
     isFull: false,
     selectedGroupId: null, // 选中的分组ID
-    showGroupSelection: true // 是否显示分组选择界面
+    showGroupSelection: true, // 是否显示分组选择界面
+    fromShare: false, // 是否通过分享进入（用于提示策略）
+    shareToken: '' // 私密活动分享token（分享进入时传入）
   },
 
   onLoad(query) {
+    // 进入报名页也视为“已读”（活动相关入口）
+    try {
+      const id = String(query.id || '').trim();
+      if (id) markActivityRead(id);
+    } catch (e) {}
+
     // ========== 【重要】登录前置检查 ==========
     // 报名需要登录，避免用户填写完表单后才发现无权限
     const token = wx.getStorageSync('token');
@@ -95,6 +107,9 @@ Page({
     // ========== 登录检查结束 ==========
 
     const id = query.id || 'a1';
+    const fromShare = query.from === 'share';
+    const shareToken = query.shareToken ? String(query.shareToken).trim() : '';
+    this.setData({ fromShare, shareToken });
     this.loadActivityDetail(id);
     // 注意：loadParticipants 将在 loadActivityDetail 完成后自动调用
   },
@@ -104,8 +119,12 @@ Page({
     try {
       wx.showLoading({ title: '加载中...' });
 
-      // 从后端API获取活动详情
-      const result = await activityAPI.getDetail(id);
+      const params = {};
+      if (this.data.fromShare) params.from = 'share';
+      if (this.data.shareToken) params.shareToken = this.data.shareToken;
+
+      // 从后端API获取活动详情（私密活动分享进入需携带 shareToken）
+      const result = await activityAPI.getDetail(id, params);
 
       if (result.code !== 0 || !result.data) {
         wx.hideLoading();
@@ -143,6 +162,26 @@ Page({
       // 检查当前用户是否已报名
       const currentUserId = getCurrentUserId();
 
+      // 先从“我的报名”获取当前用户在该活动的真实报名状态（包含 pending/rejected/cancelled）
+      // 注意：/registrations/activity/{id} 对非组织者默认只返回 approved，无法用于判断 pending
+      let myRegistrationFromMy = null;
+      try {
+        const myRegsResult = await registrationAPI.getMyRegistrations({ page: 0, size: 200 });
+        const myRegs = myRegsResult.code === 0
+          ? (myRegsResult.data.content || myRegsResult.data || [])
+          : [];
+        myRegistrationFromMy = myRegs.find(r => r.activityId === id) || null;
+      } catch (e) {
+        myRegistrationFromMy = null;
+      }
+
+      const isRegisteredByMy = !!myRegistrationFromMy && (myRegistrationFromMy.status === 'approved' || myRegistrationFromMy.status === 'pending');
+      if (isRegisteredByMy) {
+        wx.hideLoading();
+        this.showRegisteredState(id, detail, myRegistrationFromMy);
+        return;
+      }
+
       // 从后端API获取该用户对此活动的报名记录
       const userRegistrationsResult = await registrationAPI.getByActivity(id, { page: 0, size: 100 });
       const allRegistrations = userRegistrationsResult.code === 0
@@ -175,11 +214,14 @@ Page({
       let formData = {};
       let showGroupSelection = hasGroups; // 有分组时显示分组选择
 
+      const displayRequirements = hasGroups ? '' : (detail.requirements || '');
+      const displayDescription = hasGroups ? '' : (detail.description || '');
+
       if (!hasGroups) {
         // 获取自定义字段配置
         customFields = detail.customFields || [
           { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
-          { id: 'mobile', label: '手机号', required: true, desc: '用于联系参与者', isCustom: false }
+          { id: 'mobile', label: '联系方式', required: true, desc: '用于联系参与者', isCustom: false }
         ];
 
         // 初始化表单数据
@@ -193,7 +235,8 @@ Page({
       // 动态计算活动状态
       const enrichedDetail = {
         ...detail,
-        status: calculateActivityStatus(detail)
+        status: calculateActivityStatus(detail),
+        imageUrl: getActivityImage(detail.image, detail.type)
       };
 
       this.setData({
@@ -208,6 +251,8 @@ Page({
         allRegistrations: approvedRegs, // 存储已审核通过的报名记录
         customFields,
         formData,
+        displayRequirements,
+        displayDescription,
         showGroupSelection
       });
 
@@ -220,7 +265,39 @@ Page({
       }
     } catch (err) {
       console.error('加载活动详情失败:', err);
-      wx.showToast({ title: '加载失败', icon: 'none' });
+      const message = (err && err.message) ? String(err.message) : '加载失败';
+
+      if (this.data.fromShare) {
+        if (message.includes('报名已截止')) {
+          wx.showModal({
+            title: '报名已截止',
+            content: '该活动报名已截止。已报名用户请前往「我的活动」查看该活动。谢谢理解。',
+            showCancel: false,
+            confirmText: '去我的活动',
+            confirmColor: '#3b82f6',
+            success: () => {
+              wx.navigateTo({ url: '/pages/my-activities/index' });
+            }
+          });
+          return;
+        }
+
+        if (message.includes('分享链接已失效') || message.includes('分享链接无效')) {
+          wx.showModal({
+            title: '链接不可用',
+            content: message,
+            showCancel: false,
+            confirmText: '我知道了',
+            confirmColor: '#3b82f6',
+            success: () => {
+              wx.navigateBack();
+            }
+          });
+          return;
+        }
+      }
+
+      wx.showToast({ title: message || '加载失败', icon: 'none' });
     }
   },
 
@@ -261,6 +338,14 @@ Page({
     console.log('用户已报名此活动，显示已报名状态', myRegistration);
 
     // 解析自定义字段数据
+    // 已报名状态下：多分组活动按已报名分组展示“报名要求/活动说明”
+    const registeredGroupId = myRegistration && myRegistration.groupId ? myRegistration.groupId : null;
+    const registeredGroup = (registeredGroupId && detail && detail.hasGroups && Array.isArray(detail.groups))
+      ? detail.groups.find(g => g.id === registeredGroupId)
+      : null;
+    const displayRequirements = (registeredGroup && registeredGroup.requirements) || detail.requirements || '';
+    const displayDescription = (registeredGroup && registeredGroup.description) || detail.description || '';
+
     let formData = {
       name: myRegistration.name || '',
       mobile: myRegistration.mobile || ''
@@ -281,7 +366,7 @@ Page({
     // 获取自定义字段配置
     const customFields = detail.customFields || [
       { id: 'name', label: '昵称', required: true, desc: '您之前填写的昵称', isCustom: false },
-      { id: 'mobile', label: '手机号', required: true, desc: '您之前填写的手机号', isCustom: false }
+      { id: 'mobile', label: '联系方式', required: true, desc: '您之前填写的联系方式', isCustom: false }
     ];
 
     // 计算进度
@@ -311,13 +396,16 @@ Page({
       id,
       detail: {
         ...detail,
-        status: calculateActivityStatus(detail)
+        status: calculateActivityStatus(detail),
+        imageUrl: getActivityImage(detail.image, detail.type)
       },
       deadline: formatDateCN(detail.registerDeadline),
       progress,
       feeInfo,
       guidelines,
       isRegistered: true,
+      displayRequirements,
+      displayDescription,
       myRegistration, // 保存报名记录，用于取消报名
       customFields,
       formData, // 显示用户之前填写的数据
@@ -417,7 +505,7 @@ Page({
     // 获取该分组的自定义字段
     const customFields = group.customFields || this.data.detail.customFields || [
       { id: 'name', label: '昵称', required: true, desc: '默认获取微信昵称，可修改', isCustom: false },
-      { id: 'mobile', label: '手机号', required: true, desc: '用于联系参与者', isCustom: false }
+      { id: 'mobile', label: '联系方式', required: true, desc: '用于联系参与者', isCustom: false }
     ];
 
     // 初始化表单数据
@@ -431,6 +519,8 @@ Page({
       showGroupSelection: false,
       customFields,
       formData,
+      displayRequirements: group.requirements || detail.requirements || '',
+      displayDescription: group.description || detail.description || '',
       isRegistered
     });
 
@@ -446,13 +536,29 @@ Page({
     this.setData({
       showGroupSelection: true,
       selectedGroupId: null,
-      agree: false
+      agree: false,
+      displayRequirements: '',
+      displayDescription: ''
     });
   },
 
   // 同意协议
   toggleAgree(e) {
     this.setData({ agree: e.detail.value.length > 0 });
+  },
+
+  // 查看活动报名协议
+  viewAgreement() {
+    wx.navigateTo({
+      url: '/pages/agreement/index'
+    });
+  },
+
+  // 查看隐私政策
+  viewPrivacyPolicy() {
+    wx.navigateTo({
+      url: '/pages/policy/index'
+    });
   },
 
   // 获取手机号（微信快捷方式）
@@ -502,7 +608,7 @@ Page({
         if (field.id === 'mobile') {
           const mobileReg = /^1[3-9]\d{9}$/;
           if (!mobileReg.test(value)) {
-            wx.showToast({ title: '手机号格式不正确', icon: 'none' });
+            wx.showToast({ title: '联系方式格式不正确', icon: 'none' });
             return false;
           }
         }
@@ -552,15 +658,23 @@ Page({
             if (result.code === 0) {
               wx.showToast({ title: '已取消报名', icon: 'success' });
 
-              // 清除活动详情缓存
-              const { requestCache } = require('../../utils/request-manager.js');
-              const detailCacheKey = requestCache.generateKey(`/api/activities/${id}`, {});
-              requestCache.clear(detailCacheKey);
+               // 清除活动详情缓存
+               const { requestCache } = require('../../utils/request-manager.js');
+               const detailCacheKey = requestCache.generateKey(`/api/activities/${id}`, {});
+               requestCache.clear(detailCacheKey);
 
-              // 延迟跳转到活动详情页
-              setTimeout(() => {
-                wx.redirectTo({
-                  url: `/pages/activities/detail?id=${id}&t=${Date.now()}`
+               // 分享进入时，详情接口缓存key会携带 from/shareToken 参数，需要一并清理
+               if (this.data.fromShare) {
+                 const shareParams = { from: 'share' };
+                 if (this.data.shareToken) shareParams.shareToken = this.data.shareToken;
+                 const shareDetailCacheKey = requestCache.generateKey(`/api/activities/${id}`, shareParams);
+                 requestCache.clear(shareDetailCacheKey);
+               }
+
+               // 延迟跳转到活动详情页
+               setTimeout(() => {
+                 wx.redirectTo({
+                   url: `/pages/activities/detail?id=${id}&t=${Date.now()}`
                 });
               }, 1500);
             } else {
@@ -699,17 +813,26 @@ Page({
             const message = needReview ? '报名成功，等待审核' : '报名成功';
             wx.showToast({ title: message, icon: 'success' });
 
-            // 【修复】清除活动详情和报名列表的缓存，确保返回后显示最新数据
-            const { requestCache } = require('../../utils/request-manager.js');
-            // 清除活动详情缓存
-            const detailCacheKey = requestCache.generateKey(`/api/activities/${id}`, {});
-            requestCache.clear(detailCacheKey);
-            console.log('已清除活动详情缓存:', detailCacheKey);
+             // 【修复】清除活动详情和报名列表的缓存，确保返回后显示最新数据
+             const { requestCache } = require('../../utils/request-manager.js');
+             // 清除活动详情缓存
+             const detailCacheKey = requestCache.generateKey(`/api/activities/${id}`, {});
+             requestCache.clear(detailCacheKey);
+             console.log('已清除活动详情缓存:', detailCacheKey);
 
-            // 延迟跳转到详情页，添加时间戳参数强制刷新
-            setTimeout(() => {
-              wx.redirectTo({
-                url: `/pages/activities/detail?id=${id}&t=${Date.now()}`
+             // 分享进入时，详情接口缓存key会携带 from/shareToken 参数，需要一并清理
+             if (this.data.fromShare) {
+               const shareParams = { from: 'share' };
+               if (this.data.shareToken) shareParams.shareToken = this.data.shareToken;
+               const shareDetailCacheKey = requestCache.generateKey(`/api/activities/${id}`, shareParams);
+               requestCache.clear(shareDetailCacheKey);
+               console.log('已清除分享详情缓存:', shareDetailCacheKey);
+             }
+
+             // 延迟跳转到详情页，添加时间戳参数强制刷新
+             setTimeout(() => {
+               wx.redirectTo({
+                 url: `/pages/activities/detail?id=${id}&t=${Date.now()}`
               });
             }, 1500);
           } else {

@@ -116,6 +116,14 @@ Page({
 
       wx.hideLoading();
 
+      if (activity.needCheckin === false) {
+        wx.showToast({ title: '本活动无需签到', icon: 'none' });
+        setTimeout(() => {
+          wx.navigateBack();
+        }, 800);
+        return;
+      }
+
       // 检查是否在签到时间窗口内（活动开始前30分钟 至 活动结束时间）
       const inWindow = isInCheckinWindow(activity.startTime, 30, activity.endTime);
 

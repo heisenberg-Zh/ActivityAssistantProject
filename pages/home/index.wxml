@@ -1,34 +1,29 @@
 <!-- pages/home/index.wxml -->
 <view class="px-24 py-24">
-  <scroll-view scroll-x class="scroll-x" style="padding-bottom: 12rpx;" show-scrollbar="false">
-    <block wx:for="{{slides}}" wx:key="id" wx:for-item="item">
-      <view class="chip">
-        <view class="card home-banner">
-          <image class="banner-image" src="{{item.imageUrl}}" mode="aspectFill"></image>
-          <view class="banner-overlay"></view>
+  <!-- 产品介绍卡片 -->
+  <view class="product-intro-card">
+    <image class="product-intro-bg" src="/images/product-intro-bg.jpg" mode="aspectFill"></image>
+    <view class="product-intro-overlay"></view>
 
-          <!-- 活动类型标签 - 右上角 -->
-          <view class="home-type-badge">
-            <text class="home-badge-text">{{item.type}}</text>
-          </view>
-
-          <!-- 活动状态标签 - 左上角 -->
-          <view class="home-status-badge home-status-badge--{{item.statusClass}}">
-            <text class="home-badge-text-white">{{item.status}}</text>
-          </view>
-
-          <!-- 活动信息 - 底部 -->
-          <view class="home-banner-info">
-            <text class="home-banner-title">{{item.title}}</text>
-            <view class="home-banner-meta">
-              <text class="home-banner-meta-text">{{item.date}}</text>
-              <text class="home-banner-meta-text" style="margin-left:16rpx;">{{item.place}}</text>
-            </view>
-          </view>
-        </view>
+    <view class="product-intro-content">
+      <!-- 第一行：产品名称 + 副标题 -->
+      <view class="product-intro-header">
+        <text class="product-intro-title">活动记鹿</text>
+        <text class="product-intro-divider">·</text>
+        <text class="product-intro-subtitle">记录精彩</text>
       </view>
-    </block>
-  </scroll-view>
+
+      <!-- 第二行：功能点 -->
+      <view class="product-intro-features">
+        <text class="product-intro-features-text">创建 • 报名 • 签到 • 统计</text>
+      </view>
+
+      <!-- 第三行：品牌语 -->
+      <view class="product-intro-footer">
+        <text class="product-intro-slogan">让每场活动都值得回忆</text>
+      </view>
+    </view>
+  </view>
 
   <scroll-view scroll-x class="scroll-x mt-24" style="padding-bottom: 8rpx;" show-scrollbar="false">
     <block wx:for="{{categories}}" wx:key="name" wx:for-item="item">
@@ -50,12 +45,8 @@
       <text class="quick-desc">快速发起活动</text>
     </view>
     <view class="quick-card" bindtap="goMyActivities">
-      <view class="quick-icon quick-icon--green">
-        <view class="quick-icon-list">
-          <view class="quick-icon-list-bar quick-icon-list-bar--long"></view>
-          <view class="quick-icon-list-bar quick-icon-list-bar--medium"></view>
-          <view class="quick-icon-list-bar quick-icon-list-bar--long"></view>
-        </view>
+      <view class="quick-icon-image-wrapper">
+        <image class="quick-icon-image" src="/images/mylogo.png" mode="aspectFill"></image>
       </view>
       <text class="quick-title">我的活动</text>
       <text class="quick-desc">管理日程计划</text>
@@ -99,7 +90,12 @@
         </view>
         <view class="row-between">
           <text class="text-sm">已报 {{item.joined}}/{{item.total}} 人</text>
-          <view class="btn {{item.isRegistered ? 'btn--registered' : 'btn--primary'}} btn--small" catchtap="{{item.isRegistered ? 'onRegisteredClick' : 'goRegister'}}" data-id="{{item.id}}">{{item.isRegistered ? '已报名' : '立即报名'}}</view>
+          <view
+            class="btn {{item.buttonStyle}} btn--small"
+            catchtap="onCardButtonTap"
+            data-id="{{item.id}}"
+            data-action="{{item.buttonAction}}"
+          >{{item.buttonText}}</view>
         </view>
       </view>
     </view>
@@ -107,3 +103,23 @@
 </view>
 
 <view class="bottom-space"></view>
+
+<!-- 完善资料弹窗：首次提示用户授权获取微信头像昵称 -->
+<view wx:if="{{showProfileCompletionDialog}}" class="profile-completion-mask" catchtouchmove="true">
+  <view class="profile-completion-modal">
+    <text class="profile-completion-title">完善头像与昵称</text>
+    <text class="profile-completion-desc">用于活动报名、签到、管理列表中更方便识别你。是否授权获取并保存你的微信头像和昵称？</text>
+
+    <view class="profile-completion-actions">
+      <button class="profile-completion-primary" loading="{{profileCompletionLoading}}" disabled="{{profileCompletionLoading}}" bindtap="useWechatProfile">
+        一键使用微信头像昵称
+      </button>
+      <button class="profile-completion-secondary" disabled="{{profileCompletionLoading}}" bindtap="goManualProfileEdit">
+        手动设置
+      </button>
+      <button class="profile-completion-ghost" disabled="{{profileCompletionLoading}}" bindtap="skipProfileCompletion">
+        暂不
+      </button>
+    </view>
+  </view>
+</view>
