@@ -51,6 +51,14 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
+.filter-row {
+  margin-top: 16rpx;
+}
+
+.filter-row:first-child {
+  margin-top: 0;
+}
+
 .filter-scroll-view {
   white-space: nowrap;
 }
@@ -58,7 +66,7 @@
 .filter-tabs {
   display: inline-flex;
   gap: 12rpx;
-  padding-bottom: 8rpx;
+  padding-bottom: 2rpx;
 }
 
 .filter-tab {
@@ -94,6 +102,32 @@
   padding-bottom: 0;
 }
 
+.empty-state {
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 48rpx 32rpx;
+  box-shadow: 0 4rpx 20rpx rgba(15, 23, 42, 0.06);
+}
+
+.empty-state__title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 16rpx;
+}
+
+.empty-state__desc {
+  font-size: 26rpx;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.empty-state__actions {
+  margin-top: 28rpx;
+  display: flex;
+  gap: 16rpx;
+}
+
 /* 活动卡片 */
 .activity-card {
   padding: 24rpx;
@@ -104,9 +138,86 @@
   margin-bottom: 16rpx;
 }
 
+.activity-card__header-left {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  flex-wrap: nowrap;
+}
+
+.activity-card__header-right {
+  flex-shrink: 0;
+}
+
+.activity-type-logo {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 14rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.activity-type-logo__icon {
+  font-size: 26rpx;
+  line-height: 1;
+}
+
+.activity-unread-dot {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 9999rpx;
+  background: #ef4444;
+  flex-shrink: 0;
+}
+
 .activity-card__body {
   display: flex;
   flex-direction: column;
+}
+
+/* 单行/多行省略 */
+.ellipsis-1 {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ellipsis-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* 固定高度：确保列表卡片高度一致 */
+.activity-card__title {
+  font-size: 34rpx;
+  font-weight: 500;
+  color: #1f2937;
+  line-height: 48rpx;
+  height: 48rpx; /* 1 行 */
+}
+
+.activity-card__desc {
+  font-size: 26rpx;
+  color: #6b7280;
+  line-height: 40rpx;
+  height: 40rpx; /* 1 行 */
+}
+
+.activity-card__meta-row {
+  height: 40rpx; /* 1 行 */
+  min-height: 40rpx;
+  overflow: hidden;
+}
+
+.activity-card__meta-row text {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /* 按钮样式 - 使用全局样式 */

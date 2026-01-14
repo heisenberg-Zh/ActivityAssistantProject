@@ -7,10 +7,10 @@ Page({
   data: {
     filters: [
       { key: 'all', name: '全部', active: true },
-      { key: 'publish', name: '发布通知', active: false },
       { key: 'system', name: '系统通知', active: false },
       { key: 'activity', name: '活动通知', active: false },
-      { key: 'signup', name: '报名通知', active: false }
+      { key: 'signup', name: '报名通知', active: false },
+      { key: 'manager', name: '管理通知', active: false }
     ],
     activeFilter: 'all',
     allMessages: [],
@@ -80,9 +80,7 @@ Page({
       }
 
       // 转换为页面所需的格式
-      const formattedMessages = notifications.map(notif => {
-        return this.formatMessage(notif);
-      });
+      const formattedMessages = notifications.map(notif => this.formatMessage(notif));
 
       this.setData({
         allMessages: formattedMessages,
@@ -123,56 +121,112 @@ Page({
 
   // 格式化消息为页面所需的格式
   formatMessage(notif) {
-    let category = 'system';
-    let iconText = '消';
+    const normalizeBoolean = (value) => {
+      if (value === true) return true;
+      if (value === false) return false;
+      if (value === null || value === undefined) return false;
+      const raw = String(value).trim().toLowerCase();
+      if (raw === '1' || raw === 'true' || raw === 'yes' || raw === 'on') return true;
+      if (raw === '0' || raw === 'false' || raw === 'no' || raw === 'off') return false;
+      return false;
+    };
+
+    const CATEGORY = {
+      system: { key: 'system', name: '系统通知' },
+      activity: { key: 'activity', name: '活动通知' },
+      signup: { key: 'signup', name: '报名通知' },
+      manager: { key: 'manager', name: '管理通知' }
+    };
+
+    let category = CATEGORY.system.key;
+    let categoryName = CATEGORY.system.name;
+
+    let iconText = '🔔';
     let iconBg = '#DBEAFE';
     let iconColor = '#2563eb';
-    let tags = [];
+    let subTag = '';
 
     // 根据消息类型设置样式
     if (notif.type === 'publish_success') {
-      category = 'publish';
-      iconText = '发';
+      category = CATEGORY.system.key;
+      categoryName = CATEGORY.system.name;
+      iconText = '✅';
       iconBg = '#DCFCE7';
       iconColor = '#047857';
-      tags.push({ name: '发布成功', bg: 'rgba(16,185,129,0.15)', color: '#047857' });
+      subTag = '发布成功';
     } else if (notif.type === 'publish_failed') {
-      category = 'publish';
-      iconText = '失';
+      category = CATEGORY.system.key;
+      categoryName = CATEGORY.system.name;
+      iconText = '❌';
       iconBg = '#FEE2E2';
       iconColor = '#B91C1C';
-      tags.push({ name: '发布失败', bg: 'rgba(239,68,68,0.15)', color: '#B91C1C' });
-    } else if (notif.type === 'activity_reminder') {
-      category = 'activity';
-      iconText = '约';
-      iconBg = '#DCFCE7';
-      iconColor = '#047857';
-      tags.push({ name: '活动提醒', bg: 'rgba(16,185,129,0.15)', color: '#047857' });
-    } else if (notif.type === 'system') {
-      category = 'system';
-      iconText = '铃';
+      subTag = '发布失败';
+    } else if (notif.type && notif.type.startsWith('signup_')) {
+      category = CATEGORY.signup.key;
+      categoryName = CATEGORY.signup.name;
+      iconText = '📝';
       iconBg = '#DBEAFE';
       iconColor = '#2563eb';
-      tags.push({ name: '系统通知', bg: 'rgba(59,130,246,0.15)', color: '#1d4ed8' });
+
+      if (notif.type === 'signup_approved') {
+        iconText = '✅';
+        iconBg = '#DCFCE7';
+        iconColor = '#047857';
+        subTag = '审核通过';
+      } else if (notif.type === 'signup_rejected') {
+        iconText = '❌';
+        iconBg = '#FEE2E2';
+        iconColor = '#B91C1C';
+        subTag = '审核未通过';
+      } else {
+        subTag = '报名通知';
+      }
+    } else if (notif.type && notif.type.startsWith('manager_')) {
+      category = CATEGORY.manager.key;
+      categoryName = CATEGORY.manager.name;
+      iconText = '🛡️';
+      iconBg = '#FEF3C7';
+      iconColor = '#b45309';
+
+      if (notif.type === 'manager_signup_closed') subTag = '报名截止';
+      else if (notif.type && notif.type.startsWith('manager_pending_review_')) subTag = '待审核提醒';
+      else if (notif.type === 'manager_activity_started') subTag = '活动已开始';
+      else subTag = '管理提醒';
+    } else if (notif.type === 'activity_reminder' || (notif.type && notif.type.startsWith('activity_'))) {
+      category = CATEGORY.activity.key;
+      categoryName = CATEGORY.activity.name;
+      iconText = '📅';
+      iconBg = '#DCFCE7';
+      iconColor = '#047857';
+
+      if (notif.type === 'activity_updated') subTag = '信息更新';
+      else if (notif.type === 'activity_upcoming') subTag = '即将开始';
+      else if (notif.type === 'activity_started') subTag = '已开始';
+      else if (notif.type === 'activity_ended') subTag = '已结束';
+      else subTag = '活动提醒';
+    } else if (notif.type === 'system') {
+      category = CATEGORY.system.key;
+      categoryName = CATEGORY.system.name;
+      iconText = '🔔';
+      iconBg = '#DBEAFE';
+      iconColor = '#2563eb';
+      subTag = '系统通知';
     }
 
-    // 添加已读/未读标签
-    if (notif.isRead) {
-      tags.push({ name: '已读', bg: '#e5e7eb', color: '#4b5563' });
-    } else {
-      tags.push({ name: '未读', bg: '#ef4444', color: '#ffffff' });
-    }
-
+    const isRead = normalizeBoolean(notif.isRead);
     return {
       id: notif.id,
       title: notif.title,
       time: this.formatTime(notif.createdAt),
       content: notif.content,
       category,
+      categoryName,
       iconText,
       iconBg,
       iconColor,
-      tags,
+      subTag,
+      isRead,
+      expanded: false,
       activityId: notif.activityId
     };
   },
@@ -211,20 +265,7 @@ Page({
     const messages = this.data.allMessages.filter(item => activeKey === 'all' || item.category === activeKey);
     const filters = this.data.filters.map(filter => Object.assign({}, filter, { active: filter.key === activeKey }));
     this.setData({ messages, filters, activeFilter: activeKey });
-
-    // 更新未读消息数量（从当前消息列表中计算）
-    const unreadCount = this.data.allMessages.filter(m => {
-      return m.tags.some(tag => tag.name === '未读');
-    }).length;
-
-    if (unreadCount > 0) {
-      wx.setTabBarBadge({
-        index: 3, // 假设消息中心是第4个tab（索引从0开始）
-        text: String(unreadCount)
-      });
-    } else {
-      wx.removeTabBarBadge({ index: 3 });
-    }
+    this.updateUnreadBadge();
   },
 
   goBack() {
@@ -238,12 +279,22 @@ Page({
     }
   },
 
-  // 点击消息卡片
+  // 点击消息卡片：展开/收起；首次点击未读时标记已读（不跳转）
   async onMessageTap(e) {
-    const { id, activityId } = e.currentTarget.dataset;
+    const { id } = e.currentTarget.dataset;
 
     if (!id) {
       console.error('消息ID不存在');
+      return;
+    }
+
+    const target = this.data.allMessages.find(m => m && m.id === id);
+    const wasExpanded = !!(target && target.expanded);
+    const wasRead = !!(target && target.isRead);
+
+    this.updateMessageState(id, { expanded: !wasExpanded });
+
+    if (wasRead) {
       return;
     }
 
@@ -252,15 +303,7 @@ Page({
       const result = await messageAPI.markAsRead(id);
 
       if (result.code === 0) {
-        // 重新加载消息列表以更新UI
-        await this.loadMessages();
-
-        // 如果有关联的活动ID，跳转到活动详情页
-        if (activityId) {
-          wx.navigateTo({
-            url: `/pages/activities/detail?id=${activityId}`
-          });
-        }
+        this.updateMessageState(id, { isRead: true });
       } else {
         wx.showToast({
           title: result.message || '操作失败',
@@ -278,6 +321,42 @@ Page({
     }
   },
 
+  updateMessageState(id, patch) {
+    const allMessages = (this.data.allMessages || []).map(m => {
+      if (!m || m.id !== id) return m;
+      return Object.assign({}, m, patch);
+    });
+
+    const activeKey = this.data.activeFilter || 'all';
+    const messages = allMessages.filter(item => activeKey === 'all' || item.category === activeKey);
+    const filters = this.data.filters.map(filter => Object.assign({}, filter, { active: filter.key === activeKey }));
+
+    this.setData({ allMessages, messages, filters, activeFilter: activeKey });
+    this.updateUnreadBadge();
+  },
+
+  updateUnreadBadge() {
+    const unreadCount = (this.data.allMessages || []).filter(m => m && !m.isRead).length;
+    if (unreadCount > 0) {
+      wx.setTabBarBadge({
+        index: 3,
+        text: String(unreadCount)
+      });
+    } else {
+      wx.removeTabBarBadge({ index: 3 });
+    }
+  },
+
+  onViewActivityTap(e) {
+    const { activityId } = e.currentTarget.dataset;
+    if (!activityId) return;
+    try {
+      const { markActivityRead } = require('../../utils/activity-read.js');
+      markActivityRead(activityId);
+    } catch (e) {}
+    wx.navigateTo({ url: `/pages/activities/detail?id=${activityId}` });
+  },
+
   // 全部标记为已读
   async markAllRead() {
     // 游客模式下不允许操作
@@ -287,9 +366,7 @@ Page({
     }
 
     // 检查是否有未读消息
-    const unreadMessages = this.data.allMessages.filter(m => {
-      return m.tags.some(tag => tag.name === '未读');
-    });
+    const unreadMessages = this.data.allMessages.filter(m => !m.isRead);
 
     if (unreadMessages.length === 0) {
       wx.showToast({
@@ -316,8 +393,11 @@ Page({
             wx.hideLoading();
 
             if (result.code === 0) {
-              // 重新加载消息列表
-              await this.loadMessages();
+              const allMessages = (this.data.allMessages || []).map(m => Object.assign({}, m, { isRead: true }));
+              const activeKey = this.data.activeFilter || 'all';
+              const messages = allMessages.filter(item => activeKey === 'all' || item.category === activeKey);
+              this.setData({ allMessages, messages });
+              this.updateUnreadBadge();
 
               wx.showToast({
                 title: '全部已读',

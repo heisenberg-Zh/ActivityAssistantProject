@@ -20,6 +20,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -87,8 +88,14 @@ public class ActivityMapper {
         ActivityVO.ActivityVOBuilder builder = ActivityVO.builder()
                 .id(activity.getId())
                 .title(activity.getTitle())
+                .desc(activity.getDesc())
                 .description(activity.getDescription())
+                .requirements(activity.getRequirements())
                 .organizerId(activity.getOrganizerId())
+                .organizerPhone(activity.getOrganizerPhone())
+                .organizerWechat(activity.getOrganizerWechat())
+                .image(activity.getImage())
+                .hasGroups(activity.getHasGroups())
                 .type(activity.getType())
                 .status(dynamicStatus)  // 使用动态计算的状态，而不是 activity.getStatus()
                 .startTime(activity.getStartTime())
@@ -99,12 +106,14 @@ public class ActivityMapper {
                 .latitude(activity.getLatitude())
                 .longitude(activity.getLongitude())
                 .checkinRadius(activity.getCheckinRadius())
+                .needCheckin(activity.getNeedCheckin())
                 .total(total) // 使用验证后的total
                 .joined(joined) // 使用验证后的joined
                 .minParticipants(activity.getMinParticipants())
                 .fee(activity.getFee())
                 .feeType(activity.getFeeType())
                 .needReview(activity.getNeedReview())
+                .notifyUsers(activity.getNotifyUsers())
                 .isPublic(activity.getIsPublic())
                 .isDeleted(activity.getIsDeleted())
                 .groups(activity.getGroups())
@@ -128,10 +137,9 @@ public class ActivityMapper {
         // 设置当前用户与活动的关系
         if (userId != null) {
             builder.isOrganizer(userId.equals(activity.getOrganizerId()));
-            // TODO: 检查是否为管理员（需要解析administrators JSON）
-            builder.isAdmin(false);
-            // 检查是否已报名
-            builder.isRegistered(registrationRepository.existsByActivityIdAndUserId(activity.getId(), userId));
+            builder.isAdmin(isUserInAdminList(activity.getAdministrators(), userId));
+            // “已报名”口径：只认审核通过（pending 不算已报名）
+            builder.isRegistered(registrationRepository.existsByActivityIdAndUserIdAndStatus(activity.getId(), userId, "approved"));
         }
 
         return builder.build();
@@ -192,15 +200,18 @@ public class ActivityMapper {
                 .latitude(request.getLatitude())
                 .longitude(request.getLongitude())
                 .checkinRadius(request.getCheckinRadius() != null ? request.getCheckinRadius() : 500)
+                .needCheckin(request.getNeedCheckin() != null ? request.getNeedCheckin() : true)
                 .total(total) // 使用验证后的total值
                 .joined(0) // 初始已报名人数为0
                 .minParticipants(request.getMinParticipants() != null ? request.getMinParticipants() : 1)
                 .fee(request.getFee() != null ? request.getFee() : java.math.BigDecimal.ZERO)
                 .feeType(request.getFeeType() != null ? request.getFeeType() : "free")
                 .needReview(request.getNeedReview() != null ? request.getNeedReview() : false)
+                .notifyUsers(request.getNotifyUsers() != null ? request.getNotifyUsers() : false)
                 .isPublic(request.getIsPublic() != null ? request.getIsPublic() : true)
                 .isDeleted(false)
-                .groups(request.getGroups())
+                // 新创建/复制的活动初始无人报名：确保 groups 内每个分组 joined=0，避免出现“3/12”或“/12”
+                .groups(sanitizeGroupsForCreate(request.getGroups()))
                 .administrators(null) // 初始管理员为空
                 .whitelist(request.getWhitelist())
                 .blacklist(request.getBlacklist())
@@ -211,6 +222,44 @@ public class ActivityMapper {
                 .recurringGroupId(null)
                 .recurringConfig(request.getRecurringConfig())
                 .build();
+    }
+
+    /**
+     * 创建活动时清洗 groups JSON：强制每个分组 joined=0
+     *
+     * 说明：joined 会随着报名/取消/审核动态变化，新活动不应带入旧数据；同时 joined 缺失会导致前端展示为“/12”。
+     */
+    private String sanitizeGroupsForCreate(String groupsJson) {
+        if (groupsJson == null) {
+            return null;
+        }
+        String trimmed = groupsJson.trim();
+        if (trimmed.isEmpty() || "null".equalsIgnoreCase(trimmed)) {
+            return groupsJson;
+        }
+
+        try {
+            List<Map<String, Object>> groups = objectMapper.readValue(
+                    groupsJson,
+                    new TypeReference<List<Map<String, Object>>>() {}
+            );
+
+            if (groups == null || groups.isEmpty()) {
+                return groupsJson;
+            }
+
+            for (Map<String, Object> group : groups) {
+                if (group == null) {
+                    continue;
+                }
+                group.put("joined", 0);
+            }
+
+            return objectMapper.writeValueAsString(groups);
+        } catch (Exception e) {
+            log.warn("创建活动时清洗groups失败，保留原值。error={}", e.getMessage());
+            return groupsJson;
+        }
     }
 
     /**
@@ -275,6 +324,9 @@ public class ActivityMapper {
         if (request.getCheckinRadius() != null) {
             activity.setCheckinRadius(request.getCheckinRadius());
         }
+        if (request.getNeedCheckin() != null) {
+            activity.setNeedCheckin(request.getNeedCheckin());
+        }
         if (request.getTotal() != null) {
             activity.setTotal(request.getTotal());
         }
@@ -289,6 +341,9 @@ public class ActivityMapper {
         }
         if (request.getNeedReview() != null) {
             activity.setNeedReview(request.getNeedReview());
+        }
+        if (request.getNotifyUsers() != null) {
+            activity.setNotifyUsers(request.getNotifyUsers());
         }
         if (request.getIsPublic() != null) {
             activity.setIsPublic(request.getIsPublic());
@@ -340,6 +395,23 @@ public class ActivityMapper {
         } catch (JsonProcessingException e) {
             log.warn("解析管理员列表JSON失败: {}", administratorsJson, e);
             return Collections.emptyList();
+        }
+    }
+
+    /**
+     * 判断 userId 是否在 administrators JSON 列表中
+     * administrators 字段存储格式：["userId1","userId2",...]
+     */
+    private boolean isUserInAdminList(String administratorsJson, String userId) {
+        if (userId == null || administratorsJson == null || administratorsJson.trim().isEmpty() || "null".equals(administratorsJson)) {
+            return false;
+        }
+        try {
+            List<String> adminIds = objectMapper.readValue(administratorsJson, new TypeReference<List<String>>() {});
+            return adminIds != null && adminIds.contains(userId);
+        } catch (JsonProcessingException e) {
+            log.warn("解析administrators JSON失败: {}", administratorsJson, e);
+            return false;
         }
     }
 }

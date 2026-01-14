@@ -99,7 +99,8 @@ public class UserService {
                 .id(userId)
                 .openid(openid)
                 .nickname("用户" + userId.substring(1, 7)) // 默认昵称
-                .avatar("/default_avatar.png")
+                // 默认头像：使用小程序包内存在的静态资源，避免 /default_avatar.png 不存在导致前端空白
+                .avatar("/activityassistant_avatar_01.png")
                 .role("user")
                 .build();
 
@@ -155,11 +156,17 @@ public class UserService {
             }
         }
         if (request.getPhone() != null) {
-            // 检查手机号是否已被其他用户使用
-            if (userRepository.existsByPhoneAndIdNot(request.getPhone(), userId)) {
-                throw new BusinessException(ErrorCode.PHONE_ALREADY_EXISTS, "该手机号已被其他用户绑定");
+            String phone = request.getPhone().trim();
+            if (phone.isEmpty()) {
+                // 允许清空联系方式
+                user.setPhone(null);
+            } else {
+                // 检查手机号是否已被其他用户使用
+                if (userRepository.existsByPhoneAndIdNot(phone, userId)) {
+                    throw new BusinessException(ErrorCode.PHONE_ALREADY_EXISTS, "该手机号已被其他用户绑定");
+                }
+                user.setPhone(phone);
             }
-            user.setPhone(request.getPhone());
         }
 
         User savedUser = userRepository.save(user);

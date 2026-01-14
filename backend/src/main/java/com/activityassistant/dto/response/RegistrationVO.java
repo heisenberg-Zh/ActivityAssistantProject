@@ -94,4 +94,14 @@ public class RegistrationVO {
      * 签到时间
      */
     private LocalDateTime checkinTime;
+
+    /**
+     * 签到距离（米），未签到或活动未配置坐标时为null
+     */
+    private Integer checkinDistance;
+
+    /**
+     * 签到是否有效（位置校验），未签到时为null
+     */
+    private Boolean checkinValid;
 }

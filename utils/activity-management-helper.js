@@ -41,7 +41,7 @@ function isActivityAdmin(activity, userId) {
   const uid = String(userId || '').trim();
 
   return activity.administrators.some(admin => {
-    const adminId = String(admin.userId || '').trim();
+    const adminId = String(admin.id || admin.userId || '').trim();
     return adminId === uid;
   });
 }
@@ -290,7 +290,8 @@ function getAdministratorsWithDetails(activity, participants) {
   }
 
   return activity.administrators.map(admin => {
-    const user = participants.find(p => p.id === admin.userId);
+    const adminId = admin?.id || admin?.userId;
+    const user = participants.find(p => p.id === adminId);
     return {
       ...admin,
       name: user?.name || '未知用户',

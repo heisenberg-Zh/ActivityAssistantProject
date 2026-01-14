@@ -5,6 +5,7 @@
     "pages/activities/detail",
     "pages/activities/create",
     "pages/activities/copy-activity",
+    "pages/activities/text-editor",
     "pages/registration/index",
     "pages/checkin/index",
     "pages/statistics/index",
@@ -12,6 +13,9 @@
     "pages/statistics/created-detail",
     "pages/profile/index",
     "pages/profile/edit",
+    "pages/admin/index",
+    "pages/admin/feedback/list",
+    "pages/admin/feedback/detail",
     "pages/my-activities/index",
     "pages/my-activities/joined-list",
     "pages/my-activities/created-list",
@@ -31,7 +35,7 @@
     "pages/policy/index"
   ],
   "window": {
-    "navigationBarTitleText": "ActivityAssistant",
+    "navigationBarTitleText": "活动记鹿",
     "navigationBarTextStyle": "black",
     "navigationBarBackgroundColor": "#ffffff",
     "backgroundColor": "#f7f8fa",

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 /**
  * 活动数据访问层
@@ -139,4 +140,45 @@ public interface ActivityRepository extends JpaRepository<Activity, String>, Jpa
      * @return 活动列表
      */
     List<Activity> findByRecurringGroupIdAndIsDeletedFalse(String recurringGroupId);
+
+    /**
+     * 查询“我管理的”活动：当前用户在 administrators(JSON数组) 中
+     * MySQL JSON 示例：administrators = ["u1","u2"]
+     */
+    @Query(
+            value = """
+                    SELECT *
+                    FROM activities a
+                    WHERE a.is_deleted = false
+                      AND a.organizer_id <> :userId
+                      AND a.administrators IS NOT NULL
+                      AND JSON_CONTAINS(a.administrators, JSON_QUOTE(:userId))
+                    ORDER BY a.created_at DESC
+                    """,
+            countQuery = """
+                    SELECT COUNT(*)
+                    FROM activities a
+                    WHERE a.is_deleted = false
+                      AND a.organizer_id <> :userId
+                      AND a.administrators IS NOT NULL
+                      AND JSON_CONTAINS(a.administrators, JSON_QUOTE(:userId))
+                    """,
+            nativeQuery = true
+    )
+    Page<Activity> findManagedActivities(@Param("userId") String userId, Pageable pageable);
+
+    /**
+     * 按时间范围查询活动（用于定时通知）
+     */
+    List<Activity> findByIsDeletedFalseAndStartTimeBetween(LocalDateTime from, LocalDateTime to);
+
+    /**
+     * 按时间范围查询活动（用于定时通知）
+     */
+    List<Activity> findByIsDeletedFalseAndEndTimeBetween(LocalDateTime from, LocalDateTime to);
+
+    /**
+     * 按时间范围查询活动（用于定时通知）
+     */
+    List<Activity> findByIsDeletedFalseAndRegisterDeadlineBetween(LocalDateTime from, LocalDateTime to);
 }

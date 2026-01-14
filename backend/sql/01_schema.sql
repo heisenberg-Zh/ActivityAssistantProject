@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS activities (
     latitude DECIMAL(10, 7) COMMENT '纬度',
     longitude DECIMAL(10, 7) COMMENT '经度',
     checkin_radius INT NOT NULL DEFAULT 500 COMMENT '签到范围(米)',
+    need_checkin BOOLEAN NOT NULL DEFAULT TRUE COMMENT '是否需要打卡签到',
 
     -- 人数相关
     total INT NOT NULL COMMENT '总人数上限',
@@ -68,6 +69,7 @@ CREATE TABLE IF NOT EXISTS activities (
 
     -- 配置相关
     need_review BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否需要审核',
+    notify_users BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否消息通知用户（系统内消息）',
     is_public BOOLEAN NOT NULL DEFAULT TRUE COMMENT '是否公开',
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否删除(软删除)',
 

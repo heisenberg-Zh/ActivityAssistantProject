@@ -3,10 +3,40 @@ const { API_CONFIG } = require('../../utils/config.js');
 const { setSecureStorage } = require('../../utils/security.js');
 const app = getApp();
 
+const PRIVACY_CONSENT_KEY = 'privacyConsent';
+const AGREEMENT_VERSION = '2025-12-30';
+const POLICY_VERSION = '2025-12-30';
+
 Page({
   data: {
     canLogin: true,
-    isDev: false  // 生产环境：禁用开发模式登录
+    isDev: false,  // 生产环境：禁用开发模式登录
+    privacyConsent: false
+  },
+
+  ensurePrivacyConsent() {
+    if (this.data.privacyConsent === true) return true;
+    wx.showToast({
+      title: '请先阅读并同意《用户协议》和《隐私政策》',
+      icon: 'none'
+    });
+    return false;
+  },
+
+  togglePrivacyConsent() {
+    const next = !this.data.privacyConsent;
+    this.setData({ privacyConsent: next });
+
+    if (next) {
+      wx.setStorageSync(PRIVACY_CONSENT_KEY, {
+        accepted: true,
+        agreementVersion: AGREEMENT_VERSION,
+        policyVersion: POLICY_VERSION,
+        acceptedAt: new Date().toISOString()
+      });
+    } else {
+      wx.removeStorageSync(PRIVACY_CONSENT_KEY);
+    }
   },
 
   /**
@@ -17,6 +47,10 @@ Page({
     console.log('🚀 使用开发模式快捷登录');
 
     try {
+      if (!this.ensurePrivacyConsent()) {
+        return;
+      }
+
       // 显示加载提示
       wx.showLoading({
         title: '登录中...',
@@ -72,6 +106,11 @@ Page({
    */
   handleMockLogin() {
     console.log('🎭 使用纯前端Mock模式登录');
+
+    if (!this.ensurePrivacyConsent()) {
+      wx.hideLoading();
+      return;
+    }
 
     // 模拟的token和用户信息
     const mockToken = 'mock_token_' + Date.now();
@@ -153,6 +192,10 @@ Page({
    */
   async handleLogin() {
     if (!this.data.canLogin) {
+      return;
+    }
+
+    if (!this.ensurePrivacyConsent()) {
       return;
     }
 
@@ -364,6 +407,23 @@ Page({
    * 生命周期函数--监听页面加载
    */
   onLoad(options) {
+    // 初始化隐私协议同意状态（仅在版本未变更时记住勾选）
+    try {
+      const stored = wx.getStorageSync(PRIVACY_CONSENT_KEY);
+      const consent = stored && typeof stored === 'string' ? JSON.parse(stored) : stored;
+      const ok = consent
+        && consent.accepted === true
+        && consent.agreementVersion === AGREEMENT_VERSION
+        && consent.policyVersion === POLICY_VERSION;
+      this.setData({ privacyConsent: !!ok });
+      if (!ok) {
+        wx.removeStorageSync(PRIVACY_CONSENT_KEY);
+      }
+    } catch (err) {
+      wx.removeStorageSync(PRIVACY_CONSENT_KEY);
+      this.setData({ privacyConsent: false });
+    }
+
     // 允许游客访问登录页，不强制跳转
     const isLoggedIn = wx.getStorageSync('isLoggedIn');
     if (isLoggedIn) {

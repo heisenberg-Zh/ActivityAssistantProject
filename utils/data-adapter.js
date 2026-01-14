@@ -206,12 +206,26 @@ function transformActivityFromBackend(activity) {
       tags.push('固定活动');
     }
 
+    const backendDesc = activity.desc;
+    const backendDescription = activity.description;
+
+    const normalizedDescription = backendDescription !== undefined && backendDescription !== null
+      ? backendDescription
+      : '';
+
+    // 兼容旧数据：如果desc为空/缺失但description有值，则至少保证前端desc不为空（避免编辑/展示丢失）
+    const normalizedDesc = (() => {
+      const rawDesc = backendDesc !== undefined && backendDesc !== null ? String(backendDesc) : '';
+      if (rawDesc.trim().length === 0 && normalizedDescription) return normalizedDescription;
+      return rawDesc;
+    })();
+
     // 转换后的数据
     return {
       ...activity,
 
       // 字段名适配
-      desc: activity.description || '',  // 关键适配：description -> desc
+      desc: normalizedDesc,
       organizerId: activity.organizer_id || activity.organizerId,  // 关键适配：organizer_id -> organizerId
       organizerName: activity.organizer_name || activity.organizerName,  // organizer_name -> organizerName
       organizerPhone: activity.organizer_phone || activity.organizerPhone,  // organizer_phone -> organizerPhone
@@ -244,7 +258,7 @@ function transformActivityFromBackend(activity) {
       requirements: activity.requirements || '',
 
       // 保留后端原始字段，确保向前兼容
-      description: activity.description
+      description: normalizedDescription
     };
   } catch (err) {
     console.error('活动数据转换失败:', err, activity);
@@ -276,7 +290,8 @@ function transformActivityToBackend(activity) {
       ...activity,
 
       // 字段名适配
-      description: activity.desc || activity.description || '',  // desc -> description
+      desc: activity.desc || '',
+      description: activity.description || '',
 
       // 日期格式转换
       startTime: toBackendDateTime(activity.startTime),
@@ -295,8 +310,7 @@ function transformActivityToBackend(activity) {
       timeRange: undefined,
       hasGroups: undefined,
       tags: undefined,
-      banner: undefined,
-      desc: undefined  // 移除desc，只保留description
+      banner: undefined
     };
   } catch (err) {
     console.error('活动数据提交转换失败:', err, activity);
@@ -323,13 +337,26 @@ function transformRegistrationFromBackend(registration) {
       console.warn('解析formData失败:', e);
     }
 
+    const rawRegisteredAt =
+      registration.registeredAt ||
+      registration.registered_at ||
+      registration.createdAt ||
+      registration.created_at ||
+      null;
+
+    const rawUpdatedAt =
+      registration.updatedAt ||
+      registration.updated_at ||
+      null;
+
     return {
       ...registration,
       formData: formData || {},
-      registeredAt: toFrontendDateTime(registration.createdAt),
-      // 保留原始时间字段
-      createdAt: toFrontendDateTime(registration.createdAt),
-      updatedAt: toFrontendDateTime(registration.updatedAt)
+      // 报名时间：优先使用后端 registeredAt
+      registeredAt: toFrontendDateTime(rawRegisteredAt),
+      // 兼容旧字段：如果前端有依赖 createdAt/updatedAt，则尽量给出合理值
+      createdAt: toFrontendDateTime(registration.createdAt || rawRegisteredAt),
+      updatedAt: toFrontendDateTime(rawUpdatedAt)
     };
   } catch (err) {
     console.error('报名数据转换失败:', err, registration);
@@ -407,7 +434,7 @@ function transformResponse(data, url) {
 
   try {
     // 活动相关接口
-    if (url.includes('/api/activities')) {
+    if (url.includes('/api/activities') || url.includes('/api/admin/activities')) {
       // 数组数据
       if (Array.isArray(data)) {
         return data.map(item => transformActivityFromBackend(item));

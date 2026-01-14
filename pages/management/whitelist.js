@@ -22,6 +22,7 @@ Page({
       invalid: [],
       duplicates: [],
       existing: [],
+      existingMap: {},
       validCount: 0
     },
     // 用户搜索
@@ -101,16 +102,24 @@ Page({
       }
 
       // 获取白名单（从API返回的数据已包含用户详情）
-      const whitelist = whitelistResult.code === 0 ? (whitelistResult.data || []) : [];
+      const whitelist = (whitelistResult.code === 0 ? (whitelistResult.data || []) : []).map(item => ({
+        ...item,
+        avatarInitial: String(item.nickname || 'U').slice(0, 1)
+      }));
 
       // 获取已报名用户列表
       const registeredUsers = usersResult.code === 0 ? (usersResult.data || []) : [];
 
       // 为每个已报名用户标记是否在白名单中
+      const whitelistUserIdSet = new Set(
+        whitelist
+          .map(w => w && (w.id || w.userId))
+          .filter(Boolean)
+          .map(v => String(v).trim())
+      );
       registeredUsers.forEach(user => {
-        user.inWhitelist = whitelist.some(w =>
-          w.userId === user.userId || w.phone === user.mobile
-        );
+        const uid = String(user.userId || user.id || '').trim();
+        user.inWhitelist = uid ? whitelistUserIdSet.has(uid) : false;
       });
 
       this.setData({
@@ -142,6 +151,7 @@ Page({
         invalid: [],
         duplicates: [],
         existing: [],
+        existingMap: {},
         validCount: 0
       }
     });
@@ -161,6 +171,7 @@ Page({
         invalid: [],
         duplicates: [],
         existing: [],
+        existingMap: {},
         validCount: 0
       }
     });
@@ -193,6 +204,7 @@ Page({
           invalid: [],
           duplicates: [],
           existing: [],
+          existingMap: {},
           validCount: 0
         }
       });
@@ -242,6 +254,10 @@ Page({
 
     // 计算可添加数量（有效且不在白名单中）
     const validCount = valid.filter(p => !existing.includes(p)).length;
+    const existingMap = existing.reduce((acc, phone) => {
+      acc[phone] = true;
+      return acc;
+    }, {});
 
     this.setData({
       phoneValidation: {
@@ -249,6 +265,7 @@ Page({
         invalid,
         duplicates,
         existing,
+        existingMap,
         validCount
       }
     });
@@ -303,8 +320,8 @@ Page({
     // 搜索过滤
     if (keyword) {
       filtered = registeredUsers.filter(user =>
-        user.name.toLowerCase().includes(keyword) ||
-        user.mobile.includes(keyword)
+        String(user.nickname || '').toLowerCase().includes(keyword) ||
+        String(user.phone || '').includes(keyword)
       );
     }
 
@@ -352,8 +369,8 @@ Page({
     let filtered = registeredUsers;
     if (keyword) {
       filtered = registeredUsers.filter(user =>
-        user.name.toLowerCase().includes(keyword) ||
-        user.mobile.includes(keyword)
+        String(user.nickname || '').toLowerCase().includes(keyword) ||
+        String(user.phone || '').includes(keyword)
       );
     }
 
@@ -482,19 +499,19 @@ Page({
 
   // 删除白名单条目
   removeItem(e) {
-    const { phone, name } = e.currentTarget.dataset;
+    const { userId, name } = e.currentTarget.dataset;
     const { activityId } = this.data;
 
     wx.showModal({
       title: '移除白名单',
-      content: `确定要将"${name || phone}"移出白名单吗？`,
+      content: `确定要将"${name || userId}"移出白名单吗？`,
       confirmText: '确定移除',
       confirmColor: '#ef4444',
       success: async (res) => {
         if (res.confirm) {
           try {
             // 调用后端API移除白名单
-            const result = await whitelistAPI.remove(activityId, phone);
+            const result = await whitelistAPI.remove(activityId, userId);
 
             if (result.code === 0) {
               wx.showToast({ title: '已移除', icon: 'success' });

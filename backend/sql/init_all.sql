@@ -21,6 +21,16 @@ SOURCE 01_schema.sql;
 SOURCE 02_initial_data.sql;
 
 -- ============================================
+-- Step 2.1: system settings / feature flags
+-- ============================================
+SOURCE 05_system_settings.sql;
+
+-- ============================================
+-- Step 2.2: add missing activity fields
+-- ============================================
+SOURCE 06_add_activity_checkin_notify_fields.sql;
+
+-- ============================================
 -- 步骤 3: 索引优化
 -- ============================================
 SOURCE 03_optimization.sql;

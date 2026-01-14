@@ -77,7 +77,7 @@ const WX_CONFIG = {
   defaultShareImage: '/images/share-default.png',
 
   // 默认标题
-  defaultTitle: 'ActivityAssistant - 活动助手'
+  defaultTitle: '活动记鹿'
 };
 
 // 业务配置

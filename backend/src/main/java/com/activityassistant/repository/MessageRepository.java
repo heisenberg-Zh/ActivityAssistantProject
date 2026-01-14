@@ -58,6 +58,21 @@ public interface MessageRepository extends JpaRepository<Message, String> {
     int markAllAsReadByUserId(@Param("userId") String userId);
 
     /**
+     * 判断某用户在某活动下是否已发送过指定类型的消息（用于幂等）
+     */
+    boolean existsByUserIdAndTypeAndActivityId(String userId, String type, String activityId);
+
+    /**
+     * 批量查询：在给定用户集合中，哪些用户已收到了某活动的某类型消息（用于幂等/补发）
+     */
+    @Query("SELECT m.userId FROM Message m WHERE m.activityId = :activityId AND m.type = :type AND m.userId IN :userIds")
+    List<String> findUserIdsByActivityIdAndTypeAndUserIdIn(
+            @Param("activityId") String activityId,
+            @Param("type") String type,
+            @Param("userIds") List<String> userIds
+    );
+
+    /**
      * 根据用户ID删除所有消息
      *
      * @param userId 用户ID

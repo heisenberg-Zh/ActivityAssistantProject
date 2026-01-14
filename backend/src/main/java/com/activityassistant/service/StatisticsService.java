@@ -167,11 +167,7 @@ public class StatisticsService {
         long invalidCheckinCount = checkinRepository.countByUserIdAndIsValid(targetUserId, false);
 
         // 9. 统计获得的评价数（作为活动创建者）
-        // 获取用户创建的所有活动
-        List<Activity> createdActivitiesList = activityRepository.findByOrganizerId(targetUserId);
-        List<String> activityIds = createdActivitiesList.stream()
-                .map(Activity::getId)
-                .toList();
+        // 复用上面已获取的 activityIds（避免重复查询/重复定义变量）
 
         // 统计这些活动收到的评价总数
         long totalReviews = 0L;

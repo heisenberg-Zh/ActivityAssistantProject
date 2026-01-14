@@ -1,0 +1,64 @@
+<view class="section" wx:if="{{detail}}">
+  <view class="card shadow-card detail-card">
+    <view class="detail-head">
+      <view class="avatar">
+        <image wx:if="{{submitter.avatar}}" class="avatar-img" src="{{submitter.avatar}}" mode="aspectFill" />
+        <view wx:else class="avatar-fallback">
+          <text class="avatar-text">{{submitter.avatarInitial}}</text>
+        </view>
+      </view>
+      <view class="head-main">
+        <view class="head-row">
+          <text class="name">{{submitter.nickname || '匿名用户'}}</text>
+          <view class="badge badge--{{detail.status}}">{{detail.statusText}}</view>
+        </view>
+        <view class="sub-row">
+          <text class="sub">{{detail.createdAtText}}</text>
+          <text wx:if="{{detail.typeText}}" class="sub">· {{detail.typeText}}</text>
+          <text wx:if="{{submitter.userId}}" class="sub">· {{submitter.userId}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="detail-section">
+      <text class="section-label">反馈内容</text>
+      <text class="section-content">{{detail.content}}</text>
+    </view>
+
+    <view class="detail-section" wx:if="{{detail.contactInfo}}">
+      <text class="section-label">联系方式</text>
+      <text class="section-content">{{detail.contactInfo}}</text>
+    </view>
+  </view>
+</view>
+
+<view class="section" wx:if="{{detail}}">
+  <view class="card shadow-card action-card">
+    <view class="field">
+      <text class="field-label">处理状态</text>
+      <picker mode="selector" range="{{statusOptions}}" range-key="label" value="{{statusIndex}}" bindchange="onStatusChange">
+        <view class="picker-value">{{statusOptions[statusIndex].label}}</view>
+      </picker>
+    </view>
+
+    <view class="field">
+      <text class="field-label">处理备注</text>
+      <textarea
+        class="note-input"
+        value="{{noteDraft}}"
+        placeholder="记录处理过程/结论（仅管理员可见）"
+        maxlength="2000"
+        auto-height
+        show-confirm-bar="{{false}}"
+        bindinput="onNoteInput"
+      />
+      <view class="note-meta">
+        <text class="meta">{{noteCount}}/2000</text>
+        <text class="meta" wx:if="{{detail.handledAtText}}">· 最近处理：{{detail.handledAtText}}</text>
+      </view>
+    </view>
+
+    <button class="btn btn--primary save-btn" bindtap="save">保存</button>
+  </view>
+</view>
+

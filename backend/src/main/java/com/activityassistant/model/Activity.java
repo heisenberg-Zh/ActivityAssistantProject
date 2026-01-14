@@ -39,10 +39,10 @@ public class Activity {
     private String title;
 
     /**
-     * 活动简介（简短描述）
-     * 注意：desc是MySQL保留关键字，必须用反引号转义
+     * 活动简介(简短描述)
+     * 注意:desc是MySQL保留关键字,必须用反引号转义
      */
-    @Column(name = "`desc`", length = 500)
+    @Column(name = "`desc`", length = 2000)
     private String desc;
 
     /**
@@ -151,6 +151,13 @@ public class Activity {
     private Integer checkinRadius = 500;
 
     /**
+     * 是否需要打卡签到（true=开启，false=关闭）
+     */
+    @Column(name = "need_checkin", nullable = false)
+    @Builder.Default
+    private Boolean needCheckin = true;
+
+    /**
      * 总人数上限
      */
     @Column(name = "total", nullable = false)
@@ -192,11 +199,24 @@ public class Activity {
     private Boolean needReview = false;
 
     /**
+     * 是否消息通知用户（true=启用，false=不自动通知）
+     */
+    @Column(name = "notify_users", nullable = false)
+    @Builder.Default
+    private Boolean notifyUsers = false;
+
+    /**
      * 是否公开（0=私密活动）
      */
     @Column(name = "is_public", nullable = false)
     @Builder.Default
     private Boolean isPublic = true;
+
+    /**
+     * 私密活动分享访问 token（随机串）
+     */
+    @Column(name = "share_token", length = 128)
+    private String shareToken;
 
     /**
      * 是否删除（软删除）

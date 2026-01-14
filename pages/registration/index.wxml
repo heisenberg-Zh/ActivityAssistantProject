@@ -51,16 +51,12 @@
 <view wx:if="{{!showGroupSelection}}" class="activity-info-section">
   <view class="activity-info-card">
     <!-- 活动封面和状态 -->
-    <view class="activity-cover banner--{{detail.banner}}">
+    <view class="activity-cover">
+      <image class="activity-cover-image" src="{{detail.imageUrl}}" mode="aspectFill"></image>
       <view class="cover-badges">
         <view class="cover-badge cover-badge--status">{{detail.status}}</view>
         <view class="cover-badge cover-badge--type">{{detail.type}}</view>
       </view>
-    </view>
-
-    <!-- 活动描述 -->
-    <view class="activity-desc">
-      <text class="desc-text">{{detail.desc}}</text>
     </view>
 
     <!-- 关键信息网格 -->
@@ -150,13 +146,19 @@
     <!-- 费用和提示 -->
     <view class="info-cards">
       <!-- 报名要求 -->
-      <view wx:if="{{detail.requirements}}" class="info-tip-card info-tip-card--orange">
+      <view wx:if="{{displayRequirements}}" class="info-tip-card info-tip-card--orange">
         <text class="info-tip-title">⚠️ 报名要求</text>
-        <text class="info-tip-text">{{detail.requirements}}</text>
+        <text class="info-tip-text">{{displayRequirements}}</text>
+      </view>
+
+      <!-- 活动说明及注意事项 -->
+      <view wx:if="{{displayDescription}}" class="info-tip-card info-tip-card--blue">
+        <text class="info-tip-title">📝 活动说明及注意事项</text>
+        <text class="info-tip-text">{{displayDescription}}</text>
       </view>
 
       <!-- 费用说明 -->
-      <view class="info-tip-card info-tip-card--blue">
+      <view class="info-tip-card info-tip-card--green">
         <text class="info-tip-title">💰 费用说明</text>
         <text class="info-tip-text">{{feeInfo}}</text>
       </view>
@@ -177,7 +179,10 @@
       <checkbox-group bindchange="toggleAgree">
         <checkbox value="agree" checked="{{agree}}" class="agreement-checkbox" />
       </checkbox-group>
-      <text class="agreement-text">已阅读并同意《活动报名协议》和《隐私政策》</text>
+      <text class="agreement-text">已阅读并同意</text>
+      <text class="agreement-link" bindtap="viewAgreement">《活动报名协议》</text>
+      <text class="agreement-text">和</text>
+      <text class="agreement-link" bindtap="viewPrivacyPolicy">《隐私政策》</text>
     </view>
   </view>
 </view>

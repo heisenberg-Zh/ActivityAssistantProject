@@ -1,7 +1,8 @@
 // pages/profile/edit.js
 const { userAPI, uploadAPI } = require('../../utils/api.js');
-const { getSecureStorage } = require('../../utils/security.js');
+const { getSecureStorage, setSecureStorage } = require('../../utils/security.js');
 const { requestCache } = require('../../utils/request-manager.js');
+const { hasValidConsent: hasPhoneNoticeConsent, setConsent: setPhoneNoticeConsent } = require('../../utils/phone-notice-consent.js');
 const app = getApp();
 
 Page({
@@ -10,6 +11,8 @@ Page({
     avatarUrlRaw: '', // 保存用：不带缓存参数的URL
     nickname: '',
     phone: '',
+    originalPhone: '',
+    phoneDirty: false,
     role: '', // 用户角色
     userId: '', // 用户ID
     canSave: true,
@@ -17,11 +20,16 @@ Page({
     // 弹窗相关
     showNicknameModal: false,
     showPhoneModal: false,
+    showPhoneNoticeConsent: false,
+    phoneNoticeConsentOk: false,
+    phoneConfirmDisabled: false,
     tempNickname: '',
     tempPhone: ''
   },
 
   onLoad() {
+    this._afterPhoneNoticeConsent = null;
+    this.setData({ phoneNoticeConsentOk: hasPhoneNoticeConsent() });
     this.loadUserInfo();
   },
 
@@ -29,11 +37,14 @@ Page({
    * 加载用户信息
    */
   async loadUserInfo() {
+    // æœ¬æ¬¡æ–°å¢ž/ä¿®æ”¹è”ç³»æ–¹å¼æ—¶ï¼Œè¦æ±‚æ˜Žç¡®å‘ŠçŸ¥å’ŒåŒæ„?
     try {
       // 使用 getSecureStorage 读取加密存储的 userId（兼容旧的普通存储）
       const userId = getSecureStorage('currentUserId') || wx.getStorageSync('currentUserId');
+      const token = wx.getStorageSync('token');
 
-      if (!userId) {
+      // 统一以 token 判定登录；currentUserId 可能缺失但不应阻断编辑资料
+      if (!token || String(token).trim().length === 0) {
         wx.showToast({ title: '请先登录', icon: 'none' });
         setTimeout(() => {
           wx.navigateBack();
@@ -46,6 +57,41 @@ Page({
 
       if (result && result.data) {
         const userData = result.data;
+
+        // 自愈：后端资料可信，用于回填本地登录上下文（兼容加密/普通存储）
+        const resolvedUserId = userData.id || userData.userId || '';
+        if (resolvedUserId) {
+          try {
+            setSecureStorage('currentUserId', resolvedUserId);
+            setSecureStorage('currentUser', {
+              id: resolvedUserId,
+              name: userData.nickname || '',
+              avatar: userData.avatar || ''
+            });
+            setSecureStorage('userInfo', {
+              nickName: userData.nickname || '',
+              avatarUrl: userData.avatar || '',
+              id: resolvedUserId,
+              phone: userData.phone || ''
+            });
+          } catch (e) {
+            wx.setStorageSync('currentUserId', resolvedUserId);
+            wx.setStorageSync('currentUser', {
+              id: resolvedUserId,
+              name: userData.nickname || '',
+              avatar: userData.avatar || ''
+            });
+            wx.setStorageSync('userInfo', {
+              nickName: userData.nickname || '',
+              avatarUrl: userData.avatar || '',
+              id: resolvedUserId,
+              phone: userData.phone || ''
+            });
+          }
+
+          app.globalData.currentUserId = resolvedUserId;
+          app.globalData.isLoggedIn = true;
+        }
         let rawAvatarUrl = (userData.avatar || '').split('?')[0];
         if (rawAvatarUrl.startsWith('wxfile://') || rawAvatarUrl.startsWith('http://tmp/')) {
           rawAvatarUrl = '';
@@ -55,6 +101,8 @@ Page({
           avatarUrlRaw: rawAvatarUrl,
           nickname: userData.nickname || '',
           phone: userData.phone || '',
+          originalPhone: userData.phone || '',
+          phoneDirty: false,
           role: this.getRoleText(userData.role),
           userId: userData.id || ''
         });
@@ -73,6 +121,8 @@ Page({
           avatarUrlRaw: rawAvatarUrl,
           nickname: userInfo.nickName || '',
           phone: userInfo.phone || '',
+          originalPhone: userInfo.phone || '',
+          phoneDirty: false,
           role: '用户', // 默认角色
           userId: userId
         });
@@ -222,6 +272,42 @@ Page({
   },
 
   /**
+   * 同步微信昵称（需要用户主动点击触发）
+   */
+  async syncWechatNickname() {
+    try {
+      const res = await new Promise((resolve, reject) => {
+        wx.getUserProfile({
+          desc: '用于同步你的微信昵称到个人资料',
+          success: resolve,
+          fail: reject
+        });
+      });
+
+      const nickName = res && res.userInfo ? (res.userInfo.nickName || '') : '';
+      const cleaned = String(nickName || '').trim();
+      if (!cleaned) {
+        wx.showToast({ title: '未获取到微信昵称', icon: 'none' });
+        return;
+      }
+
+      // 微信可能返回脱敏昵称（如“微信用户”），此时不应覆盖用户已填写/已保存的昵称
+      if (cleaned === '微信用户') {
+        wx.showToast({ title: '微信未返回真实昵称，请手动填写', icon: 'none' });
+        return;
+      }
+
+      this.setData({
+        tempNickname: cleaned
+      });
+    } catch (err) {
+      // 用户拒绝/取消 或 接口不可用
+      console.warn('同步微信昵称失败:', err);
+      wx.showToast({ title: '同步失败，请稍后重试', icon: 'none' });
+    }
+  },
+
+  /**
    * 确认昵称修改
    */
   confirmNickname() {
@@ -246,9 +332,20 @@ Page({
    * 打开手机号编辑弹窗
    */
   editPhone() {
+    this.setData({ phoneNoticeConsentOk: hasPhoneNoticeConsent() });
+
+    // æ–°å½•å…¥è”ç³»æ–¹å¼æ—¶ï¼Œå…ˆæ˜Žç¡®å‘ŠçŸ¥å’ŒåŒæ„?
+    if ((!this.data.phone || String(this.data.phone).trim().length === 0) && !hasPhoneNoticeConsent()) {
+      this._afterPhoneNoticeConsent = 'openPhoneModal';
+      this.setData({ showPhoneNoticeConsent: true });
+      return;
+    }
+
     this.setData({
       showPhoneModal: true,
       tempPhone: this.data.phone
+    }, () => {
+      this.refreshPhoneConfirmDisabled(this.data.tempPhone);
     });
   },
 
@@ -265,9 +362,20 @@ Page({
    * 临时手机号输入
    */
   onTempPhoneInput(e) {
+    const next = e.detail.value;
     this.setData({
-      tempPhone: e.detail.value
+      tempPhone: next
+    }, () => {
+      this.refreshPhoneConfirmDisabled(next);
     });
+  },
+
+  refreshPhoneConfirmDisabled(nextTempPhone) {
+    const phone = String(nextTempPhone || '').trim();
+    const disabled = !this.data.phoneNoticeConsentOk && phone.length > 0;
+    if (this.data.phoneConfirmDisabled !== disabled) {
+      this.setData({ phoneConfirmDisabled: disabled });
+    }
   },
 
   /**
@@ -275,6 +383,12 @@ Page({
    */
   confirmPhone() {
     const phone = this.data.tempPhone.trim();
+
+    // 未授权时禁止确认写入（仅允许清空/取消）
+    if (!this.data.phoneNoticeConsentOk && phone.length > 0) {
+      wx.showToast({ title: '请先完成授权再填写联系方式', icon: 'none' });
+      return;
+    }
 
     // 如果填写了手机号，验证格式
     if (phone.length > 0) {
@@ -288,11 +402,62 @@ Page({
       }
     }
 
+    const originalPhone = String(this.data.originalPhone || '').trim();
+    const phoneDirty = phone !== originalPhone;
+
     this.setData({
       phone,
       showPhoneModal: false,
-      hasChanges: true
+      hasChanges: this.data.hasChanges || phoneDirty,
+      phoneDirty
     });
+  },
+
+  /**
+   * 保存个人资料
+   */
+  // 清空联系方式
+  clearPhone() {
+    const originalPhone = String(this.data.originalPhone || '').trim();
+    const phoneDirty = originalPhone.length > 0;
+
+    this.setData({
+      phone: '',
+      tempPhone: '',
+      showPhoneModal: false,
+      hasChanges: this.data.hasChanges || phoneDirty,
+      phoneDirty
+    });
+  },
+
+  onPhoneNoticeConsentCancel() {
+    this._afterPhoneNoticeConsent = null;
+    this.setData({ showPhoneNoticeConsent: false, phoneNoticeConsentOk: hasPhoneNoticeConsent() }, () => {
+      this.refreshPhoneConfirmDisabled(this.data.tempPhone);
+    });
+  },
+
+  onPhoneNoticeConsentConfirm() {
+    setPhoneNoticeConsent();
+    const after = this._afterPhoneNoticeConsent;
+    this._afterPhoneNoticeConsent = null;
+    this.setData({ showPhoneNoticeConsent: false, phoneNoticeConsentOk: true }, () => {
+      this.refreshPhoneConfirmDisabled(this.data.tempPhone);
+      if (after === 'openPhoneModal') {
+        this.editPhone();
+      } else if (after === 'saveProfile') {
+        this.saveProfile();
+      }
+    });
+  },
+
+  onPhoneNoticeConsentViewPolicy() {
+    wx.navigateTo({ url: '/pages/policy/index' });
+  },
+
+  openPhoneNoticeConsent() {
+    this._afterPhoneNoticeConsent = null;
+    this.setData({ showPhoneNoticeConsent: true });
   },
 
   /**
@@ -303,7 +468,7 @@ Page({
       return;
     }
 
-    const { avatarUrl, avatarUrlRaw, nickname, phone } = this.data;
+    const { avatarUrl, avatarUrlRaw, nickname, phone, phoneDirty } = this.data;
 
     // 验证昵称
     if (!nickname || nickname.trim().length === 0) {
@@ -342,8 +507,8 @@ Page({
       }
 
       // 只有填写了手机号才传递
-      if (phone && phone.trim().length > 0) {
-        updateData.phone = phone.trim();
+      if (phoneDirty) {
+        updateData.phone = (phone || '').trim();
       }
 
       // 调用后端API更新用户信息
@@ -366,14 +531,39 @@ Page({
           phone: result.data.phone || ''
         };
 
-        wx.setStorageSync('userInfo', userInfo);
+        // 更新本地存储（优先加密存储，失败再降级）
+        try {
+          setSecureStorage('userInfo', userInfo);
+          setSecureStorage('currentUserId', userInfo.id);
+          setSecureStorage('currentUser', {
+            id: userInfo.id,
+            name: userInfo.nickName,
+            avatar: userInfo.avatarUrl
+          });
+        } catch (e) {
+          wx.setStorageSync('userInfo', userInfo);
+          wx.setStorageSync('currentUserId', userInfo.id);
+          wx.setStorageSync('currentUser', {
+            id: userInfo.id,
+            name: userInfo.nickName,
+            avatar: userInfo.avatarUrl
+          });
+        }
 
         // 更新全局数据
         app.globalData.userInfo = userInfo;
+        app.globalData.currentUserId = userInfo.id;
+        app.globalData.isLoggedIn = true;
 
         // 强制刷新头像缓存
         app.globalData.avatarUrl = result.data.avatar;
         app.globalData.avatarUpdateTime = Date.now();
+
+        this.setData({
+          originalPhone: result.data.phone || '',
+          phoneDirty: false,
+          hasChanges: false
+        });
 
         wx.hideLoading();
         wx.showToast({

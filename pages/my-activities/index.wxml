@@ -30,15 +30,36 @@
 <!-- 已登录状态显示活动列表 -->
 <view wx:else class="page-container">
   <view class="filter-section">
-    <scroll-view scroll-x class="filter-scroll-view" show-scrollbar="false">
-      <view class="filter-tabs">
-        <block wx:for="{{filters}}" wx:key="key" wx:for-item="item">
-          <view class="filter-tab {{item.active ? 'filter-tab--active' : ''}}" bindtap="onFilterTap" data-key="{{item.key}}">
-            {{item.name}}
+    <view class="filter-row">
+      <scroll-view scroll-x class="filter-scroll-view" show-scrollbar="false">
+        <view class="filter-tabs">
+          <block wx:for="{{roleFilters}}" wx:key="key" wx:for-item="item">
+            <view class="filter-tab {{item.active ? 'filter-tab--active' : ''}}" bindtap="onRoleTap" data-key="{{item.key}}">
+              {{item.name}}
+            </view>
+          </block>
+        </view>
+      </scroll-view>
+    </view>
+
+    <view class="filter-row filter-row--status">
+      <view class="filter-row__left">
+        <scroll-view scroll-x class="filter-scroll-view" show-scrollbar="false">
+          <view class="filter-tabs">
+            <block wx:for="{{statusFilters}}" wx:key="key" wx:for-item="item">
+              <view class="filter-tab {{item.active ? 'filter-tab--active' : ''}}" bindtap="onStatusTap" data-key="{{item.key}}">
+                {{item.name}}
+              </view>
+            </block>
           </view>
-        </block>
+        </scroll-view>
       </view>
-    </scroll-view>
+      <view class="filter-row__right">
+        <view wx:if="{{activeRole === 'joined'}}" class="filter-action {{showHistory ? 'filter-action--active' : ''}}" bindtap="toggleHistory">
+          历史
+        </view>
+      </view>
+    </view>
   </view>
 
   <view class="content-section">
@@ -47,7 +68,8 @@
         <view class="row-between my-card__header">
           <view class="row gap-12">
             <view class="badge badge--dark">{{item.role}}</view>
-            <view class="badge {{ item.status === '进行中' ? 'badge--ok' : (item.status === '即将开始' ? 'badge--info' : 'badge--muted') }}">{{item.status}}</view>
+            <view class="badge {{item.statusBadgeClass}}">{{item.status}}</view>
+            <view wx:if="{{item.registrationStatusText}}" class="badge {{item.registrationBadgeClass}}">{{item.registrationStatusText}}</view>
           </view>
           <view class="badge badge--light">{{item.type}}</view>
         </view>

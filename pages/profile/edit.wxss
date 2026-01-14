@@ -253,12 +253,60 @@
   margin-top: 12rpx;
 }
 
+.nickname-sync-btn {
+  width: 100%;
+  height: 72rpx;
+  margin-top: 16rpx;
+  border-radius: 12rpx;
+  background: #f3f4f6;
+  color: #3b82f6;
+  font-size: 28rpx;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  padding: 0 24rpx;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.nickname-sync-btn::after {
+  border: none;
+}
+
+.nickname-sync-btn:active {
+  background: #e5e7eb;
+}
+
 .input-hint {
   display: block;
   font-size: 24rpx;
   color: #9ca3af;
   margin-top: 12rpx;
   line-height: 1.6;
+}
+
+/* 授权提示（联系方式） */
+.consent-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+  padding: 16rpx 20rpx;
+  background: #f9fafb;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 12rpx;
+}
+
+.consent-inline-text {
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.consent-inline-link {
+  font-size: 24rpx;
+  color: #3b82f6;
 }
 
 /* 弹窗底部 */

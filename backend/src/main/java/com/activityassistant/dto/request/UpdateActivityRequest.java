@@ -112,6 +112,11 @@ public class UpdateActivityRequest {
     private Integer checkinRadius;
 
     /**
+     * 是否需要打卡签到（true=开启，false=关闭）
+     */
+    private Boolean needCheckin;
+
+    /**
      * 总人数上限
      */
     @Min(value = 1, message = "总人数上限至少为1")
@@ -139,6 +144,11 @@ public class UpdateActivityRequest {
      * 是否需要审核
      */
     private Boolean needReview;
+
+    /**
+     * 是否消息通知用户（true=启用，false=不自动通知）
+     */
+    private Boolean notifyUsers;
 
     /**
      * 是否公开

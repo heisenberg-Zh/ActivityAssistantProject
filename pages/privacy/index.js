@@ -41,7 +41,7 @@ Page({
         }
       });
     } else {
-      wx.showToast({ title: '请在设置中查看隐私政策', icon: 'none' });
+      wx.navigateTo({ url: '/pages/policy/index' });
     }
   },
 

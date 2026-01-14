@@ -8,12 +8,14 @@ import com.activityassistant.exception.BusinessException;
 import com.activityassistant.exception.NotFoundException;
 import com.activityassistant.mapper.ActivityMapper;
 import com.activityassistant.model.Activity;
+import com.activityassistant.model.Registration;
 import com.activityassistant.repository.ActivityRepository;
 import com.activityassistant.repository.UserRepository;
 import jakarta.persistence.criteria.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -21,9 +23,17 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.activityassistant.constant.ErrorCode.*;
 
@@ -37,6 +47,8 @@ import static com.activityassistant.constant.ErrorCode.*;
 @Service
 public class ActivityService {
 
+    private static final SecureRandom SHARE_TOKEN_RANDOM = new SecureRandom();
+
     @Autowired
     private ActivityRepository activityRepository;
 
@@ -45,6 +57,15 @@ public class ActivityService {
 
     @Autowired
     private ActivityMapper activityMapper;
+
+    @Autowired
+    private com.activityassistant.repository.RegistrationRepository registrationRepository;
+
+    @Autowired
+    private PrivateActivityAccessChecker privateActivityAccessChecker;
+
+    @Autowired
+    private MessageService messageService;
 
     /**
      * 创建活动
@@ -68,6 +89,11 @@ public class ActivityService {
         // 创建活动实体
         Activity activity = activityMapper.toEntity(request, organizerId);
 
+        // 私密活动生成分享token（公开活动不需要）
+        if (Boolean.FALSE.equals(activity.getIsPublic()) && (activity.getShareToken() == null || activity.getShareToken().isBlank())) {
+            activity.setShareToken(generateShareToken());
+        }
+
         // 保存活动
         Activity savedActivity = activityRepository.save(activity);
 
@@ -75,6 +101,123 @@ public class ActivityService {
 
         // 转换为VO返回
         return activityMapper.toVO(savedActivity, organizerId);
+    }
+
+    /**
+     * 获取私密活动的分享token（仅相关人可获取，不暴露在ActivityVO中）
+     */
+    @Transactional
+    public String getOrCreatePrivateShareToken(String activityId, String userId) {
+        Activity activity = activityRepository.findByIdAndIsDeletedFalse(activityId)
+                .orElseThrow(() -> new NotFoundException("活动不存在"));
+
+        if (Boolean.TRUE.equals(activity.getIsPublic())) {
+            throw new BusinessException(INVALID_OPERATION, "公开活动无需分享口令");
+        }
+
+        if (!privateActivityAccessChecker.isRelatedUser(activity, userId)) {
+            throw new BusinessException(PERMISSION_DENIED, "无权获取该私密活动的分享口令");
+        }
+
+        if (activity.getShareToken() == null || activity.getShareToken().isBlank()) {
+            activity.setShareToken(generateShareToken());
+            activityRepository.save(activity);
+        }
+
+        return activity.getShareToken();
+    }
+
+    /**
+     * 查询与当前用户有关的私密活动列表（组织者/管理员/已报名）
+     *
+     * 注：白名单仅用于“需要审核的活动自动通过”，不再作为私密活动可见条件。
+     */
+    public Page<ActivityVO> getRelatedPrivateActivities(ActivityQueryRequest queryRequest, String userId) {
+        if (userId == null) {
+            throw new BusinessException(PERMISSION_DENIED, "请先登录");
+        }
+        final ActivityQueryRequest qr = (queryRequest != null) ? queryRequest : new ActivityQueryRequest();
+
+        Sort sort = buildSort(qr.getSortBy(), qr.getSortDirection());
+        Pageable pageable = PageRequest.of(qr.getPage(), qr.getSize(), sort);
+
+        // administrators: JSON 字符串数组（用户ID）
+        String quotedUserId = "\"" + userId + "\"";
+        Specification<Activity> directRelatedSpec = (root, query, criteriaBuilder) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+
+            predicates.add(criteriaBuilder.isFalse(root.get("isDeleted")));
+            predicates.add(criteriaBuilder.isFalse(root.get("isPublic")));
+
+            jakarta.persistence.criteria.Predicate organizer = criteriaBuilder.equal(root.get("organizerId"), userId);
+
+            // MySQL JSON 列不支持直接 LIKE（Hibernate 6 会触发 cast_as_json，导致 3141 Invalid JSON）
+            // 这里改为 JSON_CONTAINS
+            jakarta.persistence.criteria.Expression<Integer> administratorsContains = criteriaBuilder.function(
+                    "JSON_CONTAINS",
+                    Integer.class,
+                    root.get("administrators"),
+                    criteriaBuilder.literal(quotedUserId)
+            );
+            jakarta.persistence.criteria.Predicate isAdministrator = criteriaBuilder.equal(administratorsContains, 1);
+            predicates.add(criteriaBuilder.or(organizer, isAdministrator));
+
+            if (qr.getType() != null && !qr.getType().isEmpty()) {
+                predicates.add(criteriaBuilder.equal(root.get("type"), qr.getType()));
+            }
+            if (qr.getStatus() != null && !qr.getStatus().isEmpty()) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), qr.getStatus()));
+            }
+            if (qr.getKeyword() != null && !qr.getKeyword().isEmpty()) {
+                String keyword = "%" + qr.getKeyword() + "%";
+                jakarta.persistence.criteria.Predicate titleLike = criteriaBuilder.like(root.get("title"), keyword);
+                jakarta.persistence.criteria.Predicate descLike = criteriaBuilder.like(root.get("description"), keyword);
+                jakarta.persistence.criteria.Predicate placeLike = criteriaBuilder.like(root.get("place"), keyword);
+                predicates.add(criteriaBuilder.or(titleLike, descLike, placeLike));
+            }
+
+            return criteriaBuilder.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+
+        List<Activity> directRelated = activityRepository.findAll(directRelatedSpec);
+
+        List<Registration> relatedRegistrations = registrationRepository.findByUserIdAndStatusIn(userId, List.of("approved", "pending"));
+        Set<String> registrationActivityIds = relatedRegistrations.stream()
+                .map(Registration::getActivityId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        List<Activity> registeredPrivateActivities = activityRepository.findAllById(registrationActivityIds).stream()
+                .filter(a -> a != null && Boolean.FALSE.equals(a.getIsDeleted()) && Boolean.FALSE.equals(a.getIsPublic()))
+                .filter(a -> matchesActivityFilters(a, qr))
+                .toList();
+
+        Map<String, Activity> merged = new HashMap<>();
+        for (Activity activity : directRelated) {
+            if (activity != null) {
+                merged.put(activity.getId(), activity);
+            }
+        }
+        for (Activity activity : registeredPrivateActivities) {
+            if (activity != null) {
+                merged.put(activity.getId(), activity);
+            }
+        }
+
+        Comparator<Activity> comparator = buildComparator(qr.getSortBy(), qr.getSortDirection());
+        List<Activity> sorted = merged.values().stream()
+                .sorted(comparator)
+                .toList();
+
+        int fromIndex = (int) pageable.getOffset();
+        int toIndex = Math.min(fromIndex + pageable.getPageSize(), sorted.size());
+        List<Activity> pageContent = fromIndex >= sorted.size() ? List.of() : sorted.subList(fromIndex, toIndex);
+
+        List<ActivityVO> vos = pageContent.stream()
+                .map(a -> activityMapper.toVO(a, userId))
+                .toList();
+
+        return new PageImpl<>(vos, pageable, sorted.size());
     }
 
     /**
@@ -102,13 +245,72 @@ public class ActivityService {
     }
 
     /**
+     * 系统管理员查询活动列表（不含草稿/待发布）
+     */
+    public Page<ActivityVO> getSystemAdminActivityList(ActivityQueryRequest queryRequest, String userId) {
+        log.info("系统管理员查询活动列表，条件: {}", queryRequest);
+
+        ActivityQueryRequest qr = (queryRequest != null) ? queryRequest : new ActivityQueryRequest();
+
+        Sort sort = buildSort(qr.getSortBy(), qr.getSortDirection());
+        Pageable pageable = PageRequest.of(qr.getPage(), qr.getSize(), sort);
+
+        Specification<Activity> spec = (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            // 排除已删除
+            predicates.add(criteriaBuilder.isFalse(root.get("isDeleted")));
+
+            // 不包含草稿/待发布
+            predicates.add(criteriaBuilder.not(root.get("status").in("draft", "pending")));
+
+            // 按类型筛选
+            if (qr.getType() != null && !qr.getType().isEmpty()) {
+                predicates.add(criteriaBuilder.equal(root.get("type"), qr.getType()));
+            }
+
+            // 关键字搜索（标题、描述、地点）
+            if (qr.getKeyword() != null && !qr.getKeyword().isEmpty()) {
+                String keyword = "%" + qr.getKeyword() + "%";
+                Predicate titleLike = criteriaBuilder.like(root.get("title"), keyword);
+                Predicate descLike = criteriaBuilder.like(root.get("description"), keyword);
+                Predicate placeLike = criteriaBuilder.like(root.get("place"), keyword);
+                predicates.add(criteriaBuilder.or(titleLike, descLike, placeLike));
+            }
+
+            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<Activity> activityPage = activityRepository.findAll(spec, pageable);
+        return activityPage.map(activity -> activityMapper.toVO(activity, userId));
+    }
+
+    /**
+     * 查询“我管理的”活动（当前用户在 administrators JSON 数组中）
+     */
+    public Page<ActivityVO> getManagedActivities(Integer page, Integer size, String userId) {
+        if (userId == null) {
+            return Page.empty();
+        }
+
+        int safePage = page != null ? page : 0;
+        int safeSize = size != null ? size : 10;
+        // Native SQL uses snake_case columns; avoid Spring Data appending "order by a.createdAt" which breaks in MySQL.
+        // Sorting is handled in the native query (ORDER BY a.created_at DESC).
+        Pageable pageable = PageRequest.of(safePage, safeSize);
+
+        Page<Activity> activityPage = activityRepository.findManagedActivities(userId, pageable);
+        return activityPage.map(activity -> activityMapper.toVO(activity, userId));
+    }
+
+    /**
      * 查询活动详情
      *
      * @param activityId 活动ID
      * @param userId     当前用户ID
      * @return 活动详情
      */
-    public ActivityVO getActivityDetail(String activityId, String userId) {
+    public ActivityVO getActivityDetail(String activityId, String userId, String shareToken, boolean fromShare) {
         log.info("查询活动详情，活动ID: {}, 用户ID: {}", activityId, userId);
 
         // 查询活动
@@ -116,8 +318,8 @@ public class ActivityService {
                 .orElseThrow(() -> new NotFoundException("活动不存在"));
 
         // 检查私密活动的访问权限
-        if (!activity.getIsPublic()) {
-            checkPrivateActivityAccess(activity, userId);
+        if (Boolean.FALSE.equals(activity.getIsPublic())) {
+            privateActivityAccessChecker.checkCanView(activity, userId, shareToken, fromShare);
         }
 
         return activityMapper.toVO(activity, userId);
@@ -152,12 +354,72 @@ public class ActivityService {
         validateActivityTime(startTime, endTime, registerDeadline);
 
         // 更新活动信息
+        // 记录关键字段旧值，用于判断是否需要通知已报名用户
+        LocalDateTime oldStartTime = activity.getStartTime();
+        LocalDateTime oldEndTime = activity.getEndTime();
+        LocalDateTime oldRegisterDeadline = activity.getRegisterDeadline();
+        String oldPlace = activity.getPlace();
+        String oldAddress = activity.getAddress();
+        Boolean oldNeedCheckin = activity.getNeedCheckin();
+
         activityMapper.updateEntity(activity, request);
 
         // 保存更新
         Activity updatedActivity = activityRepository.save(activity);
 
         log.info("活动更新成功，活动ID: {}", activityId);
+
+        // 活动关键字段发生变化：通知已通过审核的报名用户（仅在 notifyUsers=true 时）
+        try {
+            boolean changed = !Objects.equals(oldStartTime, updatedActivity.getStartTime())
+                    || !Objects.equals(oldEndTime, updatedActivity.getEndTime())
+                    || !Objects.equals(oldRegisterDeadline, updatedActivity.getRegisterDeadline())
+                    || !Objects.equals(oldPlace, updatedActivity.getPlace())
+                    || !Objects.equals(oldAddress, updatedActivity.getAddress())
+                    || !Objects.equals(oldNeedCheckin, updatedActivity.getNeedCheckin());
+
+            if (changed && Boolean.TRUE.equals(updatedActivity.getNotifyUsers())) {
+                List<String> changedParts = new ArrayList<>();
+                if (!Objects.equals(oldStartTime, updatedActivity.getStartTime()) || !Objects.equals(oldEndTime, updatedActivity.getEndTime())) {
+                    changedParts.add("时间");
+                }
+                if (!Objects.equals(oldRegisterDeadline, updatedActivity.getRegisterDeadline())) {
+                    changedParts.add("报名截止时间");
+                }
+                if (!Objects.equals(oldPlace, updatedActivity.getPlace()) || !Objects.equals(oldAddress, updatedActivity.getAddress())) {
+                    changedParts.add("地点");
+                }
+                if (!Objects.equals(oldNeedCheckin, updatedActivity.getNeedCheckin())) {
+                    changedParts.add("签到设置");
+                }
+
+                String changeLine = changedParts.isEmpty() ? "" : ("变更：" + String.join("、", changedParts) + "。\n");
+                String checkinLine = Boolean.TRUE.equals(updatedActivity.getNeedCheckin())
+                        ? "签到：开始前30分钟开放，至活动结束。"
+                        : "签到：本活动无需签到。";
+
+                String content = String.format(
+                        "%s活动《%s》信息已更新。\n时间：%s - %s\n地点：%s%s\n%s",
+                        changeLine,
+                        updatedActivity.getTitle(),
+                        updatedActivity.getStartTime(),
+                        updatedActivity.getEndTime(),
+                        updatedActivity.getPlace() == null ? "" : updatedActivity.getPlace(),
+                        updatedActivity.getAddress() == null ? "" : ("（" + updatedActivity.getAddress() + "）"),
+                        checkinLine
+                );
+
+                List<String> approvedUserIds = registrationRepository.findUserIdsByActivityIdAndStatus(updatedActivity.getId(), "approved");
+                if (approvedUserIds != null) {
+                    for (String uid : approvedUserIds) {
+                        if (uid == null || uid.isBlank()) continue;
+                        messageService.createMessage(uid, "activity_updated", "活动信息更新", content, updatedActivity.getId());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("send activity updated messages failed: {}", e.getMessage());
+        }
 
         return activityMapper.toVO(updatedActivity, userId);
     }
@@ -263,6 +525,11 @@ public class ActivityService {
     /**
      * 检查用户是否有权限访问私密活动
      *
+     * 私密活动可见条件（满足任一条件即可）：
+     * 1. 活动组织者
+     * 2. 活动管理员
+     * 3. 已报名且状态为approved的参与者
+     *
      * @param activity 活动实体
      * @param userId   用户ID
      */
@@ -271,13 +538,35 @@ public class ActivityService {
             throw new BusinessException(PERMISSION_DENIED, "私密活动需要登录访问");
         }
 
-        // 组织者可以访问
+        // 1. 组织者可以访问
         if (activity.getOrganizerId().equals(userId)) {
+            log.debug("用户{}是活动{}的组织者，允许访问私密活动", userId, activity.getId());
             return;
         }
 
-        // TODO: 检查白名单（需要解析whitelist JSON）
-        // 暂时拒绝访问
+        // 2. 检查是否是管理员
+        if (activity.getAdministrators() != null && !activity.getAdministrators().isEmpty()) {
+            try {
+                // 解析管理员JSON列表：["userId1", "userId2", ...]
+                if (activity.getAdministrators().contains("\"" + userId + "\"")) {
+                    log.debug("用户{}是活动{}的管理员，允许访问私密活动", userId, activity.getId());
+                    return;
+                }
+            } catch (Exception e) {
+                log.warn("解析管理员列表失败: {}", e.getMessage());
+            }
+        }
+
+        // 3. 检查是否是已报名且状态为approved的参与者
+        boolean isRegistered = registrationRepository.existsByActivityIdAndUserIdAndStatus(
+                activity.getId(), userId, "approved");
+        if (isRegistered) {
+            log.debug("用户{}已报名活动{}，允许访问私密活动", userId, activity.getId());
+            return;
+        }
+
+        // 如果以上条件都不满足，拒绝访问
+        log.warn("用户{}无权访问私密活动{}", userId, activity.getId());
         throw new BusinessException(PERMISSION_DENIED, "无权访问此私密活动");
     }
 
@@ -375,5 +664,50 @@ public class ActivityService {
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    private boolean matchesActivityFilters(Activity activity, ActivityQueryRequest queryRequest) {
+        if (activity == null || queryRequest == null) {
+            return true;
+        }
+
+        if (queryRequest.getType() != null && !queryRequest.getType().isEmpty()
+                && !Objects.equals(queryRequest.getType(), activity.getType())) {
+            return false;
+        }
+
+        if (queryRequest.getStatus() != null && !queryRequest.getStatus().isEmpty()
+                && !Objects.equals(queryRequest.getStatus(), activity.getStatus())) {
+            return false;
+        }
+
+        if (queryRequest.getKeyword() != null && !queryRequest.getKeyword().isEmpty()) {
+            String keyword = queryRequest.getKeyword();
+            boolean matched = (activity.getTitle() != null && activity.getTitle().contains(keyword))
+                    || (activity.getDescription() != null && activity.getDescription().contains(keyword))
+                    || (activity.getPlace() != null && activity.getPlace().contains(keyword));
+            if (!matched) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private Comparator<Activity> buildComparator(String sortBy, String sortDirection) {
+        Comparator<Activity> comparator = switch (sortBy) {
+            case "createdAt" -> Comparator.comparing(Activity::getCreatedAt, Comparator.nullsLast(LocalDateTime::compareTo));
+            case "joined" -> Comparator.comparing(Activity::getJoined, Comparator.nullsLast(Integer::compareTo));
+            default -> Comparator.comparing(Activity::getStartTime, Comparator.nullsLast(LocalDateTime::compareTo));
+        };
+
+        boolean desc = "desc".equalsIgnoreCase(sortDirection);
+        return desc ? comparator.reversed() : comparator;
+    }
+
+    private String generateShareToken() {
+        byte[] bytes = new byte[24];
+        SHARE_TOKEN_RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 }
