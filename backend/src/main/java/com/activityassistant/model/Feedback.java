@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -62,9 +63,34 @@ public class Feedback {
     private String status = "pending";
 
     /**
+     * 处理备注（仅系统管理员可见）
+     */
+    @Column(name = "note", columnDefinition = "TEXT")
+    private String note;
+
+    /**
+     * 处理人用户ID（系统管理员）
+     */
+    @Column(name = "handled_by", length = 50)
+    private String handledBy;
+
+    /**
+     * 处理时间（首次处理/状态变更时间）
+     */
+    @Column(name = "handled_at")
+    private LocalDateTime handledAt;
+
+    /**
      * 创建时间
      */
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    /**
+     * 更新时间（状态/备注变更）
+     */
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 }

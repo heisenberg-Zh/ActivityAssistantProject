@@ -28,9 +28,19 @@ public class ActivityVO {
     private String title;
 
     /**
-     * 活动描述
+     * 活动简介（简短描述）
+     */
+    private String desc;
+
+    /**
+     * 活动描述（详细说明/活动说明及注意事项）
      */
     private String description;
+
+    /**
+     * 报名要求
+     */
+    private String requirements;
 
     /**
      * 组织者ID
@@ -46,6 +56,26 @@ public class ActivityVO {
      * 组织者头像
      */
     private String organizerAvatar;
+
+    /**
+     * 组织者联系电话
+     */
+    private String organizerPhone;
+
+    /**
+     * 组织者微信号
+     */
+    private String organizerWechat;
+
+    /**
+     * 活动封面图片URL
+     */
+    private String image;
+
+    /**
+     * 是否启用分组
+     */
+    private Boolean hasGroups;
 
     /**
      * 活动类型
@@ -98,6 +128,11 @@ public class ActivityVO {
     private Integer checkinRadius;
 
     /**
+     * 是否需要打卡签到
+     */
+    private Boolean needCheckin;
+
+    /**
      * 总人数上限
      */
     private Integer total;
@@ -126,6 +161,11 @@ public class ActivityVO {
      * 是否需要审核
      */
     private Boolean needReview;
+
+    /**
+     * 是否消息通知用户
+     */
+    private Boolean notifyUsers;
 
     /**
      * 是否公开

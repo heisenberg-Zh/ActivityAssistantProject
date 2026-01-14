@@ -11,8 +11,6 @@ import com.activityassistant.service.IdGeneratorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.UUID;
-
 /**
  * 报名实体和VO转换工具
  *
@@ -32,20 +30,23 @@ public class RegistrationMapper {
     private IdGeneratorService idGeneratorService;
 
     /**
-     * Registration转RegistrationVO
-     *
-     * @param registration 报名实体
-     * @return RegistrationVO
+     * Registration转RegistrationVO（默认包含敏感信息）
      */
     public RegistrationVO toVO(Registration registration) {
+        return toVO(registration, true);
+    }
+
+    /**
+     * Registration转RegistrationVO（可控制是否包含敏感信息）
+     *
+     * @param includeSensitive 是否包含手机号/自定义字段等敏感信息
+     */
+    public RegistrationVO toVO(Registration registration, boolean includeSensitive) {
         if (registration == null) {
             return null;
         }
 
-        // 获取用户信息
         User user = userRepository.findById(registration.getUserId()).orElse(null);
-
-        // 获取活动信息
         Activity activity = activityRepository.findById(registration.getActivityId()).orElse(null);
 
         RegistrationVO.RegistrationVOBuilder builder = RegistrationVO.builder()
@@ -54,21 +55,19 @@ public class RegistrationMapper {
                 .groupId(registration.getGroupId())
                 .userId(registration.getUserId())
                 .name(registration.getName())
-                .mobile(registration.getMobile())
-                .customData(registration.getCustomData())
+                .mobile(includeSensitive ? registration.getMobile() : null)
+                .customData(includeSensitive ? registration.getCustomData() : null)
                 .status(registration.getStatus())
                 .registeredAt(registration.getRegisteredAt())
                 .approvedAt(registration.getApprovedAt())
                 .checkinStatus(registration.getCheckinStatus())
                 .checkinTime(registration.getCheckinTime());
 
-        // 设置用户信息
         if (user != null) {
             builder.userNickname(user.getNickname())
                     .userAvatar(user.getAvatar());
         }
 
-        // 设置活动信息
         if (activity != null) {
             builder.activityTitle(activity.getTitle());
         }
@@ -81,10 +80,6 @@ public class RegistrationMapper {
 
     /**
      * CreateRegistrationRequest转Registration实体
-     *
-     * @param request 创建报名请求
-     * @param userId  用户ID
-     * @return Registration
      */
     public Registration toEntity(CreateRegistrationRequest request, String userId) {
         if (request == null) {
@@ -99,8 +94,9 @@ public class RegistrationMapper {
                 .name(request.getName())
                 .mobile(request.getMobile())
                 .customData(request.getCustomData())
-                .status("pending") // 初始状态为待审核
-                .checkinStatus("pending") // 初始签到状态为待签到
+                .status("pending")
+                .checkinStatus("pending")
                 .build();
     }
 }
+

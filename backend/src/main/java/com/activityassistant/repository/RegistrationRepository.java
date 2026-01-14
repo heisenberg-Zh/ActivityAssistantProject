@@ -41,6 +41,26 @@ public interface RegistrationRepository extends JpaRepository<Registration, Stri
     boolean existsByActivityIdAndUserId(String activityId, String userId);
 
     /**
+     * 检查用户是否已报名活动（指定状态）
+     *
+     * @param activityId 活动ID
+     * @param userId     用户ID
+     * @param status     报名状态
+     * @return 是否已报名
+     */
+    boolean existsByActivityIdAndUserIdAndStatus(String activityId, String userId, String status);
+
+    /**
+     * 检查用户是否在活动中存在报名记录（指定多个状态）
+     */
+    boolean existsByActivityIdAndUserIdAndStatusIn(String activityId, String userId, List<String> statuses);
+
+    /**
+     * 查询用户的报名记录（指定多个状态）
+     */
+    List<Registration> findByUserIdAndStatusIn(String userId, List<String> statuses);
+
+    /**
      * 根据活动ID查询报名列表（分页）
      *
      * @param activityId 活动ID
@@ -58,6 +78,11 @@ public interface RegistrationRepository extends JpaRepository<Registration, Stri
      * @return 报名列表
      */
     Page<Registration> findByActivityIdAndStatus(String activityId, String status, Pageable pageable);
+
+    /**
+     * 查询活动内指定用户的报名记录（单一状态）
+     */
+    List<Registration> findByActivityIdAndStatusAndUserIdIn(String activityId, String status, List<String> userIds);
 
     /**
      * 根据用户ID查询报名列表（分页）
@@ -151,4 +176,10 @@ public interface RegistrationRepository extends JpaRepository<Registration, Stri
     @Modifying
     @Query("DELETE FROM Registration r WHERE r.activityId = :activityId")
     int deleteByActivityId(@Param("activityId") String activityId);
+
+    /**
+     * 查询某活动下指定状态的用户ID列表（用于消息通知等）
+     */
+    @Query("SELECT r.userId FROM Registration r WHERE r.activityId = :activityId AND r.status = :status")
+    List<String> findUserIdsByActivityIdAndStatus(@Param("activityId") String activityId, @Param("status") String status);
 }

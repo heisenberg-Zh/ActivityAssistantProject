@@ -38,6 +38,11 @@ public interface CheckinRepository extends JpaRepository<Checkin, String>, JpaSp
     Optional<Checkin> findByActivityIdAndUserId(String activityId, String userId);
 
     /**
+     * 批量查询某活动下多个用户的签到记录
+     */
+    List<Checkin> findByActivityIdAndUserIdIn(String activityId, List<String> userIds);
+
+    /**
      * 检查用户是否已签到某活动
      *
      * @param activityId 活动ID

@@ -73,6 +73,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.HEAD, "/uploads/**").permitAll()
 
                         // 活动相关公开接口（游客可浏览）
+                        // ä¸Žç”¨æˆ·å¼ºç»‘å®šçš„æ´»åŠ¨æŽ¥å£ï¼šéœ€è¦ç™»å½•ï¼ˆé¿å…è¢« /api/activities/* çš„ permitAll è¦†ç›–ï¼‰
+                        .requestMatchers(HttpMethod.GET, "/api/activities/my-activities").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/activities/managed-activities").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/activities/related-private").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/activities").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/activities/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/activities/*/participants").permitAll()
@@ -87,8 +91,8 @@ public class SecurityConfig {
                         // 消息相关接口（游客可访问，未登录返回空列表）
                         .requestMatchers("/api/messages/**").permitAll()
 
-                        // 数据修复接口（仅开发环境临时使用）
-                        .requestMatchers("/api/admin/data-fix/**").permitAll()
+                        // 管理类接口需要登录（进一步权限由接口内做系统管理员校验）
+                        .requestMatchers("/api/admin/**").authenticated()
 
                         // 其他所有接口都需要认证
                         .anyRequest().authenticated()

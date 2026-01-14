@@ -68,6 +68,11 @@ public class CheckinService {
         Activity activity = activityRepository.findById(request.getActivityId())
                 .orElseThrow(() -> new BusinessException(NOT_FOUND, "活动不存在"));
 
+        // 2.0 活动未开启签到：直接拒绝
+        if (Boolean.FALSE.equals(activity.getNeedCheckin())) {
+            throw new BusinessException(INVALID_OPERATION, "本活动未开启签到");
+        }
+
         // 2. 验证活动是否可以签到（动态判断：开始前30分钟到结束时间）
         if (!ActivityStatusUtils.canCheckin(activity)) {
             String statusText = ActivityStatusUtils.getActivityStatusText(activity);

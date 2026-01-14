@@ -27,7 +27,7 @@ public class UpdateUserRequest {
     @Schema(description = "头像URL", example = "/activityassistant_avatar_01.png")
     private String avatar;
 
-    @Pattern(regexp = "^1[3-9]\\d{9}$", message = "手机号格式不正确")
+    @Pattern(regexp = "^(|1[3-9]\\d{9})$", message = "手机号格式不正确")
     @Schema(description = "手机号", example = "13800138000")
     private String phone;
 }

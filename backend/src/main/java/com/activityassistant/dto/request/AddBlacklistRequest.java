@@ -18,6 +18,11 @@ import java.util.List;
 public class AddBlacklistRequest {
 
     /**
+     * 用户ID列表（推荐）
+     */
+    private List<String> userIds;
+
+    /**
      * 手机号列表
      */
     private List<String> phones;

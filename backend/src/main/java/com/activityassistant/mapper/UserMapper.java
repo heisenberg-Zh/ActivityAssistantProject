@@ -13,6 +13,21 @@ import org.springframework.stereotype.Component;
 @Component
 public class UserMapper {
 
+    private String normalizeAvatar(String avatar) {
+        if (avatar == null) {
+            return null;
+        }
+        String trimmed = avatar.trim();
+        if (trimmed.isEmpty()) {
+            return "";
+        }
+        // 兼容历史默认头像路径（文件不存在会导致前端空白）
+        if ("/default_avatar.png".equals(trimmed)) {
+            return "/activityassistant_avatar_01.png";
+        }
+        return trimmed;
+    }
+
     /**
      * User转UserVO（脱敏处理）
      *
@@ -27,7 +42,7 @@ public class UserMapper {
         return UserVO.builder()
                 .id(user.getId())
                 .nickname(user.getNickname())
-                .avatar(user.getAvatar())
+                .avatar(normalizeAvatar(user.getAvatar()))
                 .phone(maskPhone(user.getPhone()))
                 .role(user.getRole())
                 .createdAt(user.getCreatedAt())
@@ -48,7 +63,7 @@ public class UserMapper {
         return UserVO.builder()
                 .id(user.getId())
                 .nickname(user.getNickname())
-                .avatar(user.getAvatar())
+                .avatar(normalizeAvatar(user.getAvatar()))
                 .phone(user.getPhone())
                 .role(user.getRole())
                 .createdAt(user.getCreatedAt())

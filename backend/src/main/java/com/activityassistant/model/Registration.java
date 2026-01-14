@@ -78,7 +78,7 @@ public class Registration {
     /**
      * 报名时间
      */
-    @Column(name = "registered_at", nullable = false, updatable = false)
+    @Column(name = "registered_at", nullable = false)
     private LocalDateTime registeredAt;
 
     /**

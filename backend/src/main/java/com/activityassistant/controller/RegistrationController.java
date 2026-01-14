@@ -29,12 +29,6 @@ public class RegistrationController {
     @Autowired
     private RegistrationService registrationService;
 
-    /**
-     * 创建报名
-     *
-     * @param request 创建报名请求
-     * @return 报名详情
-     */
     @PostMapping
     @Operation(summary = "创建报名", description = "用户报名参加活动")
     public ApiResponse<RegistrationVO> createRegistration(@Valid @RequestBody CreateRegistrationRequest request) {
@@ -45,85 +39,55 @@ public class RegistrationController {
     }
 
     /**
-     * 取消报名
-     *
-     * @param id 报名ID
-     * @return 成功消息
+     * 取消/移除报名：
+     * - 报名者本人：取消报名（cancelled）
+     * - 活动创建者/活动内管理员：移除他人报名（removed）
      */
     @DeleteMapping("/{id}")
-    @Operation(summary = "取消报名", description = "取消已报名的活动")
-    public ApiResponse<String> cancelRegistration(@PathVariable String id) {
-        log.info("收到取消报名请求，报名ID: {}", id);
+    @Operation(summary = "取消/移除报名", description = "报名者取消报名；创建者/活动内管理员移除报名")
+    public ApiResponse<String> cancelOrRemoveRegistration(@PathVariable String id) {
+        log.info("收到取消/移除报名请求，报名ID: {}", id);
         String userId = SecurityUtils.getCurrentUserId();
-        registrationService.cancelRegistration(id, userId);
-        return ApiResponse.success("报名取消成功");
+        String action = registrationService.cancelRegistration(id, userId);
+        String message = "removed".equals(action) ? "已移除报名" : "已取消报名";
+        return ApiResponse.success(message);
     }
 
-    /**
-     * 查询活动的报名列表（组织者/管理员）
-     *
-     * @param activityId 活动ID
-     * @param status     报名状态（可选）
-     * @param page       页码
-     * @param size       每页数量
-     * @return 报名列表（分页）
-     */
     @GetMapping("/activity/{activityId}")
-    @Operation(summary = "查询活动报名列表", description = "查询活动的所有报名记录（未登录用户可查看，但信息有限）")
+    @Operation(
+            summary = "查询活动报名列表",
+            description = "创建者/活动内管理员可查看全部报名（含敏感字段）；其他人仅可查看已通过报名（不含敏感字段）"
+    )
     public ApiResponse<Page<RegistrationVO>> getActivityRegistrations(
             @PathVariable String activityId,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "10") Integer size) {
-        log.info("收到查询活动报名列表请求，活动ID: {}, 状态: {}", activityId, status);
-
-        // 使用安全方法获取用户ID，未登录返回null
+            @RequestParam(defaultValue = "10") Integer size
+    ) {
+        log.info("收到查询活动报名列表请求，活动ID: {}, 状态 {}", activityId, status);
         String userId = SecurityUtils.getCurrentUserIdOrNull();
-
-        // 未登录用户也可以查看报名列表（但可能只看到有限信息）
-        Page<RegistrationVO> registrationPage = registrationService.getActivityRegistrations(
-                activityId, status, page, size, userId);
+        Page<RegistrationVO> registrationPage = registrationService.getActivityRegistrations(activityId, status, page, size, userId);
         return ApiResponse.success(registrationPage);
     }
 
-    /**
-     * 查询我的报名列表
-     *
-     * @param status 报名状态（可选）
-     * @param page   页码
-     * @param size   每页数量
-     * @return 报名列表（分页）
-     */
     @GetMapping("/my")
-    @Operation(summary = "查询我的报名列表", description = "查询当前用户的所有报名记录（未登录返回空列表）")
+    @Operation(summary = "查询我的报名列表", description = "查询当前用户的报名记录（未登录返回空列表）")
     public ApiResponse<Page<RegistrationVO>> getMyRegistrations(
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "10") Integer size) {
+            @RequestParam(defaultValue = "10") Integer size
+    ) {
         log.info("收到查询我的报名列表请求");
-
-        // 使用安全方法获取用户ID，未登录返回null
         String userId = SecurityUtils.getCurrentUserIdOrNull();
-
-        // 未登录用户返回空列表
         if (userId == null) {
-            log.info("用户未登录，返回空报名列表");
             return ApiResponse.success(Page.empty());
         }
-
-        Page<RegistrationVO> registrationPage = registrationService.getUserRegistrations(
-                userId, status, page, size);
+        Page<RegistrationVO> registrationPage = registrationService.getUserRegistrations(userId, status, page, size);
         return ApiResponse.success(registrationPage);
     }
 
-    /**
-     * 查询报名详情
-     *
-     * @param id 报名ID
-     * @return 报名详情
-     */
     @GetMapping("/{id}")
-    @Operation(summary = "查询报名详情", description = "根据报名ID查询详情")
+    @Operation(summary = "查询报名详情", description = "报名者本人或创建者/活动内管理员可查看报名详情")
     public ApiResponse<RegistrationVO> getRegistrationDetail(@PathVariable String id) {
         log.info("收到查询报名详情请求，报名ID: {}", id);
         String userId = SecurityUtils.getCurrentUserId();
@@ -131,21 +95,16 @@ public class RegistrationController {
         return ApiResponse.success(registration);
     }
 
-    /**
-     * 审核报名
-     *
-     * @param id      报名ID
-     * @param request 审核请求
-     * @return 报名详情
-     */
     @PutMapping("/{id}/approve")
-    @Operation(summary = "审核报名", description = "审核报名申请（仅组织者/管理员）")
+    @Operation(summary = "审核报名", description = "创建者/活动内管理员审核报名申请")
     public ApiResponse<RegistrationVO> approveRegistration(
             @PathVariable String id,
-            @Valid @RequestBody ApproveRegistrationRequest request) {
+            @Valid @RequestBody ApproveRegistrationRequest request
+    ) {
         log.info("收到审核报名请求，报名ID: {}, 审核结果: {}", id, request.getApproved());
         String userId = SecurityUtils.getCurrentUserId();
         RegistrationVO registration = registrationService.approveRegistration(id, request, userId);
         return ApiResponse.success(registration);
     }
 }
+

@@ -68,11 +68,28 @@ public class ActivityController {
      */
     @GetMapping("/{id}")
     @Operation(summary = "查询活动详情", description = "根据活动ID查询详情")
-    public ApiResponse<ActivityVO> getActivityDetail(@PathVariable String id) {
+    public ApiResponse<ActivityVO> getActivityDetail(@PathVariable String id, @RequestParam(required = false) String shareToken, @RequestParam(required = false) String from) {
         log.info("收到查询活动详情请求，活动ID: {}", id);
         String userId = SecurityUtils.getCurrentUserIdOrNull();
-        ActivityVO activity = activityService.getActivityDetail(id, userId);
+        boolean fromShare = "share".equalsIgnoreCase(from);
+        ActivityVO activity = activityService.getActivityDetail(id, userId, shareToken, fromShare);
         return ApiResponse.success(activity);
+    }
+
+    @GetMapping("/{id}/share-token")
+    @Operation(summary = "获取私密活动分享token", description = "仅组织者/管理员/白名单/已报名用户可获取")
+    public ApiResponse<String> getPrivateActivityShareToken(@PathVariable String id) {
+        String userId = SecurityUtils.getCurrentUserId();
+        String token = activityService.getOrCreatePrivateShareToken(id, userId);
+        return ApiResponse.success(token);
+    }
+
+    @GetMapping("/related-private")
+    @Operation(summary = "查询我相关的私密活动", description = "私密活动在列表页只对相关人用户显示")
+    public ApiResponse<Page<ActivityVO>> getRelatedPrivateActivities(ActivityQueryRequest queryRequest) {
+        String userId = SecurityUtils.getCurrentUserId();
+        Page<ActivityVO> activityPage = activityService.getRelatedPrivateActivities(queryRequest, userId);
+        return ApiResponse.success(activityPage);
     }
 
     /**
@@ -161,6 +178,19 @@ public class ActivityController {
         queryRequest.setSortDirection("desc");
 
         Page<ActivityVO> activityPage = activityService.getActivityList(queryRequest, userId);
+        return ApiResponse.success(activityPage);
+    }
+
+    /**
+     * 查询我管理的活动（当前用户在 administrators 中）
+     */
+    @GetMapping("/managed-activities")
+    @Operation(summary = "查询我管理的活动", description = "查询当前用户作为管理员的活动列表")
+    public ApiResponse<Page<ActivityVO>> getManagedActivities(
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
+        String userId = SecurityUtils.getCurrentUserId();
+        Page<ActivityVO> activityPage = activityService.getManagedActivities(page, size, userId);
         return ApiResponse.success(activityPage);
     }
 }

@@ -98,9 +98,10 @@ public class ActivityStatusUtils {
             return "unknown";
         }
 
-        // 1. 如果数据库状态是取消或草稿，使用数据库状态（这些是固定状态）
-        if ("cancelled".equals(activity.getStatus()) || "draft".equals(activity.getStatus())) {
-            return activity.getStatus();
+        // 1. 固定状态：直接使用数据库 status（不随时间变化）
+        String rawStatus = activity.getStatus();
+        if ("cancelled".equals(rawStatus) || "draft".equals(rawStatus) || "pending".equals(rawStatus)) {
+            return rawStatus;
         }
 
         // 2. 根据时间动态判断状态

@@ -74,6 +74,7 @@ CREATE TABLE activities (
     -- 设置
     need_review TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否需要审核',
     is_public TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否公开（0=私密活动）',
+    share_token VARCHAR(128) DEFAULT NULL COMMENT '私密活动分享访问token',
     is_deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否删除（软删除）',
 
     -- JSON字段（存储动态数据）
@@ -218,7 +219,11 @@ CREATE TABLE feedbacks (
     contact_info VARCHAR(200) DEFAULT NULL COMMENT '联系方式',
     type VARCHAR(50) DEFAULT NULL COMMENT '反馈类型：bug/suggestion/other',
     status VARCHAR(20) NOT NULL DEFAULT 'pending' COMMENT '处理状态：pending/processing/resolved/closed',
+    note TEXT DEFAULT NULL COMMENT '处理备注（仅管理员可见）',
+    handled_by VARCHAR(50) DEFAULT NULL COMMENT '处理人用户ID（系统管理员）',
+    handled_at DATETIME DEFAULT NULL COMMENT '处理时间',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
 
     -- 索引
     INDEX idx_user (user_id),
