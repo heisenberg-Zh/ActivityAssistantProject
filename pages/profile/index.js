@@ -445,7 +445,7 @@ Page({
   },
 
   goEditProfile() {
-    wx.navigateTo({ url: '/pages/profile/edit' });
+    wx.navigateTo({ url: '/pkg-user/profile-edit/index' });
   },
 
   goMyActivities() {
