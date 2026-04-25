@@ -208,6 +208,32 @@ public class RegistrationService {
     }
 
     /**
+     * 查询某系列活动下当前用户最近一次报名记录
+     */
+    public RegistrationVO getLatestRegistrationBySeries(String seriesId, String userId) {
+        if (userId == null || userId.trim().isEmpty()) {
+            throw new BusinessException(PERMISSION_DENIED, "请先登录");
+        }
+        if (seriesId == null || seriesId.trim().isEmpty()) {
+            return null;
+        }
+
+        List<String> statuses = List.of("approved", "pending");
+        List<Registration> registrations = registrationRepository.findLatestBySeriesIdAndUserId(
+                seriesId,
+                userId,
+                statuses,
+                PageRequest.of(0, 1)
+        );
+
+        if (registrations == null || registrations.isEmpty()) {
+            return null;
+        }
+
+        return registrationMapper.toVO(registrations.get(0), true);
+    }
+
+    /**
      * 查询活动报名列表（分页）
      *
      * - 管理者（创建者/活动内管理员）：可查看所有报名记录（含敏感字段）

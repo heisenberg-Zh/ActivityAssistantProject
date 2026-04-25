@@ -1116,6 +1116,12 @@ const registrationAPI = {
     useCache: false // 报名数据实时性要求高，不缓存
   }),
 
+  // 获取当前用户在同系列活动中的最近一次报名
+  getLatestBySeries: (seriesId) => request(`/api/registrations/series/${seriesId}/latest`, {
+    method: 'GET',
+    useCache: false
+  }),
+
   // 审核报名
   approve: (id, data) => request(`/api/registrations/${id}/approve`, {
     method: 'PUT',

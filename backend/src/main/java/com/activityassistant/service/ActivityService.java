@@ -1,6 +1,7 @@
 package com.activityassistant.service;
 
 import com.activityassistant.dto.request.ActivityQueryRequest;
+import com.activityassistant.dto.request.HomeActivityQueryRequest;
 import com.activityassistant.dto.request.CreateActivityRequest;
 import com.activityassistant.dto.request.UpdateActivityRequest;
 import com.activityassistant.dto.response.ActivityVO;
@@ -11,6 +12,8 @@ import com.activityassistant.model.Activity;
 import com.activityassistant.model.Registration;
 import com.activityassistant.repository.ActivityRepository;
 import com.activityassistant.repository.UserRepository;
+import com.activityassistant.security.SystemAdminAccessChecker;
+import com.activityassistant.util.ActivityStatusUtils;
 import jakarta.persistence.criteria.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.Base64;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -67,6 +71,9 @@ public class ActivityService {
     @Autowired
     private MessageService messageService;
 
+    @Autowired
+    private SystemAdminAccessChecker systemAdminAccessChecker;
+
     /**
      * 创建活动
      *
@@ -88,6 +95,22 @@ public class ActivityService {
 
         // 创建活动实体
         Activity activity = activityMapper.toEntity(request, organizerId);
+
+        String sourceActivityId = request.getSourceActivityId();
+        if (sourceActivityId != null && !sourceActivityId.trim().isEmpty()) {
+            Activity sourceActivity = activityRepository.findByIdAndIsDeletedFalse(sourceActivityId)
+                    .orElseThrow(() -> new NotFoundException("复制来源活动不存在"));
+
+            String seriesId = sourceActivity.getSeriesId();
+            if (seriesId == null || seriesId.isBlank()) {
+                seriesId = sourceActivity.getId();
+                sourceActivity.setSeriesId(seriesId);
+                activityRepository.save(sourceActivity);
+            }
+
+            activity.setSeriesId(seriesId);
+            activity.setSourceActivityId(sourceActivity.getId());
+        }
 
         // 私密活动生成分享token（公开活动不需要）
         if (Boolean.FALSE.equals(activity.getIsPublic()) && (activity.getShareToken() == null || activity.getShareToken().isBlank())) {
@@ -221,6 +244,69 @@ public class ActivityService {
     }
 
     /**
+     * 首页活动列表（仅返回首页需要展示的数据）
+     */
+    public Page<ActivityVO> getHomeActivities(HomeActivityQueryRequest queryRequest, String userId) {
+        HomeActivityQueryRequest qr = (queryRequest != null) ? queryRequest : new HomeActivityQueryRequest();
+
+        int safePage = qr.getPage() != null ? qr.getPage() : 0;
+        int safeSize = qr.getSize() != null ? qr.getSize() : 20;
+        if (safeSize < 1) {
+            safeSize = 20;
+        }
+        if (safeSize > 50) {
+            safeSize = 50;
+        }
+
+        Pageable pageable = PageRequest.of(safePage, safeSize);
+
+        boolean includePrivate = Boolean.TRUE.equals(qr.getIncludePrivate()) && userId != null;
+        LocalDateTime endAfter = Boolean.TRUE.equals(qr.getShowEndedToday())
+                ? LocalDate.now().atStartOfDay()
+                : LocalDateTime.now();
+
+        String status = "published";
+
+        Page<Activity> activityPage = includePrivate
+                ? activityRepository.findHomeActivities(userId, status, endAfter, pageable)
+                : activityRepository.findHomePublicActivities(status, endAfter, pageable);
+
+        List<Activity> activities = activityPage.getContent();
+        List<ActivityVO> vos = activities.stream()
+                .map(activity -> activityMapper.toVO(activity, userId))
+                .collect(Collectors.toList());
+
+        if (userId != null && !activities.isEmpty()) {
+            List<String> activityIds = activities.stream()
+                    .map(Activity::getId)
+                    .collect(Collectors.toList());
+
+            List<Registration> registrations = registrationRepository.findByUserIdAndActivityIdInAndStatusIn(
+                    userId,
+                    activityIds,
+                    List.of("approved", "pending")
+            );
+
+            Map<String, String> statusMap = new HashMap<>();
+            for (Registration registration : registrations) {
+                if (registration != null && registration.getActivityId() != null) {
+                    statusMap.put(registration.getActivityId(), registration.getStatus());
+                }
+            }
+
+            for (ActivityVO vo : vos) {
+                String registrationStatus = statusMap.get(vo.getId());
+                if (registrationStatus != null) {
+                    vo.setRegistrationStatus(registrationStatus);
+                    vo.setIsRegistered("approved".equals(registrationStatus));
+                }
+            }
+        }
+
+        return new PageImpl<>(vos, pageable, activityPage.getTotalElements());
+    }
+
+    /**
      * 查询活动列表（支持筛选、搜索、分页）
      *
      * @param queryRequest 查询条件
@@ -257,12 +343,53 @@ public class ActivityService {
 
         Specification<Activity> spec = (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
+            LocalDateTime now = LocalDateTime.now();
 
             // 排除已删除
             predicates.add(criteriaBuilder.isFalse(root.get("isDeleted")));
 
             // 不包含草稿/待发布
             predicates.add(criteriaBuilder.not(root.get("status").in("draft", "pending")));
+
+            // 按状态筛选（支持中文状态标签与底层状态值）
+            if (qr.getStatus() != null && !qr.getStatus().isEmpty()) {
+                String status = qr.getStatus().trim();
+                switch (status) {
+                    case "cancelled":
+                    case "已取消":
+                        predicates.add(criteriaBuilder.equal(root.get("status"), "cancelled"));
+                        break;
+                    case "finished":
+                    case "已结束":
+                        predicates.add(criteriaBuilder.notEqual(root.get("status"), "cancelled"));
+                        predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("endTime"), now));
+                        break;
+                    case "ongoing":
+                    case "进行中":
+                        predicates.add(criteriaBuilder.notEqual(root.get("status"), "cancelled"));
+                        predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("startTime"), now));
+                        predicates.add(criteriaBuilder.greaterThan(root.get("endTime"), now));
+                        break;
+                    case "upcoming":
+                    case "即将开始":
+                        predicates.add(criteriaBuilder.equal(root.get("status"), "published"));
+                        predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("registerDeadline"), now));
+                        predicates.add(criteriaBuilder.greaterThan(root.get("startTime"), now));
+                        break;
+                    case "registering":
+                    case "报名中":
+                        predicates.add(criteriaBuilder.equal(root.get("status"), "published"));
+                        predicates.add(criteriaBuilder.greaterThan(root.get("registerDeadline"), now));
+                        break;
+                    case "published":
+                    case "已发布":
+                        predicates.add(criteriaBuilder.equal(root.get("status"), "published"));
+                        break;
+                    default:
+                        predicates.add(criteriaBuilder.equal(root.get("status"), status));
+                        break;
+                }
+            }
 
             // 按类型筛选
             if (qr.getType() != null && !qr.getType().isEmpty()) {
@@ -289,12 +416,12 @@ public class ActivityService {
      * 查询“我管理的”活动（当前用户在 administrators JSON 数组中）
      */
     public Page<ActivityVO> getManagedActivities(Integer page, Integer size, String userId) {
-        if (userId == null) {
-            return Page.empty();
-        }
-
         int safePage = page != null ? page : 0;
         int safeSize = size != null ? size : 10;
+
+        if (userId == null) {
+            return new PageImpl<>(java.util.Collections.emptyList(), PageRequest.of(safePage, safeSize), 0);
+        }
         // Native SQL uses snake_case columns; avoid Spring Data appending "order by a.createdAt" which breaks in MySQL.
         // Sorting is handled in the native query (ORDER BY a.created_at DESC).
         Pageable pageable = PageRequest.of(safePage, safeSize);
@@ -438,9 +565,18 @@ public class ActivityService {
         Activity activity = activityRepository.findByIdAndIsDeletedFalse(activityId)
                 .orElseThrow(() -> new NotFoundException("活动不存在"));
 
-        // 权限校验：只有组织者可以删除活动
-        if (!activity.getOrganizerId().equals(userId)) {
+        boolean isOrganizer = activity.getOrganizerId().equals(userId);
+        boolean isSystemAdmin = systemAdminAccessChecker.isSystemAdmin(userId);
+        if (!isOrganizer && !isSystemAdmin) {
             throw new BusinessException(PERMISSION_DENIED, "无权删除此活动");
+        }
+
+        if (ActivityStatusUtils.isActivityFinished(activity)) {
+            throw new BusinessException(INVALID_OPERATION, "活动已结束，无法删除");
+        }
+
+        if (!"draft".equals(activity.getStatus()) && !"cancelled".equals(activity.getStatus())) {
+            throw new BusinessException(INVALID_OPERATION, "仅草稿或已取消活动可删除");
         }
 
         // 软删除
@@ -500,8 +636,9 @@ public class ActivityService {
         Activity activity = activityRepository.findByIdAndIsDeletedFalse(activityId)
                 .orElseThrow(() -> new NotFoundException("活动不存在"));
 
-        // 权限校验
-        if (!activity.getOrganizerId().equals(userId)) {
+        boolean isOrganizer = activity.getOrganizerId().equals(userId);
+        boolean isSystemAdmin = systemAdminAccessChecker.isSystemAdmin(userId);
+        if (!isOrganizer && !isSystemAdmin) {
             throw new BusinessException(PERMISSION_DENIED, "无权取消此活动");
         }
 
@@ -509,17 +646,49 @@ public class ActivityService {
         if ("cancelled".equals(activity.getStatus())) {
             throw new BusinessException(INVALID_OPERATION, "活动已取消");
         }
-        if ("finished".equals(activity.getStatus())) {
+        if (ActivityStatusUtils.isActivityFinished(activity)) {
             throw new BusinessException(INVALID_OPERATION, "活动已结束，无法取消");
         }
 
         // 更新状态
         activity.setStatus("cancelled");
-        activityRepository.save(activity);
+        Activity savedActivity = activityRepository.save(activity);
 
         log.info("活动取消成功，活动ID: {}", activityId);
 
-        return activityMapper.toVO(activity, userId);
+        try {
+            List<String> userIds = registrationRepository.findUserIdsByActivityIdAndStatusIn(
+                    savedActivity.getId(),
+                    List.of("approved", "pending")
+            );
+            if (userIds != null && !userIds.isEmpty()) {
+                String timePart = String.format("%s - %s",
+                        savedActivity.getStartTime(),
+                        savedActivity.getEndTime());
+                String placePart = savedActivity.getPlace() == null ? "" : savedActivity.getPlace();
+                String addressPart = savedActivity.getAddress() == null ? "" : "（" + savedActivity.getAddress() + "）";
+
+                String title = savedActivity.getTitle() == null ? "" : savedActivity.getTitle();
+                String content = String.format(
+                        "很抱歉，您报名的活动《%s》已被取消。\n时间：%s\n地点：%s%s\n如有疑问请联系活动组织者。",
+                        title,
+                        timePart,
+                        placePart,
+                        addressPart
+                );
+
+                for (String uid : userIds) {
+                    if (uid == null || uid.isBlank()) {
+                        continue;
+                    }
+                    messageService.createMessage(uid, "activity_cancelled", "活动取消通知", content, savedActivity.getId());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("send activity cancelled messages failed: {}", e.getMessage());
+        }
+
+        return activityMapper.toVO(savedActivity, userId);
     }
 
     /**

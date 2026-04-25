@@ -214,7 +214,7 @@ Page({
       return;
     }
     wx.navigateTo({
-      url: '/pages/statistics/joined-detail'
+      url: '/pkg-stats/joined-detail/index'
     });
   },
 
@@ -240,7 +240,7 @@ Page({
       return;
     }
     wx.navigateTo({
-      url: '/pages/statistics/created-detail'
+      url: '/pkg-stats/created-detail/index'
     });
   },
 

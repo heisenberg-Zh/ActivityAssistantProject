@@ -29,6 +29,11 @@ public class CreateActivityRequest {
     private String desc;
 
     /**
+     * Source activity ID used only in copy scenarios
+     */
+    private String sourceActivityId;
+
+    /**
      * 活动描述（详细说明）
      */
     private String description;

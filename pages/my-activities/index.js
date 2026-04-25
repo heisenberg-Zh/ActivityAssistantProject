@@ -21,10 +21,9 @@ const STATUS_OPTIONS_ALL = [
   { key: '已结束', name: '已结束' }
 ];
 
-const STATUS_OPTIONS_CREATED_MANAGED = [
-  ...STATUS_OPTIONS_ALL,
+const STATUS_OPTIONS_CREATED_MANAGED = STATUS_OPTIONS_ALL.concat([
   { key: '已取消', name: '已取消' }
-];
+]);
 
 const STATUS_OPTIONS_JOINED = [
   { key: 'all', name: '全部' },
@@ -218,7 +217,7 @@ Page({
         .filter(Boolean)
         .filter(item => !createdIds.has(item.id) && !managedIds.has(item.id));
 
-      const all = [...draftItems, ...createdItems, ...managedItems, ...joinedItems];
+      const all = [].concat(draftItems, createdItems, managedItems, joinedItems);
 
       this.setData({ list: all });
       this.applyFilters();
@@ -450,7 +449,7 @@ Page({
 
     switch (action) {
       case 'editDraft':
-        wx.navigateTo({ url: `/pages/activities/create?mode=draft&draftId=${id}` });
+        wx.navigateTo({ url: `/pkg-biz/create/index?mode=draft&draftId=${id}` });
         return;
       case 'deleteDraft':
         this.deleteDraft(id);
@@ -459,10 +458,10 @@ Page({
         wx.navigateTo({ url: `/pages/management/index?id=${id}` });
         return;
       case 'edit':
-        wx.navigateTo({ url: `/pages/activities/create?mode=edit&id=${id}` });
+        wx.navigateTo({ url: `/pkg-biz/create/index?mode=edit&id=${id}` });
         return;
       case 'copy':
-        wx.navigateTo({ url: `/pages/activities/create?mode=copy&id=${id}` });
+        wx.navigateTo({ url: `/pkg-biz/create/index?mode=copy&id=${id}` });
         return;
       case 'detail':
         wx.navigateTo({ url: `/pages/activities/detail?id=${id}` });
@@ -474,7 +473,7 @@ Page({
             wx.showToast({ title: '本活动无需签到', icon: 'none' });
             return;
           }
-          wx.navigateTo({ url: `/pages/checkin/index?id=${id}` });
+          wx.navigateTo({ url: `/pkg-biz/checkin/index?id=${id}` });
           return;
         }
       case 'review':
@@ -482,7 +481,7 @@ Page({
         return;
       case 'register':
       case 'viewRegistration':
-        wx.navigateTo({ url: `/pages/registration/index?id=${id}` });
+        wx.navigateTo({ url: `/pkg-biz/registration/index?id=${id}` });
         return;
       case 'cancelRegistration':
         this.cancelRegistration(id, registrationId);

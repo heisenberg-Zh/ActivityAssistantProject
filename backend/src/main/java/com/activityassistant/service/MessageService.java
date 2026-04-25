@@ -7,10 +7,13 @@ import com.activityassistant.repository.MessageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Collections;
 
 /**
  * 消息服务
@@ -41,7 +44,7 @@ public class MessageService {
         // 游客访问：返回空分页列表
         if (userId == null || userId.isEmpty()) {
             log.info("游客访问消息列表，返回空列表");
-            return Page.empty();
+            return new PageImpl<>(Collections.emptyList(), PageRequest.of(page, size), 0);
         }
 
         Pageable pageable = PageRequest.of(page, size);

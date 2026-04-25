@@ -168,6 +168,89 @@ public interface ActivityRepository extends JpaRepository<Activity, String>, Jpa
     Page<Activity> findManagedActivities(@Param("userId") String userId, Pageable pageable);
 
     /**
+     * 首页活动查询（含公开 + 与用户相关的私密活动）
+     */
+    @Query(
+            value = """
+                    SELECT DISTINCT a.*
+                    FROM activities a
+                    LEFT JOIN registrations r
+                      ON a.id = r.activity_id
+                     AND r.user_id = :userId
+                     AND r.status IN ('approved','pending')
+                    WHERE a.is_deleted = false
+                      AND a.status = :status
+                      AND a.end_time >= :endAfter
+                      AND (
+                        a.is_public = true
+                        OR (
+                          a.is_public = false
+                          AND (
+                            a.organizer_id = :userId
+                            OR (a.administrators IS NOT NULL AND JSON_CONTAINS(a.administrators, JSON_QUOTE(:userId)))
+                            OR r.id IS NOT NULL
+                          )
+                        )
+                      )
+                    ORDER BY a.start_time ASC
+                    """,
+            countQuery = """
+                    SELECT COUNT(DISTINCT a.id)
+                    FROM activities a
+                    LEFT JOIN registrations r
+                      ON a.id = r.activity_id
+                     AND r.user_id = :userId
+                     AND r.status IN ('approved','pending')
+                    WHERE a.is_deleted = false
+                      AND a.status = :status
+                      AND a.end_time >= :endAfter
+                      AND (
+                        a.is_public = true
+                        OR (
+                          a.is_public = false
+                          AND (
+                            a.organizer_id = :userId
+                            OR (a.administrators IS NOT NULL AND JSON_CONTAINS(a.administrators, JSON_QUOTE(:userId)))
+                            OR r.id IS NOT NULL
+                          )
+                        )
+                      )
+                    """,
+            nativeQuery = true
+    )
+    Page<Activity> findHomeActivities(@Param("userId") String userId,
+                                      @Param("status") String status,
+                                      @Param("endAfter") LocalDateTime endAfter,
+                                      Pageable pageable);
+
+    /**
+     * 首页公开活动查询
+     */
+    @Query(
+            value = """
+                    SELECT a.*
+                    FROM activities a
+                    WHERE a.is_deleted = false
+                      AND a.status = :status
+                      AND a.is_public = true
+                      AND a.end_time >= :endAfter
+                    ORDER BY a.start_time ASC
+                    """,
+            countQuery = """
+                    SELECT COUNT(*)
+                    FROM activities a
+                    WHERE a.is_deleted = false
+                      AND a.status = :status
+                      AND a.is_public = true
+                      AND a.end_time >= :endAfter
+                    """,
+            nativeQuery = true
+    )
+    Page<Activity> findHomePublicActivities(@Param("status") String status,
+                                            @Param("endAfter") LocalDateTime endAfter,
+                                            Pageable pageable);
+
+    /**
      * 按时间范围查询活动（用于定时通知）
      */
     List<Activity> findByIsDeletedFalseAndStartTimeBetween(LocalDateTime from, LocalDateTime to);
