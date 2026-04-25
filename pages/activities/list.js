@@ -571,7 +571,7 @@ Page({
     if (action === 'register' || action === 'viewRegistration') {
       markActivityRead(id);
       this.refreshReadFlags();
-      wx.navigateTo({ url: `/pages/registration/index?id=${id}` });
+      wx.navigateTo({ url: `/pkg-biz/registration/index?id=${id}` });
       return;
     }
   },

@@ -784,7 +784,7 @@ Page({
       return;
     }
 
-    let url = `/pages/registration/index?id=${id}`;
+    let url = `/pkg-biz/registration/index?id=${id}`;
     if (detail && detail.isPublic === false) {
       if (shareToken) url += `&shareToken=${encodeURIComponent(shareToken)}`;
       // 报名页需要与详情页一致的分享标记（用于错误提示/策略）
@@ -903,7 +903,7 @@ Page({
       return;
     }
 
-    wx.navigateTo({ url: `/pages/checkin/index?id=${id}` });
+    wx.navigateTo({ url: `/pkg-biz/checkin/index?id=${id}` });
   },
 
   // 打开地图

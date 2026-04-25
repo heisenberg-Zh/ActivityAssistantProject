@@ -46,7 +46,7 @@
       <text class="empty-icon">📈</text>
       <text class="empty-text">暂无趋势数据</text>
       <text class="empty-hint">创建活动，与更多朋友一起玩</text>
-      <navigator url="/pages/activities/create" class="empty-action">立即创建活动</navigator>
+      <navigator url="/pkg-biz/create/index" class="empty-action">立即创建活动</navigator>
     </view>
   </view>
 

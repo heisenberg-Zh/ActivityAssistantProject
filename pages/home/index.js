@@ -289,13 +289,13 @@ Page({
       adminOnly = !!(configRes && configRes.code === 0 && configRes.data && configRes.data.createActivityAdminOnly === true);
     } catch (err) {
       wx.hideLoading();
-      wx.navigateTo({ url: '/pages/activities/create' });
+      wx.navigateTo({ url: '/pkg-biz/create/index' });
       return;
     }
 
     if (!adminOnly) {
       wx.hideLoading();
-      wx.navigateTo({ url: '/pages/activities/create' });
+      wx.navigateTo({ url: '/pkg-biz/create/index' });
       return;
     }
 
@@ -319,7 +319,7 @@ Page({
     wx.hideLoading();
 
     if (isAdmin) {
-      wx.navigateTo({ url: '/pages/activities/create' });
+      wx.navigateTo({ url: '/pkg-biz/create/index' });
       return;
     }
 
@@ -378,7 +378,7 @@ Page({
     }
 
     const id = e.currentTarget.dataset.id;
-    wx.navigateTo({ url: `/pages/registration/index?id=${id}` });
+    wx.navigateTo({ url: `/pkg-biz/registration/index?id=${id}` });
   },
 
   onRegisteredClick(e) {
@@ -398,7 +398,7 @@ Page({
     }
 
     // register / viewRegistration 都跳到报名页（报名页会展示待审核/已报名等状态）
-    wx.navigateTo({ url: `/pages/registration/index?id=${id}` });
+    wx.navigateTo({ url: `/pkg-biz/registration/index?id=${id}` });
   },
 
   getProfileCompletionPromptKey(userId) {
@@ -530,7 +530,7 @@ Page({
   goManualProfileEdit() {
     this.markProfileCompletionPrompted();
     this.setData({ showProfileCompletionDialog: false });
-    wx.navigateTo({ url: '/pages/profile/edit' });
+    wx.navigateTo({ url: '/pkg-user/profile-edit/index' });
   },
 
   skipProfileCompletion() {

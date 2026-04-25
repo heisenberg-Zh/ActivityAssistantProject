@@ -89,7 +89,7 @@ Page({
    */
   goToCreateActivity() {
     wx.navigateTo({
-      url: '/pages/activities/create'
+      url: '/pkg-biz/create/index'
     });
   }
 });

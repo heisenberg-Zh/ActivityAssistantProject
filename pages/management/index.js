@@ -33,7 +33,7 @@ Page({
         icon: '✏️',
         title: '编辑活动',
         desc: '修改活动基本信息',
-        path: '/pages/activities/create',
+        path: '/pkg-biz/create/index',
         availableWhen: ['进行中', '即将开始', '报名中'] // 已结束的活动不可编辑
       },
       {
