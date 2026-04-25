@@ -14,10 +14,16 @@ Page({
     }
   },
 
+  async onShow() {
+    if (this.data.ready) {
+      await this.loadCreateActivityConfig();
+    }
+  },
+
   async ensureSystemAdmin() {
     try {
       const res = await adminAPI.me();
-      const isSystemAdmin = res && res.code === 0 && res.data && res.data.systemAdmin === true;
+      const isSystemAdmin = !!(res && res.code === 0 && res.data && res.data.systemAdmin === true);
       if (!isSystemAdmin) {
         wx.showToast({ title: '无权限访问', icon: 'none' });
         setTimeout(() => wx.navigateBack({ delta: 1 }), 500);
@@ -38,7 +44,9 @@ Page({
       if (res && res.code === 0 && res.data) {
         this.setData({ createActivityAdminOnly: !!res.data.createActivityAdminOnly });
       }
-    } catch (e) {}
+    } catch (err) {
+      console.warn('加载创建活动开关失败:', err);
+    }
   },
 
   async onCreateActivitySwitchChange(e) {
@@ -59,6 +67,10 @@ Page({
     } finally {
       this.setData({ savingCreateActivitySwitch: false });
     }
+  },
+
+  goActivities() {
+    wx.navigateTo({ url: '/pages/admin/activities/index' });
   },
 
   goFeedback() {

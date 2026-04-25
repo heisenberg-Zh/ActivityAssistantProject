@@ -1,16 +1,20 @@
-<view class="section">
-  <view class="card shadow-card admin-card">
-    <text class="admin-title">系统管理</text>
-    <text class="admin-sub">仅系统管理员可见</text>
+<view class="admin-page">
+  <view class="admin-hero">
+    <view class="admin-hero__badge">系统管理员专属</view>
+    <text class="admin-hero__title">系统管理</text>
+    <text class="admin-hero__desc">集中管理核心开关、活动治理与用户反馈处理</text>
   </view>
-</view>
 
-<view class="section">
-  <view class="card shadow-card admin-menu">
-    <view class="admin-setting-item">
-      <view class="admin-setting-body">
-        <text class="admin-setting-title">创建活动开关</text>
-        <text class="admin-setting-desc">开启后仅系统管理员可创建活动</text>
+  <view class="admin-panel">
+    <view class="admin-panel__header">
+      <text class="admin-panel__title">系统管理</text>
+      <text class="admin-panel__sub">仅系统管理员可见</text>
+    </view>
+
+    <view class="admin-switch-row">
+      <view class="admin-switch-row__body">
+        <text class="admin-switch-row__title">创建活动开关</text>
+        <text class="admin-switch-row__desc">开启后仅系统管理员可创建活动</text>
       </view>
       <switch
         checked="{{createActivityAdminOnly}}"
@@ -19,14 +23,25 @@
         color="#3b82f6"
       />
     </view>
-    <view class="admin-menu-divider"></view>
-    <view class="admin-menu-item" bindtap="goFeedback">
-      <view class="admin-menu-icon">📮</view>
-      <view class="admin-menu-body">
-        <text class="admin-menu-title">反馈管理</text>
-        <text class="admin-menu-desc">查看与处理用户反馈</text>
+
+    <view class="admin-menu-list">
+      <view class="admin-menu-item" bindtap="goActivities">
+        <view class="admin-menu-item__icon admin-menu-item__icon--amber">🗂️</view>
+        <view class="admin-menu-item__body">
+          <text class="admin-menu-item__title">活动管理</text>
+          <text class="admin-menu-item__desc">全量活动取消/删除与治理</text>
+        </view>
+        <text class="admin-menu-item__arrow">›</text>
       </view>
-      <text class="admin-menu-arrow">›</text>
+
+      <view class="admin-menu-item" bindtap="goFeedback">
+        <view class="admin-menu-item__icon admin-menu-item__icon--rose">📮</view>
+        <view class="admin-menu-item__body">
+          <text class="admin-menu-item__title">反馈管理</text>
+          <text class="admin-menu-item__desc">查看与处理用户反馈</text>
+        </view>
+        <text class="admin-menu-item__arrow">›</text>
+      </view>
     </view>
   </view>
 </view>
