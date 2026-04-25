@@ -39,6 +39,7 @@ Page({
       initial: '',
       avatarUrl: '' // 添加头像URL字段
     },
+    avatarReady: false,
     stats: [
       { label: '创建活动', value: 0, icon: '🎉', bg: '#93c5fd', color: '#1e3a8a' },
       { label: '参与活动', value: 0, icon: '📅', bg: '#86efac', color: '#14532d' },
@@ -58,6 +59,7 @@ Page({
    * 生命周期函数--监听页面加载
    */
   onLoad(options) {
+    this._skipNextOnShowReload = true;
     this.loadUserData();
   },
 
@@ -65,8 +67,12 @@ Page({
    * 生命周期函数--监听页面显示
    */
   onShow() {
-    // 每次显示时刷新数据
-    this.loadUserData();
+    // 首次进入页面时，onLoad 已经触发过一次加载，这里跳过一次避免重复请求
+    if (this._skipNextOnShowReload) {
+      this._skipNextOnShowReload = false;
+    } else {
+      this.loadUserData();
+    }
     // 加载未读消息数量
     this.loadUnreadMessageCount();
   },
@@ -84,9 +90,65 @@ Page({
   },
 
   /**
+   * 安全准备头像显示
+   * 远程头像先预加载，成功后再显示，避免首次冷加载直接进入渲染链路
+   */
+  prepareAvatarDisplay(avatarUrl) {
+    this._avatarLoadTaskId = (this._avatarLoadTaskId || 0) + 1;
+    const taskId = this._avatarLoadTaskId;
+
+    if (!avatarUrl) {
+      this.setData({
+        avatarReady: false,
+        'user.avatarUrl': ''
+      });
+      return;
+    }
+
+    if (avatarUrl.startsWith('/')) {
+      this.setData({
+        avatarReady: true,
+        'user.avatarUrl': avatarUrl
+      });
+      return;
+    }
+
+    wx.getImageInfo({
+      src: avatarUrl,
+      success: (res) => {
+        if (taskId !== this._avatarLoadTaskId) {
+          return;
+        }
+
+        this.setData({
+          avatarReady: true,
+          'user.avatarUrl': res.path || avatarUrl
+        });
+      },
+      fail: (err) => {
+        if (taskId !== this._avatarLoadTaskId) {
+          return;
+        }
+
+        console.warn('头像预加载失败，降级为首字母头像:', err);
+        this.setData({
+          avatarReady: false,
+          'user.avatarUrl': ''
+        });
+      }
+    });
+  },
+
+  /**
    * 加载用户数据和统计信息
    */
   async loadUserData() {
+    if (this._loadingUserData) {
+      return;
+    }
+
+    this._loadingUserData = true;
+
     try {
       this.setData({ loading: true });
 
@@ -107,6 +169,7 @@ Page({
             initial: '游',
             avatarUrl: ''
           },
+          avatarReady: false,
           stats: [
             { label: '创建活动', value: '-', icon: '🎉', bg: '#93c5fd', color: '#1e3a8a' },
             { label: '参与活动', value: '-', icon: '📅', bg: '#86efac', color: '#14532d' },
@@ -127,12 +190,21 @@ Page({
         console.log('📦 离线Mock模式：从本地存储加载数据');
         this.loadMockUserData();
       } else {
-        // 在线模式：并行请求用户信息和统计数据
-        const [profileRes, statsRes, adminRes] = await Promise.all([
-          userAPI.getProfile(),
-          statisticsAPI.getMyStatistics(),
-          adminAPI.me()
-        ]);
+        const statsPromise = statisticsAPI.getMyStatistics({ showError: false })
+          .catch((err) => {
+            console.warn('加载个人统计失败，降级为保留当前统计数据:', err);
+            return null;
+          });
+
+        const adminPromise = adminAPI.me()
+          .catch((err) => {
+            console.warn('加载管理员状态失败，降级为普通用户菜单:', err);
+            return null;
+          });
+
+        // 在线模式：优先保证用户主信息加载成功，其他接口失败时降级
+        const profileRes = await userAPI.getProfile();
+        const [statsRes, adminRes] = await Promise.all([statsPromise, adminPromise]);
 
         const isSystemAdmin = adminRes && adminRes.code === 0 && adminRes.data && adminRes.data.systemAdmin === true;
         this.setData({
@@ -168,9 +240,12 @@ Page({
               id: userData.id || '',
               tagline: '', // 后端暂无此字段,保留为空
               initial: userName[0] || '用',
-              avatarUrl: avatarUrl // 保持原样，空字符串将显示首字母，有URL则显示图片
-            }
+              avatarUrl: ''
+            },
+            avatarReady: false
           });
+
+          this.prepareAvatarDisplay(avatarUrl);
 
           console.log('用户信息加载完成:', {
             name: userName,
@@ -257,6 +332,7 @@ Page({
             initial: '游',
             avatarUrl: ''
           },
+          avatarReady: false,
           stats: [
             { label: '创建活动', value: '-', icon: '🎉', bg: '#93c5fd', color: '#1e3a8a' },
             { label: '参与活动', value: '-', icon: '📅', bg: '#86efac', color: '#14532d' },
@@ -286,6 +362,7 @@ Page({
             initial: '游',
             avatarUrl: ''
           },
+          avatarReady: false,
           stats: [
             { label: '创建活动', value: '-', icon: '🎉', bg: '#93c5fd', color: '#1e3a8a' },
             { label: '参与活动', value: '-', icon: '📅', bg: '#86efac', color: '#14532d' },
@@ -293,6 +370,8 @@ Page({
           ]
         });
       }
+    } finally {
+      this._loadingUserData = false;
     }
   },
 
@@ -319,8 +398,9 @@ Page({
           id: currentUserId,
           tagline: '',
           initial: (currentUser.name || 'T')[0],
-          avatarUrl: currentUser.avatar || '/activityassistant_avatar_01.png'
+          avatarUrl: ''
         },
+        avatarReady: false,
         stats: [
           { label: '创建活动', value: 12, icon: '🎉', bg: '#93c5fd', color: '#1e3a8a' },
           { label: '参与活动', value: 25, icon: '📅', bg: '#86efac', color: '#14532d' },
@@ -330,6 +410,8 @@ Page({
         menuLinks: buildMenuLinks(false),
         loading: false
       });
+
+      this.prepareAvatarDisplay(currentUser.avatar || '/activityassistant_avatar_01.png');
 
       console.log('✅ 离线数据加载成功');
     } catch (err) {
@@ -342,6 +424,19 @@ Page({
    */
   async loadUnreadMessageCount() {
     try {
+      const token = wx.getStorageSync('token');
+      const isLoggedIn = app.checkLoginStatus && app.checkLoginStatus();
+      if (!token || !isLoggedIn) {
+        const updatedMenuLinks = this.data.menuLinks.map(item => {
+          if (item.key === 'messages') {
+            return { ...item, badge: '' };
+          }
+          return item;
+        });
+        this.setData({ menuLinks: updatedMenuLinks });
+        return;
+      }
+
       const { messageAPI } = require('../../utils/api.js');
 
       // 从后端API获取消息列表
@@ -585,6 +680,7 @@ Page({
                 initial: '游',
                 avatarUrl: ''
               },
+              avatarReady: false,
               stats: [
                 { label: '创建活动', value: '-', icon: '🎉', bg: '#93c5fd', color: '#1e3a8a' },
                 { label: '参与活动', value: '-', icon: '📅', bg: '#86efac', color: '#14532d' },
@@ -615,6 +711,7 @@ Page({
     // 头像加载失败时，清除 avatarUrl，显示首字母
     if (this.data.user.avatarUrl) {
       this.setData({
+        avatarReady: false,
         'user.avatarUrl': ''
       });
     }

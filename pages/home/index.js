@@ -1,7 +1,8 @@
 // pages/home/index.js
-const { activityAPI, registrationAPI, appConfigAPI, userAPI, adminAPI } = require('../../utils/api.js');
+const { activityAPI, registrationAPI, userAPI } = require('../../utils/api.js');
 const { calculateActivityStatus } = require('../../utils/formatter.js');
 const { getActivityImage } = require('../../utils/default-images.js');
+const { getCreateActivityAccess } = require('../../utils/create-activity-access.js');
 const app = getApp();
 
 // 状态到CSS类名的映射
@@ -103,18 +104,33 @@ Page({
     list: [],
     enrichedActivities: [],
     loading: true,
+    canCreateActivity: false,
     showProfileCompletionDialog: false,
     profileCompletionLoading: false
   },
 
   async onLoad() {
+    await this.refreshCreateActivityAccess();
     await this.loadActivities();
   },
 
   // 每次显示页面时刷新数据
   async onShow() {
+    await this.refreshCreateActivityAccess();
     await this.loadActivities();
     this.maybePromptProfileCompletion();
+  },
+
+  async refreshCreateActivityAccess() {
+    if (!app.checkLoginStatus || !app.checkLoginStatus()) {
+      this.setData({ canCreateActivity: true });
+      return;
+    }
+
+    const access = await getCreateActivityAccess();
+    this.setData({
+      canCreateActivity: !!access.canCreate || access.adminOnly === false
+    });
   },
 
   // 下拉刷新
@@ -261,7 +277,6 @@ Page({
   },
 
   async goCreateActivity() {
-    // 检查是否已登录
     if (!app.checkLoginStatus()) {
       wx.showModal({
         title: '需要登录',
@@ -271,61 +286,25 @@ Page({
         confirmColor: '#3b82f6',
         success: (res) => {
           if (res.confirm) {
-            wx.navigateTo({
-              url: '/pages/auth/login'
-            });
+            wx.navigateTo({ url: '/pages/auth/login' });
           }
         }
       });
       return;
     }
 
-    // 读取“创建活动仅管理员可创建”开关（读取失败按关闭兜底）
     wx.showLoading({ title: '请稍候', mask: true });
-
-    let adminOnly = false;
-    try {
-      const configRes = await appConfigAPI.getCreateActivityConfig();
-      adminOnly = !!(configRes && configRes.code === 0 && configRes.data && configRes.data.createActivityAdminOnly === true);
-    } catch (err) {
-      wx.hideLoading();
-      wx.navigateTo({ url: '/pkg-biz/create/index' });
-      return;
-    }
-
-    if (!adminOnly) {
-      wx.hideLoading();
-      wx.navigateTo({ url: '/pkg-biz/create/index' });
-      return;
-    }
-
-    // 开关开启：仅管理员可创建（C=system admin 或 role=admin）
-    let isAdmin = false;
-
-    try {
-      const adminMeRes = await adminAPI.me();
-      isAdmin = isAdmin || !!(adminMeRes && adminMeRes.code === 0 && adminMeRes.data && adminMeRes.data.systemAdmin === true);
-    } catch (err) {
-      // ignore
-    }
-
-    try {
-      const profileRes = await userAPI.getProfile();
-      isAdmin = isAdmin || !!(profileRes && profileRes.code === 0 && profileRes.data && profileRes.data.role === 'admin');
-    } catch (err) {
-      // ignore
-    }
-
+    const access = await getCreateActivityAccess();
     wx.hideLoading();
 
-    if (isAdmin) {
+    if (access.canCreate) {
       wx.navigateTo({ url: '/pkg-biz/create/index' });
       return;
     }
 
     wx.showModal({
       title: '暂无法创建活动',
-      content: '仅管理员或白名单用户才能创建活动。如需创建，请联系管理员。',
+      content: access.message || '暂时无法校验创建权限，请稍后再试',
       showCancel: false,
       confirmText: '我知道了',
       confirmColor: '#3b82f6'

@@ -6,7 +6,7 @@
       <view class="row gap-16 profile-head">
         <!-- 头像：优先显示图片，无图片则显示首字母 -->
         <view class="profile-avatar-wrapper">
-          <image wx:if="{{user.avatarUrl}}" class="profile-avatar-image" src="{{user.avatarUrl}}" mode="aspectFill" binderror="onAvatarError"></image>
+          <image wx:if="{{avatarReady && user.avatarUrl}}" class="profile-avatar-image" src="{{user.avatarUrl}}" mode="aspectFill" binderror="onAvatarError"></image>
           <view wx:else class="profile-avatar-text">{{user.initial}}</view>
         </view>
         <view class="flex-col profile-info">

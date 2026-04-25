@@ -6,13 +6,13 @@
 spring:
   # 数据源配置（生产环境 - 阿里云 RDS）
   datasource:
-    url: jdbc:mysql://rm-2ze1a0954348xj6i6mo.mysql.rds.aliyuncs.com:3306/activity_assistant?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://127.0.0.1:3306/activity_assistant?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:aapDBU}  # 从环境变量读取，默认 aapDBU
     password: ${DB_PASSWORD:aapDBUP@sswrd!5678}  # 从环境变量读取，默认值
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
-      minimum-idle: 10
-      maximum-pool-size: 50
+      minimum-idle: 2
+      maximum-pool-size: 8
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
@@ -21,7 +21,7 @@ spring:
   # JPA 配置
   jpa:
     hibernate:
-      ddl-auto: update  # 改为 update，首次部署自动创建表
+      ddl-auto: validate  # 改为 validate，生产环境仅校验表结构，不自动修改
     show-sql: false   # 生产环境不显示 SQL
     properties:
       hibernate:
@@ -35,6 +35,9 @@ spring:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
 
+server:
+  address: 127.0.0.1
+
 # 日志配置（生产环境优化）
 logging:
   level:
@@ -43,11 +46,11 @@ logging:
     org.springframework.web: INFO       # Spring Web改为INFO，查看请求信息
     org.springframework.security: INFO  # Spring Security改为INFO
     org.hibernate: INFO                 # Hibernate改为INFO，查看SQL
-    com.zaxxer.hikari: DEBUG            # HikariCP 连接池改为 DEBUG，查看连接详情
-    org.springframework.jdbc: DEBUG     # JDBC 改为 DEBUG
+    com.zaxxer.hikari: INFO             # HikariCP 连接池使用 INFO，避免调试日志放大 I/O
+    org.springframework.jdbc: WARN      # JDBC 使用 WARN，减少生产环境日志噪音
   # 日志文件配置（建议配置）
   file:
-    name: /home/aap/logs/application.log
+    name: /home/hdjl/logs/application.log
     max-size: 100MB
     max-history: 30  # 保留30天日志
 
@@ -62,7 +65,7 @@ app:
 
   # CORS 配置（生产环境严格限制来源）
   cors:
-    allowed-origins: ${ALLOWED_ORIGINS:https://aap.hnsgj.com,https://servicewechat.com}  # 从环境变量读取，支持多个域名用逗号分隔
+    allowed-origins: ${ALLOWED_ORIGINS:https://hdjl-api.openlink.net.cn,https://servicewechat.com}  # 从环境变量读取，支持多个域名用逗号分隔
 
   # 微信小程序配置（生产环境使用真实配置）
   wechat:
@@ -72,9 +75,9 @@ app:
 
   # 文件上传配置
   upload:
-    path: /home/aap/uploads  # 生产环境绝对路径
+    path: ${APP_UPLOAD_PATH:/home/hdjl/uploads}  # 生产环境上传目录，默认指向当前服务器实际路径
     url-prefix: /uploads  # 访问URL前缀
-    base-url: https://aap.hnsgj.com/hdtj-api  # 生产环境服务器地址
+    base-url: https://hdjl-api.openlink.net.cn  # 生产环境服务器地址
     max-file-size: 10MB
     max-request-size: 20MB
 

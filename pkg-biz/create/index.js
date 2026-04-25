@@ -1,6 +1,6 @@
 // pages/activities/create.js
 const { activityAPI, registrationAPI, userAPI, administratorAPI } = require('../../utils/api.js');
-const { validateActivityForm } = require('../../utils/validator.js');
+const { validateActivityForm } = require('../utils/validator.js');
 const { formatDateTime } = require('../../utils/datetime.js');
 const { parseDate } = require('../../utils/date-helper.js');
 const {
@@ -9,6 +9,11 @@ const {
   getUserManagedActivities
 } = require('../../utils/activity-management-helper.js');
 const { getActivityImage } = require('../../utils/default-images.js');
+const {
+  getCreateActivityAccess,
+  getDeniedMessage,
+  isRestrictedCreateMode
+} = require('../../utils/create-activity-access.js');
 const scheduler = require('../../utils/scheduler.js');
 const notification = require('../../utils/notification.js');
 const app = getApp();
@@ -2402,7 +2407,7 @@ Page({
   },
 
   // 页面加载
-  onLoad(options) {
+  async onLoad(options) {
     // ========== 【重要】登录前置检查 ==========
     // 创建/编辑活动需要登录，避免用户填写完表单后才发现无权限
     const token = wx.getStorageSync('token');
@@ -2442,6 +2447,26 @@ Page({
     const mode = options.mode || 'create'; // 'create', 'edit', 'copy', 'draft'
     const activityId = options.id || '';
     const draftId = options.draftId || '';
+
+    if (isRestrictedCreateMode(mode)) {
+      const access = await getCreateActivityAccess();
+      if (!access.canCreate) {
+        wx.showModal({
+          title: '无权限进入',
+          content: access.success ? getDeniedMessage(mode) : (access.message || '暂时无法校验创建权限，请稍后再试'),
+          showCancel: false,
+          confirmText: '我知道了',
+          success: () => {
+            if (getCurrentPages().length > 1) {
+              wx.navigateBack({ delta: 1 });
+              return;
+            }
+            wx.switchTab({ url: '/pages/home/index' });
+          }
+        });
+        return;
+      }
+    }
 
     this.setData({ mode, activityId, currentDraftId: mode === 'draft' ? draftId : '' });
 

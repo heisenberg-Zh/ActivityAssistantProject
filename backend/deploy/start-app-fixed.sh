@@ -18,9 +18,9 @@ echo ""
 
 # 配置参数
 APP_NAME="activity-assistant"
-APP_JAR="/home/aap/activity-assistant-1.0.0.jar"
-APP_DIR="/home/aap"
-LOG_DIR="/home/aap/logs"
+APP_JAR="/home/hdjl/activity-assistant-backend-1.0.0.jar"
+APP_DIR="/home/hdjl"
+LOG_DIR="/home/hdjl/logs"
 LOG_FILE="${LOG_DIR}/application.log"
 PID_FILE="${APP_DIR}/${APP_NAME}.pid"
 
@@ -32,10 +32,11 @@ export DB_PASSWORD='aapDBUP@sswrd!5678'
 # 应用配置
 export JWT_SECRET=HLUKzIBeh1cai5lRu8bjrWVynSmMPQgG
 export WECHAT_APP_ID=wx92bf60c1218c0abc
-export WECHAT_APP_SECRET=9830896ed8dc4314e44b2285a9c211e4
+export WECHAT_APP_SECRET=362111eb11c7fd21118d16f8fac909c1
+export superman=o_mJt1zNSOSRNgIRUbniW2IG53vI
 
 # JVM 参数
-JVM_OPTS="-Xms512m -Xmx1024m"
+JVM_OPTS="-Xms256m -Xmx384m"
 JVM_OPTS="${JVM_OPTS} -XX:+UseG1GC"
 JVM_OPTS="${JVM_OPTS} -XX:MaxGCPauseMillis=200"
 JVM_OPTS="${JVM_OPTS} -Dfile.encoding=UTF-8"

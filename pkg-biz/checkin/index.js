@@ -3,8 +3,8 @@ const { activityAPI, checkinAPI, registrationAPI } = require('../../utils/api.js
 const { validateCheckinLocation, formatDistance } = require('../../utils/location.js');
 const { isInCheckinWindow, isLate, formatDateTime } = require('../../utils/datetime.js');
 const { formatCheckinStatus, calculateActivityStatus } = require('../../utils/formatter.js');
-const { getCurrentUserId } = require('../../utils/user-helper.js');
-const { submitGuard } = require('../../utils/submit-guard.js');
+const { getCurrentUserId } = require('../utils/user-helper.js');
+const { submitGuard } = require('../utils/submit-guard.js');
 
 Page({
   data: {

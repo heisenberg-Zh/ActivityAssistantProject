@@ -36,7 +36,7 @@
 
 <view class="px-24 quick-actions">
   <view class="quick-grid quick-grid--two">
-    <view class="quick-card" bindtap="goCreateActivity">
+    <view wx:if="{{canCreateActivity}}" class="quick-card" bindtap="goCreateActivity">
       <view class="quick-icon quick-icon--blue">
         <view class="quick-icon-plus quick-icon-plus--vertical"></view>
         <view class="quick-icon-plus quick-icon-plus--horizontal"></view>

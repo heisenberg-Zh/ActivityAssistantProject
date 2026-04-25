@@ -267,6 +267,12 @@ App({
    * 核心逻辑：调用wx.login获取code，然后调用后端登录接口
    */
   async performSilentLogin() {
+    if (this._silentLoginPromise) {
+      console.log('🔁 复用进行中的静默登录请求');
+      return this._silentLoginPromise;
+    }
+
+    this._silentLoginPromise = (async () => {
     try {
       console.log('🔄 执行静默登录...');
 
@@ -333,7 +339,12 @@ App({
     } catch (err) {
       console.error('❌ 静默登录异常:', err);
       // 异常不影响使用，允许游客模式
+    } finally {
+      this._silentLoginPromise = null;
     }
+    })();
+
+    return this._silentLoginPromise;
   },
 
   // 要求登录

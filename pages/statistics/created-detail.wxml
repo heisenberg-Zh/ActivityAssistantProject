@@ -1,4 +1,4 @@
-<!-- pages/statistics/created-detail.wxml -->
+﻿<!-- pages/statistics/created-detail.wxml -->
 <view class="container">
   <!-- 核心数据卡片 -->
   <view class="summary-section">
@@ -46,9 +46,10 @@
       <text class="empty-icon">📈</text>
       <text class="empty-text">暂无趋势数据</text>
       <text class="empty-hint">创建活动，与更多朋友一起玩</text>
-      <navigator url="/pkg-biz/create/index" class="empty-action">立即创建活动</navigator>
+      <view wx:if="{{canCreateActivity}}" class="empty-action" bindtap="goCreateActivity">立即创建活动</view>
     </view>
   </view>
 
   <view class="bottom-space"></view>
 </view>
+

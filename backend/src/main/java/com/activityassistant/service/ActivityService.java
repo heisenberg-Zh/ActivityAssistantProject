@@ -74,6 +74,9 @@ public class ActivityService {
     @Autowired
     private SystemAdminAccessChecker systemAdminAccessChecker;
 
+    @Autowired
+    private AppFeatureConfigService appFeatureConfigService;
+
     /**
      * 创建活动
      *
@@ -83,6 +86,10 @@ public class ActivityService {
      */
     @Transactional
     public ActivityVO createActivity(CreateActivityRequest request, String organizerId) {
+        if (appFeatureConfigService.isCreateActivityAdminOnlyEnabled()
+                && !systemAdminAccessChecker.isSystemAdmin(organizerId)) {
+            throw new BusinessException(PERMISSION_DENIED, "当前仅系统管理员可创建活动");
+        }
         log.info("创建活动，组织者ID: {}, 标题: {}", organizerId, request.getTitle());
 
         // 验证用户是否存在
