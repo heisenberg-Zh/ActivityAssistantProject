@@ -11,8 +11,8 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 APP_NAME="activity-assistant"
-APP_JAR="/home/aap/activity-assistant-1.0.0.jar"
-PID_FILE="/home/aap/${APP_NAME}.pid"
+APP_JAR="/home/hdjl/activity-assistant-backend-1.0.0.jar"
+PID_FILE="/home/hdjl/${APP_NAME}.pid"
 
 echo -e "${YELLOW}正在停止 ActivityAssistant...${NC}"
 
