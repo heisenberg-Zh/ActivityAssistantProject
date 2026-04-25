@@ -2,6 +2,7 @@
 const { activityAPI, registrationAPI, reviewAPI } = require('../../utils/api.js');
 const { calculateActivityStatus, formatRegistrationStatus } = require('../../utils/formatter.js');
 const { isBeforeRegisterDeadline } = require('../../utils/datetime.js');
+const { getCreateActivityAccess, getDeniedMessage } = require('../../utils/create-activity-access.js');
 const app = getApp();
 
 const ROLE_OPTIONS = [
@@ -440,7 +441,7 @@ Page({
     this.setData({ display });
   },
 
-  handleAction(e) {
+  async handleAction(e) {
     const action = e.currentTarget.dataset.action;
     const id = e.currentTarget.dataset.id;
     const registrationId = e.currentTarget.dataset.registrationId;
@@ -449,6 +450,13 @@ Page({
 
     switch (action) {
       case 'editDraft':
+        {
+          const access = await getCreateActivityAccess();
+          if (!access.canCreate) {
+            wx.showModal({ title: '暂无法操作', content: getDeniedMessage('draft'), showCancel: false });
+            return;
+          }
+        }
         wx.navigateTo({ url: `/pkg-biz/create/index?mode=draft&draftId=${id}` });
         return;
       case 'deleteDraft':
@@ -461,6 +469,13 @@ Page({
         wx.navigateTo({ url: `/pkg-biz/create/index?mode=edit&id=${id}` });
         return;
       case 'copy':
+        {
+          const access = await getCreateActivityAccess();
+          if (!access.canCreate) {
+            wx.showModal({ title: '暂无法操作', content: getDeniedMessage('copy'), showCancel: false });
+            return;
+          }
+        }
         wx.navigateTo({ url: `/pkg-biz/create/index?mode=copy&id=${id}` });
         return;
       case 'detail':

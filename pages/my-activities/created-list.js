@@ -2,19 +2,29 @@
 const { activityAPI } = require('../../utils/api.js');
 const { parseDate } = require('../../utils/date-helper.js');
 const { calculateActivityStatus } = require('../../utils/formatter.js');
+const { getCreateActivityAccess } = require('../../utils/create-activity-access.js');
 const app = getApp();
 
 Page({
   data: {
     activities: [],
-    loading: true
+    loading: true,
+    canCreateActivity: false
   },
 
   /**
    * 生命周期函数--监听页面加载
    */
-  onLoad(options) {
+  async onLoad(options) {
+    await this.refreshCreateActivityAccess();
     this.loadActivities();
+  },
+
+  async refreshCreateActivityAccess() {
+    const access = await getCreateActivityAccess();
+    this.setData({
+      canCreateActivity: !!access.canCreate || access.adminOnly === false
+    });
   },
 
   /**
@@ -87,7 +97,17 @@ Page({
   /**
    * 跳转到创建活动页
    */
-  goToCreateActivity() {
+  async goToCreateActivity() {
+    const access = await getCreateActivityAccess();
+    if (!access.canCreate) {
+      wx.showModal({
+        title: '暂无法创建活动',
+        content: access.message || '暂时无法校验创建权限，请稍后再试',
+        showCancel: false
+      });
+      return;
+    }
+
     wx.navigateTo({
       url: '/pkg-biz/create/index'
     });

@@ -1,11 +1,11 @@
-<!-- pages/my-activities/created-list.wxml -->
+﻿<!-- pages/my-activities/created-list.wxml -->
 <view class="container">
   <!-- 空状态 -->
   <view wx:if="{{activities.length === 0}}" class="empty-state">
     <view class="empty-icon">🎯</view>
     <text class="empty-title">还没有创建活动</text>
     <text class="empty-desc">立即发起第一场活动！</text>
-    <view class="empty-btn" bindtap="goToCreateActivity">创建活动</view>
+    <view wx:if="{{canCreateActivity}}" class="empty-btn" bindtap="goToCreateActivity">创建活动</view>
   </view>
 
   <!-- 活动列表 -->
@@ -28,3 +28,4 @@
     </block>
   </view>
 </view>
+

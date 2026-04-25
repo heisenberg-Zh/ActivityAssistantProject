@@ -2,6 +2,7 @@
 const wxCharts = require('../../utils/wxcharts/wxcharts-full.js');
 const { activityAPI } = require('../../utils/api.js');
 const { parseDate } = require('../../utils/date-helper.js');
+const { getCreateActivityAccess } = require('../../utils/create-activity-access.js');
 const app = getApp();
 
 let pieChart = null;
@@ -14,13 +15,14 @@ Page({
     totalJoined: 0,
     avgRate: '0.0',
     canvasWidth: 0,
-    canvasHeight: 0
+    canvasHeight: 0,
+    canCreateActivity: false
   },
 
   /**
    * 生命周期函数--监听页面加载
    */
-  onLoad(options) {
+  async onLoad(options) {
     console.log('📊 [created-detail] 页面加载，使用 wx-charts');
 
     // 获取系统信息以设置 canvas 尺寸
@@ -34,7 +36,29 @@ Page({
       canvasHeight
     });
 
+    await this.refreshCreateActivityAccess();
     this.loadStatistics();
+  },
+
+  async refreshCreateActivityAccess() {
+    const access = await getCreateActivityAccess();
+    this.setData({
+      canCreateActivity: !!access.canCreate || access.adminOnly === false
+    });
+  },
+
+  async goCreateActivity() {
+    const access = await getCreateActivityAccess();
+    if (!access.canCreate) {
+      wx.showModal({
+        title: '暂无法创建活动',
+        content: access.message || '暂时无法校验创建权限，请稍后再试',
+        showCancel: false
+      });
+      return;
+    }
+
+    wx.navigateTo({ url: '/pkg-biz/create/index' });
   },
 
   /**
