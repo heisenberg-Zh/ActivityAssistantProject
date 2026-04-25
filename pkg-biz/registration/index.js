@@ -1,10 +1,10 @@
 // pages/registration/index.js
 const { activityAPI, registrationAPI, userAPI } = require('../../utils/api.js');
-const { validateRegistrationForm } = require('../../utils/validator.js');
+const { validateRegistrationForm } = require('../utils/validator.js');
 const { formatMobile, formatMoney, getAvatarColor, calculateActivityStatus } = require('../../utils/formatter.js');
 const { formatDateCN, isBeforeRegisterDeadline } = require('../../utils/datetime.js');
-const { getCurrentUserId } = require('../../utils/user-helper.js');
-const { submitGuard } = require('../../utils/submit-guard.js');
+const { getCurrentUserId } = require('../utils/user-helper.js');
+const { submitGuard } = require('../utils/submit-guard.js');
 const { getActivityImage } = require('../../utils/default-images.js');
 const { markActivityRead } = require('../../utils/activity-read.js');
 

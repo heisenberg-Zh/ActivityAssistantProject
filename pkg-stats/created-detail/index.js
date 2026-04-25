@@ -1,5 +1,5 @@
 // pages/statistics/created-detail.js
-const wxCharts = require('../../utils/wxcharts/wxcharts-full.js');
+const wxCharts = require('../utils/wxcharts-full.js');
 const { activityAPI } = require('../../utils/api.js');
 const { parseDate } = require('../../utils/date-helper.js');
 const app = getApp();
