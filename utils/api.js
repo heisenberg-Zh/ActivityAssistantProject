@@ -1218,10 +1218,11 @@ const statisticsAPI = {
   }),
 
   // 获取我的统计
-  getMyStatistics: () => request('/api/statistics/my', {
+  getMyStatistics: (options = {}) => request('/api/statistics/my', {
     method: 'GET',
     useCache: true,
-    cacheMaxAge: 2 * 60 * 1000  // 缓存2分钟
+    cacheMaxAge: 2 * 60 * 1000,  // 缓存2分钟
+    ...options
   })
 };
 
@@ -1325,12 +1326,14 @@ const favoriteAPI = {
 // 消息API
 const messageAPI = {
   // 获取我的消息列表（减少重试次数，避免大量错误日志）
-  getMyMessages: (params = {}) => request('/api/messages/my', {
+  getMyMessages: (params = {}, options = {}) => request('/api/messages/my', {
     method: 'GET',
     data: params,  // 支持 page, size, category 参数
     useCache: false,  // 消息数据实时性要求高，不缓存
     showLoading: false,
-    retryCount: 0  // 消息接口失败不重试，直接显示空列表或降级
+    showError: false,
+    retryCount: 0,  // 消息接口失败不重试，直接显示空列表或降级
+    ...options
   }),
 
   // 标记消息已读
@@ -1481,19 +1484,25 @@ const feedbackAPI = {
 // 应用配置API（需要登录，前端用于开关控制）
 const appConfigAPI = {
   // 获取“创建活动仅管理员可创建”开关
-  getCreateActivityConfig: () => request('/api/app-config/create-activity', {
+  getCreateActivityConfig: (options = {}) => request('/api/app-config/create-activity', {
     method: 'GET',
     useCache: false,
-    showLoading: false
+    showLoading: false,
+    showError: false,
+    retryCount: 0,
+    ...options
   })
 };
 
 const adminAPI = {
   // 查询当前用户是否系统管理员
-  me: () => request('/api/admin/me', {
+  me: (options = {}) => request('/api/admin/me', {
     method: 'GET',
     useCache: false,
-    showLoading: false
+    showLoading: false,
+    showError: false,
+    retryCount: 0,
+    ...options
   }),
 
   // 系统管理员：查询活动列表（不含草稿/待发布）

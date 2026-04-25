@@ -76,6 +76,40 @@ const getErrorMessage = (errorType, error = {}) => {
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
+ * 判断错误是否适合重试
+ * 仅对瞬时性问题重试：超时、断网、5xx、无状态码的请求失败
+ */
+const shouldRetryError = (error = {}) => {
+  const statusCode = Number(error.statusCode || 0);
+
+  if (error.type === 'AUTH_EXPIRED') {
+    return false;
+  }
+
+  if (error.type === NetworkErrorType.PARSE_ERROR) {
+    return false;
+  }
+
+  if (
+    error.type === NetworkErrorType.TIMEOUT ||
+    error.type === NetworkErrorType.NO_NETWORK ||
+    error.type === NetworkErrorType.SERVER_ERROR
+  ) {
+    return true;
+  }
+
+  if (statusCode >= 500) {
+    return true;
+  }
+
+  if (!statusCode && error.type === NetworkErrorType.REQUEST_FAIL) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
  * 带重试的网络请求
  * @param {Function} requestFn - 请求函数
  * @param {Object} options - 配置选项
@@ -134,11 +168,14 @@ const requestWithRetry = async (requestFn, options = {}) => {
         lastError = error;
         console.warn(`[Request] 第 ${attemptCount} 次请求失败:`, error);
 
-        // 如果还有重试次数，延迟后重试
-        if (i < config.retryCount) {
+        // 仅瞬时错误允许重试；403/404/401/解析错误等直接结束
+        if (i < config.retryCount && shouldRetryError(error)) {
           console.log(`[Request] ${config.retryDelay}ms 后重试...`);
           await delay(config.retryDelay);
+          continue;
         }
+
+        throw error;
       }
     }
 
