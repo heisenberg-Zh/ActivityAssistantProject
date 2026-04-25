@@ -61,6 +61,11 @@ public interface RegistrationRepository extends JpaRepository<Registration, Stri
     List<Registration> findByUserIdAndStatusIn(String userId, List<String> statuses);
 
     /**
+     * 查询用户在指定活动集合中的报名记录（指定多个状态）
+     */
+    List<Registration> findByUserIdAndActivityIdInAndStatusIn(String userId, List<String> activityIds, List<String> statuses);
+
+    /**
      * 根据活动ID查询报名列表（分页）
      *
      * @param activityId 活动ID
@@ -182,4 +187,29 @@ public interface RegistrationRepository extends JpaRepository<Registration, Stri
      */
     @Query("SELECT r.userId FROM Registration r WHERE r.activityId = :activityId AND r.status = :status")
     List<String> findUserIdsByActivityIdAndStatus(@Param("activityId") String activityId, @Param("status") String status);
+
+    /**
+     * Query user IDs by activity and multiple statuses for notification scenarios
+     */
+    @Query("SELECT r.userId FROM Registration r WHERE r.activityId = :activityId AND r.status IN :statuses")
+    List<String> findUserIdsByActivityIdAndStatusIn(@Param("activityId") String activityId, @Param("statuses") List<String> statuses);
+
+    /**
+     * 查询某系列活动下用户最近一次报名记录
+     */
+    @Query("""
+            SELECT r
+            FROM Registration r
+            JOIN Activity a ON r.activityId = a.id
+            WHERE a.seriesId = :seriesId
+              AND r.userId = :userId
+              AND r.status IN :statuses
+            ORDER BY r.registeredAt DESC
+            """)
+    List<Registration> findLatestBySeriesIdAndUserId(
+            @Param("seriesId") String seriesId,
+            @Param("userId") String userId,
+            @Param("statuses") List<String> statuses,
+            Pageable pageable
+    );
 }

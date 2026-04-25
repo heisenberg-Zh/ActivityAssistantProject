@@ -33,6 +33,16 @@ public class ActivityVO {
     private String desc;
 
     /**
+     * Series activity ID
+     */
+    private String seriesId;
+
+    /**
+     * Source activity ID
+     */
+    private String sourceActivityId;
+
+    /**
      * 活动描述（详细说明/活动说明及注意事项）
      */
     private String description;
@@ -246,4 +256,9 @@ public class ActivityVO {
      * 当前用户是否已报名
      */
     private Boolean isRegistered;
+
+    /**
+     * 当前用户报名状态（pending/approved）
+     */
+    private String registrationStatus;
 }

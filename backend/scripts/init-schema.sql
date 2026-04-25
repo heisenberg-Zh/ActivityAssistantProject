@@ -19,7 +19,7 @@ DROP TABLE IF EXISTS activities;
 DROP TABLE IF EXISTS users;
 
 -- ============================================
--- 1. 用户表 (users)
+-- 1. 用户表(users)
 -- ============================================
 CREATE TABLE users (
     id VARCHAR(36) PRIMARY KEY COMMENT '用户ID（UUID）',
@@ -38,13 +38,15 @@ CREATE TABLE users (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
 -- ============================================
--- 2. 活动表 (activities)
+-- 2. 活动表(activities)
 -- ============================================
 CREATE TABLE activities (
     id VARCHAR(36) PRIMARY KEY COMMENT '活动ID（UUID）',
     title VARCHAR(200) NOT NULL COMMENT '活动标题',
     description TEXT COMMENT '活动描述',
     organizer_id VARCHAR(36) NOT NULL COMMENT '组织者ID',
+    series_id VARCHAR(36) DEFAULT NULL COMMENT '系列活动ID',
+    source_activity_id VARCHAR(36) DEFAULT NULL COMMENT '复制来源活动ID',
 
     -- 分类和状态
     type VARCHAR(50) DEFAULT NULL COMMENT '活动类型：运动/聚会/培训/户外',
@@ -91,7 +93,7 @@ CREATE TABLE activities (
     recurring_group_id VARCHAR(36) DEFAULT NULL COMMENT '周期性活动组ID',
     recurring_config JSON DEFAULT NULL COMMENT '周期配置（JSON）',
 
-    -- 时间戳
+    -- 时间字段
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
 
@@ -101,11 +103,14 @@ CREATE TABLE activities (
     INDEX idx_type_status (type, status),
     INDEX idx_start_time (start_time),
     INDEX idx_is_public (is_public),
-    INDEX idx_is_deleted (is_deleted)
+    INDEX idx_is_deleted (is_deleted),
+    INDEX idx_home_filter (is_deleted, is_public, status, end_time, start_time),
+    INDEX idx_series_id (series_id),
+    INDEX idx_source_activity_id (source_activity_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='活动表';
 
 -- ============================================
--- 3. 报名表 (registrations)
+-- 3. 报名表(registrations)
 -- ============================================
 CREATE TABLE registrations (
     id VARCHAR(36) PRIMARY KEY COMMENT '报名ID（UUID）',
@@ -134,11 +139,12 @@ CREATE TABLE registrations (
     INDEX idx_status (status),
     INDEX idx_group (group_id),
     INDEX idx_user (user_id),
+    INDEX idx_user_status_activity (user_id, status, activity_id),
     INDEX idx_registered (registered_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='报名表';
 
 -- ============================================
--- 4. 签到记录表 (checkins)
+-- 4. 签到记录表(checkins)
 -- ============================================
 CREATE TABLE checkins (
     id VARCHAR(36) PRIMARY KEY COMMENT '签到ID（UUID）',
@@ -168,7 +174,7 @@ CREATE TABLE checkins (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='签到记录表';
 
 -- ============================================
--- 5. 消息表 (messages)
+-- 5. 消息表(messages)
 -- ============================================
 CREATE TABLE messages (
     id VARCHAR(36) PRIMARY KEY COMMENT '消息ID（UUID）',
@@ -192,7 +198,7 @@ CREATE TABLE messages (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='消息表';
 
 -- ============================================
--- 6. 收藏表 (favorites)
+-- 6. 收藏表(favorites)
 -- ============================================
 CREATE TABLE favorites (
     id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '收藏ID（自增）',
@@ -210,7 +216,7 @@ CREATE TABLE favorites (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='收藏表';
 
 -- ============================================
--- 7. 用户反馈表 (feedbacks)
+-- 7. 用户反馈表(feedbacks)
 -- ============================================
 CREATE TABLE feedbacks (
     id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '反馈ID（自增）',
@@ -235,6 +241,8 @@ CREATE TABLE feedbacks (
 -- 完成提示
 -- ============================================
 SELECT '数据库表结构创建完成！' AS message;
-SELECT CONCAT('总共创建了 ', COUNT(*), ' 张表') AS summary
+SELECT CONCAT('总共创建了', COUNT(*), ' 张表') AS summary
 FROM information_schema.tables
 WHERE table_schema = 'activity_assistant';
+
+

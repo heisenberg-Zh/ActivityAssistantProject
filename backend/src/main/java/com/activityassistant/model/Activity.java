@@ -46,6 +46,18 @@ public class Activity {
     private String desc;
 
     /**
+     * Series activity ID used for activity copy linkage
+     */
+    @Column(name = "series_id", length = 36)
+    private String seriesId;
+
+    /**
+     * Source activity ID
+     */
+    @Column(name = "source_activity_id", length = 36)
+    private String sourceActivityId;
+
+    /**
      * 活动描述（详细说明）
      */
     @Column(name = "description", columnDefinition = "TEXT")
