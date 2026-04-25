@@ -1,4 +1,4 @@
-// utils/config.js - 全局配置文件
+﻿// utils/config.js - 全局配置文件
 
 /**
  * 环境配置
@@ -18,7 +18,7 @@ const ENV_CONFIG = {
     description: '开发环境（需在微信开发者工具中禁用域名校验）'
   },
   production: {
-    baseUrl: 'https://aap.hnsgj.com/hdtj-api',  // 生产环境API地址（HTTPS域名）
+    baseUrl: 'https://hdjl-api.openlink.net.cn',  // 生产环境API地址（HTTPS域名）
     useMock: false,
     description: '生产环境（需在微信公众平台配置合法服务器域名）'
   },
@@ -210,9 +210,9 @@ const ROUTES = {
   home: '/pages/home/index',
   activityList: '/pages/activities/list',
   activityDetail: '/pages/activities/detail',
-  activityCreate: '/pages/activities/create',
-  registration: '/pages/registration/index',
-  checkin: '/pages/checkin/index',
+  activityCreate: '/pkg-biz/create/index',
+  registration: '/pkg-biz/registration/index',
+  checkin: '/pkg-biz/checkin/index',
   statistics: '/pages/statistics/index',
   profile: '/pages/profile/index',
   myActivities: '/pages/my-activities/index',
@@ -230,3 +230,4 @@ module.exports = {
   STORAGE_KEYS,
   ROUTES
 };
+
