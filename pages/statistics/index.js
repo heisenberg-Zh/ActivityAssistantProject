@@ -1,5 +1,6 @@
 // pages/statistics/index.js
 const { statisticsAPI } = require('../../utils/api.js');
+const { getCreateActivityAccess } = require('../../utils/create-activity-access.js');
 const app = getApp();
 
 Page({
@@ -14,7 +15,9 @@ Page({
     joinedStats: [],
     createdStats: [],
     loading: true,
-    isLoggedIn: false  // 添加登录状态标识
+    isLoggedIn: false,
+    canCreateActivity: false,
+    canViewCreatedDetail: false
   },
 
   /**
@@ -35,7 +38,7 @@ Page({
   /**
    * 检查登录状态并加载数据
    */
-  checkAndLoadData() {
+  async checkAndLoadData() {
     const isLoggedIn = app.checkLoginStatus();
     this.setData({ isLoggedIn });
 
@@ -45,11 +48,13 @@ Page({
       this.setData({
         loading: false,
         joinedStats: [],
-        createdStats: []
+        createdStats: [],
+        canCreateActivity: false,
+        canViewCreatedDetail: false
       });
     } else {
       // 已登录：加载统计数据
-      this.loadStatistics();
+      await this.loadStatistics();
     }
   },
 
@@ -139,9 +144,19 @@ Page({
           }
         ];
 
+        let canCreateActivity = false;
+        try {
+          const access = await getCreateActivityAccess();
+          canCreateActivity = !!access.canCreate || access.adminOnly === false;
+        } catch (accessErr) {
+          console.warn('加载创建活动权限失败:', accessErr);
+        }
+
         this.setData({
           joinedStats,
           createdStats,
+          canCreateActivity,
+          canViewCreatedDetail: hasCreatedActivities || canCreateActivity,
           loading: false
         });
       } else {
@@ -239,6 +254,16 @@ Page({
       this.showLoginGuide();
       return;
     }
+
+    if (!this.data.canViewCreatedDetail) {
+      wx.showModal({
+        title: '暂不可用',
+        content: '当前仅系统管理员可创建活动，暂无可查看的创建统计详情。',
+        showCancel: false
+      });
+      return;
+    }
+
     wx.navigateTo({
       url: '/pkg-stats/created-detail/index'
     });

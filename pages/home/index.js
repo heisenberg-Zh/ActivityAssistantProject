@@ -1,5 +1,5 @@
 // pages/home/index.js
-const { activityAPI, registrationAPI, userAPI } = require('../../utils/api.js');
+const { activityAPI, registrationAPI, userAPI, appConfigAPI } = require('../../utils/api.js');
 const { calculateActivityStatus } = require('../../utils/formatter.js');
 const { getActivityImage } = require('../../utils/default-images.js');
 const { getCreateActivityAccess } = require('../../utils/create-activity-access.js');
@@ -123,7 +123,19 @@ Page({
 
   async refreshCreateActivityAccess() {
     if (!app.checkLoginStatus || !app.checkLoginStatus()) {
-      this.setData({ canCreateActivity: true });
+      try {
+        const configRes = await appConfigAPI.getCreateActivityConfig();
+        const adminOnly = !!(
+          configRes
+          && configRes.code === 0
+          && configRes.data
+          && configRes.data.createActivityAdminOnly === true
+        );
+        this.setData({ canCreateActivity: !adminOnly });
+      } catch (err) {
+        console.warn('加载创建活动开关失败:', err);
+        this.setData({ canCreateActivity: false });
+      }
       return;
     }
 
