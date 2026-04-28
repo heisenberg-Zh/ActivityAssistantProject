@@ -13,7 +13,7 @@ const getCurrentUserId = () => {
 
   // 如果全局状态未初始化，尝试从本地存储读取
   try {
-    const { getSecureStorage } = require('./security.js');
+    const { getSecureStorage } = require('../../utils/security.js');
     const storedUserId = getSecureStorage('currentUserId');
     if (storedUserId) {
       return storedUserId;
@@ -39,7 +39,7 @@ const getCurrentUser = () => {
 
   // 尝试从本地存储读取
   try {
-    const { getSecureStorage } = require('./security.js');
+    const { getSecureStorage } = require('../../utils/security.js');
     const storedUser = getSecureStorage('currentUser');
     if (storedUser) {
       return storedUser;

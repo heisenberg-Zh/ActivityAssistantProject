@@ -1,6 +1,6 @@
 // pages/activities/create.js
 const { activityAPI, registrationAPI, userAPI, administratorAPI } = require('../../utils/api.js');
-const { validateActivityForm } = require('../../utils/validator.js');
+const { validateActivityForm } = require('../../pkg-biz/utils/validator.js');
 const { formatDateTime } = require('../../utils/datetime.js');
 const { parseDate } = require('../../utils/date-helper.js');
 const {
