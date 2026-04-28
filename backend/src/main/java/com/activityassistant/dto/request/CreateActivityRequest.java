@@ -34,6 +34,12 @@ public class CreateActivityRequest {
     private String sourceActivityId;
 
     /**
+     * 客户端请求ID，用于创建活动时的幂等保护。
+     */
+    @Size(max = 64, message = "客户端请求ID长度不能超过64个字符")
+    private String clientRequestId;
+
+    /**
      * 活动描述（详细说明）
      */
     private String description;
