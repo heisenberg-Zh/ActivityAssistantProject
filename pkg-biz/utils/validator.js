@@ -1,5 +1,5 @@
 // utils/validator.js - 数据验证工具
-const { sanitizeInput, isSafeMobile } = require('./security.js');
+const { sanitizeInput, isSafeMobile } = require('../../utils/security.js');
 
 // 验证手机号
 const validateMobile = (mobile) => {

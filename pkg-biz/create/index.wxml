@@ -6,7 +6,7 @@
   <view class="row gap-16">
     <view wx:if="{{showDraftButtons}}" class="ghost-btn" bindtap="saveDraft">保存草稿</view>
     <view wx:if="{{showDraftButtons}}" class="ghost-btn ghost-btn--accent" bindtap="copyActivity">复制活动</view>
-    <view class="btn btn--small {{canPublish ? 'btn--primary' : 'btn--disabled'}}" bindtap="publish">{{publishButtonText}}</view>
+    <view class="btn btn--small {{canPublish && !isPublishing ? 'btn--primary' : 'btn--disabled'}}" bindtap="publish">{{isPublishing ? '发布中...' : publishButtonText}}</view>
   </view>
 </view>
 
@@ -576,8 +576,8 @@
   <view class="btn btn--primary footer-btn" bindtap="prev">
     {{currentStep === 1 ? '返回' : '上一步'}}
   </view>
-  <view class="btn btn--primary footer-btn" bindtap="next">
-    {{currentStep === 7 ? publishButtonText : '下一步'}}
+  <view class="btn {{currentStep === 7 && isPublishing ? 'btn--disabled' : 'btn--primary'}} footer-btn" bindtap="next">
+    {{currentStep === 7 ? (isPublishing ? '发布中...' : publishButtonText) : '下一步'}}
   </view>
 </view>
 

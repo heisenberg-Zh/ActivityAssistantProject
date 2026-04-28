@@ -14,6 +14,7 @@ const {
   getDeniedMessage,
   isRestrictedCreateMode
 } = require('../../utils/create-activity-access.js');
+const { submitGuard } = require('../utils/submit-guard.js');
 const scheduler = require('../../utils/scheduler.js');
 const notification = require('../../utils/notification.js');
 const app = getApp();
@@ -278,6 +279,8 @@ Page({
     pageTitle: '创建活动', // 页面标题
     showDraftButtons: true, // 是否显示草稿和复制按钮
     publishButtonText: '发布', // 发布按钮文本
+    isPublishing: false,
+    currentPublishRequestId: '',
     previewImageUrl: '../../images/default-other.jpg', // 预览图片URL
     copiedWhitelist: '', // 复制来源的白名单（JSON字符串）
     copiedBlacklist: '', // 复制来源的黑名单（JSON字符串）
@@ -485,6 +488,11 @@ Page({
 
   // 下一步
   next() {
+    if (this.data.currentStep >= this.data.steps.length && this.data.isPublishing) {
+      wx.showToast({ title: '正在提交，请勿重复操作', icon: 'none' });
+      return;
+    }
+
     if (!this.validateCurrentStep()) {
       return;
     }
@@ -508,6 +516,30 @@ Page({
       // 最后一步，发布活动
       this.publish();
     }
+  },
+
+  buildPublishRequestId() {
+    const timestamp = Date.now().toString(36);
+    const randomSuffix = Math.random().toString(36).slice(2, 10);
+    const mode = this.data.mode || 'create';
+    const activityId = this.data.activityId || 'new';
+    return `activity-${mode}-${activityId}-${timestamp}-${randomSuffix}`;
+  },
+
+  getPublishGuardKey() {
+    const { mode, activityId, copySourceActivityId } = this.data;
+    const targetId = activityId || copySourceActivityId || 'new';
+    return `activity-publish:${mode || 'create'}:${targetId}`;
+  },
+
+  resetPublishState(guardKey) {
+    if (guardKey) {
+      submitGuard.unlock(guardKey);
+    }
+    this.setData({
+      isPublishing: false,
+      currentPublishRequestId: ''
+    });
   },
 
   // 检查是否可以发布（前4步必填步骤都已完成）
@@ -1960,6 +1992,11 @@ Page({
 
   // 发布活动
   async publish() {
+    if (this.data.isPublishing) {
+      wx.showToast({ title: '正在提交，请勿重复操作', icon: 'none' });
+      return;
+    }
+
     const {
       mode,
       activityId,
@@ -2186,9 +2223,24 @@ Page({
       activityData.actualPublishTime = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;  // 【修复】使用 'T' 分隔符
     }
 
+    const guardKey = this.getPublishGuardKey();
+    if (!submitGuard.lock(guardKey, 10000)) {
+      wx.showToast({ title: '正在提交，请勿重复操作', icon: 'none' });
+      return;
+    }
+
+    const publishRequestId = this.data.currentPublishRequestId || this.buildPublishRequestId();
+    this.setData({
+      isPublishing: true,
+      currentPublishRequestId: publishRequestId
+    });
+
     const isEdit = mode === 'edit';
-    if (!isEdit && copySourceActivityId) {
-      activityData.sourceActivityId = copySourceActivityId;
+    if (!isEdit) {
+      activityData.clientRequestId = publishRequestId;
+      if (copySourceActivityId) {
+        activityData.sourceActivityId = copySourceActivityId;
+      }
     }
     const loadingText = enableScheduledPublish ? '设置定时发布中...' : (isEdit ? '保存中...' : '发布中...');
     const successText = enableScheduledPublish ? '定时发布设置成功' : (isEdit ? '保存成功' : '发布成功');
@@ -2259,6 +2311,7 @@ Page({
 
         // 跳转到我的活动页面
         setTimeout(() => {
+          this.resetPublishState(guardKey);
           if (enableScheduledPublish) {
             // 定时发布的活动跳转到我的活动-预发布页面
             wx.redirectTo({
@@ -2275,6 +2328,7 @@ Page({
         wx.hideLoading();
         // 处理参数校验失败等错误
         this.showErrorDialog(result);
+        this.resetPublishState(guardKey);
       }
     } catch (err) {
       wx.hideLoading();
@@ -2296,6 +2350,7 @@ Page({
           showCancel: false
         });
       }
+      this.resetPublishState(guardKey);
     }
   },
 

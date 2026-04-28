@@ -98,10 +98,10 @@
     </view>
 
     <!-- 空状态提示 -->
-    <view wx:if="{{createdStats[0].value === 0}}" class="section-tip">
+    <view wx:if="{{createdStats[0].value === 0 && canCreateActivity}}" class="section-tip">
       <text class="tip-text">🎉 创建你的第一个活动，邀请朋友一起玩</text>
     </view>
-    <view wx:elif="{{createdStats[0].value > 0 && createdStats[0].value < 3}}" class="section-tip">
+    <view wx:elif="{{createdStats[0].value > 0 && createdStats[0].value < 3 && canCreateActivity}}" class="section-tip">
       <text class="tip-text">💪 继续加油！创建更多精彩活动</text>
     </view>
 
@@ -111,7 +111,7 @@
         <text class="btn-icon">📋</text>
         <text class="btn-text">活动列表</text>
       </view>
-      <view class="btn btn--primary" bindtap="goToCreatedDetail">
+      <view wx:if="{{canViewCreatedDetail}}" class="btn btn--primary" bindtap="goToCreatedDetail">
         <text class="btn-icon">📊</text>
         <text class="btn-text">统计详情</text>
       </view>

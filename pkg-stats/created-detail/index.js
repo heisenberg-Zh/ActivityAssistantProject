@@ -1,6 +1,7 @@
 // pages/statistics/created-detail.js
 const wxCharts = require('../utils/wxcharts-full.js');
 const { activityAPI } = require('../../utils/api.js');
+const { getCreateActivityAccess } = require('../../utils/create-activity-access.js');
 const { parseDate } = require('../../utils/date-helper.js');
 const app = getApp();
 
@@ -14,13 +15,14 @@ Page({
     totalJoined: 0,
     avgRate: '0.0',
     canvasWidth: 0,
-    canvasHeight: 0
+    canvasHeight: 0,
+    canCreateActivity: false
   },
 
   /**
    * 生命周期函数--监听页面加载
    */
-  onLoad(options) {
+  async onLoad(options) {
     console.log('📊 [created-detail] 页面加载，使用 wx-charts');
 
     // 获取系统信息以设置 canvas 尺寸
@@ -34,13 +36,16 @@ Page({
       canvasHeight
     });
 
-    this.loadStatistics();
+    await this.refreshCreateActivityAccess();
+    await this.loadStatistics();
   },
 
   /**
    * 生命周期函数--监听页面显示
    */
   onShow() {
+    this.refreshCreateActivityAccess();
+
     // 页面显示时初始化图表（仅在有数据时）
     setTimeout(() => {
       if (this.data.totalCreated > 0) {
@@ -48,6 +53,23 @@ Page({
         this.initBarChart();
       }
     }, 300);
+  },
+
+  async refreshCreateActivityAccess() {
+    if (!app.checkLoginStatus || !app.checkLoginStatus()) {
+      this.setData({ canCreateActivity: false });
+      return;
+    }
+
+    try {
+      const access = await getCreateActivityAccess();
+      this.setData({
+        canCreateActivity: !!access.canCreate || access.adminOnly === false
+      });
+    } catch (err) {
+      console.warn('加载创建活动权限失败:', err);
+      this.setData({ canCreateActivity: false });
+    }
   },
 
   /**
@@ -101,6 +123,22 @@ Page({
         duration: 2000
       });
     }
+  },
+
+  async goToCreateActivity() {
+    const access = await getCreateActivityAccess();
+    if (!access.canCreate) {
+      wx.showModal({
+        title: '暂无法创建活动',
+        content: access.message || '当前仅系统管理员可创建活动。',
+        showCancel: false
+      });
+      return;
+    }
+
+    wx.navigateTo({
+      url: '/pkg-biz/create/index'
+    });
   },
 
   /**

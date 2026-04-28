@@ -77,6 +77,9 @@ public class ActivityService {
     @Autowired
     private AppFeatureConfigService appFeatureConfigService;
 
+    @Autowired
+    private CreateActivityIdempotencyService createActivityIdempotencyService;
+
     /**
      * 创建活动
      *
@@ -86,51 +89,66 @@ public class ActivityService {
      */
     @Transactional
     public ActivityVO createActivity(CreateActivityRequest request, String organizerId) {
-        if (appFeatureConfigService.isCreateActivityAdminOnlyEnabled()
-                && !systemAdminAccessChecker.isSystemAdmin(organizerId)) {
-            throw new BusinessException(PERMISSION_DENIED, "当前仅系统管理员可创建活动");
-        }
-        log.info("创建活动，组织者ID: {}, 标题: {}", organizerId, request.getTitle());
-
-        // 验证用户是否存在
-        if (!userRepository.existsById(organizerId)) {
-            throw new NotFoundException("用户不存在");
+        String clientRequestId = request.getClientRequestId();
+        ActivityVO cachedActivity = createActivityIdempotencyService.checkDuplicateOrMarkProcessing(organizerId, clientRequestId);
+        if (cachedActivity != null) {
+            log.info("命中创建活动幂等缓存，organizerId={}, clientRequestId={}, activityId={}",
+                    organizerId, clientRequestId, cachedActivity.getId());
+            return cachedActivity;
         }
 
-        // 验证时间有效性
-        validateActivityTime(request.getStartTime(), request.getEndTime(), request.getRegisterDeadline());
+        try {
+            if (appFeatureConfigService.isCreateActivityAdminOnlyEnabled()
+                    && !systemAdminAccessChecker.isSystemAdmin(organizerId)) {
+                throw new BusinessException(PERMISSION_DENIED, "当前仅系统管理员可创建活动");
+            }
+            log.info("创建活动，组织者ID: {}, 标题: {}", organizerId, request.getTitle());
 
-        // 创建活动实体
-        Activity activity = activityMapper.toEntity(request, organizerId);
-
-        String sourceActivityId = request.getSourceActivityId();
-        if (sourceActivityId != null && !sourceActivityId.trim().isEmpty()) {
-            Activity sourceActivity = activityRepository.findByIdAndIsDeletedFalse(sourceActivityId)
-                    .orElseThrow(() -> new NotFoundException("复制来源活动不存在"));
-
-            String seriesId = sourceActivity.getSeriesId();
-            if (seriesId == null || seriesId.isBlank()) {
-                seriesId = sourceActivity.getId();
-                sourceActivity.setSeriesId(seriesId);
-                activityRepository.save(sourceActivity);
+            // 验证用户是否存在
+            if (!userRepository.existsById(organizerId)) {
+                throw new NotFoundException("用户不存在");
             }
 
-            activity.setSeriesId(seriesId);
-            activity.setSourceActivityId(sourceActivity.getId());
+            // 验证时间有效性
+            validateActivityTime(request.getStartTime(), request.getEndTime(), request.getRegisterDeadline());
+
+            // 创建活动实体
+            Activity activity = activityMapper.toEntity(request, organizerId);
+
+            String sourceActivityId = request.getSourceActivityId();
+            if (sourceActivityId != null && !sourceActivityId.trim().isEmpty()) {
+                Activity sourceActivity = activityRepository.findByIdAndIsDeletedFalse(sourceActivityId)
+                        .orElseThrow(() -> new NotFoundException("复制来源活动不存在"));
+
+                String seriesId = sourceActivity.getSeriesId();
+                if (seriesId == null || seriesId.isBlank()) {
+                    seriesId = sourceActivity.getId();
+                    sourceActivity.setSeriesId(seriesId);
+                    activityRepository.save(sourceActivity);
+                }
+
+                activity.setSeriesId(seriesId);
+                activity.setSourceActivityId(sourceActivity.getId());
+            }
+
+            // 私密活动生成分享token（公开活动不需要）
+            if (Boolean.FALSE.equals(activity.getIsPublic()) && (activity.getShareToken() == null || activity.getShareToken().isBlank())) {
+                activity.setShareToken(generateShareToken());
+            }
+
+            // 保存活动
+            Activity savedActivity = activityRepository.save(activity);
+
+            log.info("活动创建成功，活动ID: {}", savedActivity.getId());
+
+            // 转换为VO返回
+            ActivityVO activityVO = activityMapper.toVO(savedActivity, organizerId);
+            createActivityIdempotencyService.markSuccess(organizerId, clientRequestId, activityVO);
+            return activityVO;
+        } catch (RuntimeException ex) {
+            createActivityIdempotencyService.clear(organizerId, clientRequestId);
+            throw ex;
         }
-
-        // 私密活动生成分享token（公开活动不需要）
-        if (Boolean.FALSE.equals(activity.getIsPublic()) && (activity.getShareToken() == null || activity.getShareToken().isBlank())) {
-            activity.setShareToken(generateShareToken());
-        }
-
-        // 保存活动
-        Activity savedActivity = activityRepository.save(activity);
-
-        log.info("活动创建成功，活动ID: {}", savedActivity.getId());
-
-        // 转换为VO返回
-        return activityMapper.toVO(savedActivity, organizerId);
     }
 
     /**

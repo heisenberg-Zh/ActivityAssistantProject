@@ -2,7 +2,7 @@
 const { userAPI, uploadAPI } = require('../../utils/api.js');
 const { getSecureStorage, setSecureStorage } = require('../../utils/security.js');
 const { requestCache } = require('../../utils/request-manager.js');
-const { hasValidConsent: hasPhoneNoticeConsent, setConsent: setPhoneNoticeConsent } = require('../../utils/phone-notice-consent.js');
+const { hasValidConsent: hasPhoneNoticeConsent, setConsent: setPhoneNoticeConsent } = require('../../pkg-user/utils/phone-notice-consent.js');
 const app = getApp();
 
 Page({
