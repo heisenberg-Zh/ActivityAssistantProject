@@ -288,6 +288,19 @@ Page({
     });
   },
 
+  editRegistrationInfo() {
+    const reg = this.data.detailTarget;
+    if (!reg || !reg.id) {
+      wx.showToast({ title: '未找到报名记录', icon: 'none' });
+      return;
+    }
+
+    this.closeDetailDialog();
+    wx.navigateTo({
+      url: `/pkg-biz/registration/index?id=${this.data.activityId}&mode=edit&registrationId=${reg.id}`
+    });
+  },
+
   buildDetailFields(reg, customFields, customData) {
     const fields = [];
     const usedKeys = new Set();

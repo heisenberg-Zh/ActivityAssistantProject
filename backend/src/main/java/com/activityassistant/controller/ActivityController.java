@@ -4,13 +4,19 @@ import com.activityassistant.dto.request.ActivityQueryRequest;
 import com.activityassistant.dto.request.CreateActivityRequest;
 import com.activityassistant.dto.request.HomeActivityQueryRequest;
 import com.activityassistant.dto.request.UpdateActivityRequest;
+import com.activityassistant.dto.response.ActivityExportSummaryVO;
 import com.activityassistant.dto.response.ActivityVO;
 import com.activityassistant.dto.response.ApiResponse;
 import com.activityassistant.security.SecurityUtils;
+import com.activityassistant.service.ActivityExportService;
 import com.activityassistant.service.ActivityService;
 import com.activityassistant.service.AppFeatureConfigService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -23,6 +29,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+
 /**
  * 活动相关接口。
  */
@@ -33,6 +43,9 @@ public class ActivityController {
 
     @Autowired
     private ActivityService activityService;
+
+    @Autowired
+    private ActivityExportService activityExportService;
 
     @Autowired
     private AppFeatureConfigService appFeatureConfigService;
@@ -152,5 +165,29 @@ public class ActivityController {
         String userId = SecurityUtils.getCurrentUserId();
         Page<ActivityVO> activityPage = activityService.getManagedActivities(page, size, userId);
         return ApiResponse.success(activityPage);
+    }
+
+    @GetMapping("/export")
+    public ResponseEntity<ByteArrayResource> exportActivities(
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate) {
+        String userId = SecurityUtils.getCurrentUserId();
+        ActivityExportService.ExportFile exportFile = activityExportService.exportCreatedAndManagedActivities(userId, startDate, endDate);
+        String encodedFilename = URLEncoder.encode(exportFile.filename(), StandardCharsets.UTF_8).replace("+", "%20");
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFilename)
+                .contentLength(exportFile.content().length)
+                .body(new ByteArrayResource(exportFile.content()));
+    }
+
+    @GetMapping("/export/summary")
+    public ApiResponse<ActivityExportSummaryVO> getExportSummary(
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate) {
+        String userId = SecurityUtils.getCurrentUserId();
+        ActivityExportSummaryVO summary = activityExportService.getExportSummary(userId, startDate, endDate);
+        return ApiResponse.success(summary);
     }
 }

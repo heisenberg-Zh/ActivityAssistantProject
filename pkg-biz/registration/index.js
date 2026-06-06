@@ -130,6 +130,8 @@ Page({
     displayDescription: '', // 展示用：活动说明及注意事项（无分组取活动级，有分组取所选/已报分组）
     agree: false,
     isRegistered: false,
+    isEditMode: false,
+    editRegistrationId: '',
     isFull: false,
     selectedGroupId: null, // 选中的分组ID
     showGroupSelection: true, // 是否显示分组选择界面
@@ -182,7 +184,9 @@ Page({
     const id = query.id || 'a1';
     const fromShare = query.from === 'share';
     const shareToken = query.shareToken ? String(query.shareToken).trim() : '';
-    this.setData({ fromShare, shareToken });
+    const isEditMode = query.mode === 'edit';
+    const editRegistrationId = query.registrationId ? String(query.registrationId).trim() : '';
+    this.setData({ fromShare, shareToken, isEditMode, editRegistrationId });
     this.loadActivityDetail(id);
     // 注意：loadParticipants 将在 loadActivityDetail 完成后自动调用
   },
@@ -231,6 +235,25 @@ Page({
 
       // 检查是否已满员
       const isFull = detail.joined >= detail.total;
+
+      if (this.data.isEditMode) {
+        const registrationId = this.data.editRegistrationId;
+        if (!registrationId) {
+          throw new Error('缺少报名记录ID');
+        }
+        const registrationResult = await registrationAPI.getDetail(registrationId);
+        if (registrationResult.code !== 0 || !registrationResult.data) {
+          throw new Error(registrationResult.message || '报名记录不存在');
+        }
+        const registration = registrationResult.data;
+        if (registration.activityId && registration.activityId !== id) {
+          throw new Error('报名记录与活动不匹配');
+        }
+        wx.hideLoading();
+        this.showEditState(id, detail, registration, { deadline, progress, feeInfo, isFull });
+        this.loadParticipants(id);
+        return;
+      }
 
       // 检查当前用户是否已报名
       const currentUserId = getCurrentUserId();
@@ -414,6 +437,67 @@ Page({
   },
 
   // 显示已报名状态
+  buildRegistrationFormState(detail, registration) {
+    const registeredGroupId = registration && registration.groupId ? registration.groupId : null;
+    const registeredGroup = (registeredGroupId && detail && detail.hasGroups && Array.isArray(detail.groups))
+      ? detail.groups.find(g => g.id === registeredGroupId)
+      : null;
+    const customFields = (registeredGroup && registeredGroup.customFields) || detail.customFields || [
+      { id: 'name', label: '姓名', required: true, desc: '请输入姓名', isCustom: false },
+      { id: 'mobile', label: '联系方式', required: true, desc: '请输入联系方式', isCustom: false }
+    ];
+    const formData = {
+      name: registration.name || '',
+      mobile: registration.mobile || '',
+      ...safeParseCustomData(registration.customData)
+    };
+
+    return {
+      customFields,
+      formData,
+      displayRequirements: (registeredGroup && registeredGroup.requirements) || detail.requirements || '',
+      displayDescription: (registeredGroup && registeredGroup.description) || detail.description || '',
+      registeredGroupName: detail.hasGroups && registeredGroupId
+        ? ((registeredGroup && registeredGroup.name) || '未知分组')
+        : null
+    };
+  },
+
+  showEditState(id, detail, registration, meta) {
+    const formState = this.buildRegistrationFormState(detail, registration);
+    this.setData({
+      id,
+      detail: {
+        ...detail,
+        status: calculateActivityStatus(detail),
+        imageUrl: getActivityImage(detail.image, detail.type)
+      },
+      deadline: meta.deadline,
+      progress: meta.progress,
+      feeInfo: meta.feeInfo,
+      guidelines: ['请核对并更新报名信息，报名分组暂不支持修改', '保存后导出数据将使用最新报名信息'],
+      isFull: meta.isFull,
+      isRegistered: false,
+      isEditMode: true,
+      myRegistration: registration,
+      selectedGroupId: registration.groupId || null,
+      customFields: formState.customFields,
+      formData: formState.formData,
+      displayRequirements: formState.displayRequirements,
+      displayDescription: formState.displayDescription,
+      showGroupSelection: false,
+      registrationStatus: registration.status,
+      registeredGroupName: formState.registeredGroupName,
+      agree: true,
+      lastRegistration: null,
+      lastRegistrationSyncValues: {},
+      lastRegistrationSyncCount: 0,
+      lastRegistrationTimeText: '',
+      showLastRegistrationSync: false,
+      loadingLastRegistration: false
+    });
+  },
+
   showRegisteredState(id, detail, myRegistration) {
     console.log('用户已报名此活动，显示已报名状态', myRegistration);
 
@@ -867,7 +951,15 @@ Page({
 
   // 提交报名
   async submit() {
-    const { id, detail, formData, isRegistered, isFull, selectedGroupId } = this.data;
+    const { id, detail, formData, isRegistered, isFull, selectedGroupId, isEditMode } = this.data;
+
+    if (isEditMode) {
+      if (!this.validateForm()) {
+        return;
+      }
+      this.performUpdate(id, formData);
+      return;
+    }
 
     // 检查是否已报名
     if (isRegistered) {
@@ -940,6 +1032,44 @@ Page({
   },
 
   // 执行实际的报名提交
+  async performUpdate(id, formData) {
+    const registrationId = this.data.editRegistrationId;
+    if (!registrationId) {
+      wx.showToast({ title: '缺少报名记录ID', icon: 'none' });
+      return;
+    }
+
+    return submitGuard.wrapAsync(
+      `registration-update:${registrationId}`,
+      async () => {
+        try {
+          const { name, mobile, ...customFields } = formData;
+          const updateData = {
+            name: name || '',
+            mobile: mobile || null,
+            customData: Object.keys(customFields).length > 0
+              ? JSON.stringify(customFields)
+              : null
+          };
+
+          const result = await registrationAPI.update(registrationId, updateData);
+          if (result.code === 0) {
+            const { requestCache } = require('../../utils/request-manager.js');
+            requestCache.clear(requestCache.generateKey(`/api/activities/${id}`, {}));
+            requestCache.clear(requestCache.generateKey(`/api/registrations/${registrationId}`, {}));
+            wx.showToast({ title: '保存成功', icon: 'success' });
+            setTimeout(() => wx.navigateBack(), 1200);
+          } else {
+            wx.showToast({ title: result.message || '保存失败', icon: 'none' });
+          }
+        } catch (err) {
+          console.error('更新报名信息失败:', err);
+          wx.showToast({ title: err.message || '保存失败，请重试', icon: 'none' });
+        }
+      }
+    );
+  },
+
   async performSubmit(id, detail, formData, selectedGroupId) {
     // 防重复提交：使用活动ID作为锁定标识
     const lockKey = `registration:${id}`;

@@ -10,7 +10,8 @@
     "pages/auth/login",
     "pages/privacy/index",
     "pages/agreement/index",
-    "pages/policy/index"
+    "pages/policy/index",
+    "pages/data-export/index"
   ],
   "subpackages": [
     {

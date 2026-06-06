@@ -1,0 +1,648 @@
+// pages/management/blacklist.js
+const { activityAPI, blacklistAPI } = require('../../utils/api.js');
+const {
+  checkManagementPermission,
+  parseBatchPhoneNumbers
+} = require('../../utils/activity-management-helper.js');
+const app = getApp();
+
+Page({
+  data: {
+    activityId: '',
+    activity: null,
+    blacklist: [],
+    registeredUsers: [], // 已报名用户列表（pending+approved）
+    showAddDialog: false,
+    addMode: 'phone', // 'phone' 或 'user'
+    batchPhoneText: '',
+    showAddDialog: false,
+    blockReason: '',
+    expiryDays: '', // 过期天数，空表示永久
+    isPermanent: true, // 是否永久
+    // 手机号验证结果
+    phoneValidation: {
+      valid: [],
+      invalid: [],
+      duplicates: [],
+      existing: [],
+      existingMap: {},
+      validCount: 0
+    },
+    selectedUserIds: [],
+    // 用户搜索
+    searchKeyword: '',
+    filteredUsers: [],
+    availableUsers: [],
+    existingUsers: [],
+    canSelectAll: false,
+    // 系统信息
+    statusBarHeight: 0,
+    navBarHeight: 0
+  },
+
+  onLoad(query) {
+    // 获取状态栏高度
+    const statusBarHeight = app.globalData.statusBarHeight || 0;
+    const navBarHeight = statusBarHeight + 44;
+    this.setData({
+      statusBarHeight,
+      navBarHeight
+    });
+
+    const activityId = query.id;
+    if (!activityId) {
+      wx.showToast({ title: '活动ID不能为空', icon: 'none' });
+      setTimeout(() => wx.navigateBack(), 1500);
+      return;
+    }
+
+    this.setData({ activityId });
+    this.loadData();
+  },
+
+  // 加载数据
+  async loadData() {
+    const { activityId } = this.data;
+    const currentUserId = app.globalData.currentUserId || 'u1';
+
+    try {
+      wx.showLoading({ title: '加载中...' });
+
+      // 并行请求：活动详情、黑名单列表、已报名用户列表
+      const [activityResult, blacklistResult, usersResult] = await Promise.all([
+        activityAPI.getDetail(activityId),
+        blacklistAPI.getBlacklist(activityId),
+        blacklistAPI.getRegisteredUsers(activityId)
+      ]);
+
+      wx.hideLoading();
+
+      // 检查活动详情
+      if (activityResult.code !== 0) {
+        wx.showToast({ title: activityResult.message || '获取活动详情失败', icon: 'none' });
+        setTimeout(() => wx.navigateBack(), 1500);
+        return;
+      }
+
+      const activity = activityResult.data;
+
+      if (!activity) {
+        wx.showToast({ title: '活动不存在', icon: 'none' });
+        setTimeout(() => wx.navigateBack(), 1500);
+        return;
+      }
+
+      // 检查管理权限
+      const permission = checkManagementPermission(activity, currentUserId);
+
+      if (!permission.hasPermission) {
+        wx.showModal({
+          title: '无权限',
+          content: '您不是此活动的创建者或管理员',
+          showCancel: false,
+          success: () => wx.navigateBack()
+        });
+        return;
+      }
+
+      // 获取黑名单（从API返回的数据已包含用户详情）
+      const blacklistData = blacklistResult.code === 0 ? (blacklistResult.data || []) : [];
+
+      // 处理黑名单数据，计算过期状态
+      const blacklist = blacklistData.map(item => {
+        // 计算是否已过期
+        let isExpired = false;
+        let remainingDays = null;
+        if (item.expiresAt) {
+          const now = new Date();
+          const expiryDate = new Date(item.expiresAt);
+          isExpired = now > expiryDate;
+          if (!isExpired) {
+            const diffTime = expiryDate.getTime() - now.getTime();
+            remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          }
+        }
+
+        return {
+          ...item,
+          avatarInitial: String(item.nickname || 'U').slice(0, 1),
+          isExpired,
+          remainingDays,
+          statusText: this.getStatusText(item, isExpired)
+        };
+      });
+
+      // 获取已报名用户列表（pending + approved）
+      const registeredUsers = usersResult.code === 0 ? (usersResult.data || []) : [];
+      const blacklistUserIdSet = new Set(
+        blacklistData
+          .map(b => b && (b.userId || b.id))
+          .filter(Boolean)
+          .map(v => String(v).trim())
+      );
+      registeredUsers.forEach(user => {
+        const uid = String(user.userId || user.id || '').trim();
+        user.inBlacklist = uid ? blacklistUserIdSet.has(uid) : false;
+      });
+
+      this.setData({
+        activity,
+        blacklist,
+        registeredUsers
+      });
+    } catch (err) {
+      wx.hideLoading();
+      console.error('加载活动数据失败:', err);
+      wx.showToast({
+        title: err.message || '加载失败，请稍后重试',
+        icon: 'none'
+      });
+      setTimeout(() => wx.navigateBack(), 1500);
+    }
+  },
+
+  // 获取状态文本
+  getStatusText(item, isExpired) {
+    if (!item.isActive) return '已禁用';
+    if (isExpired) return '已过期';
+    if (item.expiresAt) {
+      const now = new Date();
+      const expiryDate = new Date(item.expiresAt);
+      const diffTime = expiryDate.getTime() - now.getTime();
+      const remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return `剩余${remainingDays}天`;
+    }
+    return '永久';
+  },
+
+  // 显示添加对话框
+  showAddDialog() {
+    this.setData({
+      showAddDialog: true,
+      addMode: 'phone',
+      batchPhoneText: '',
+      blockReason: '',
+      expiryDays: '',
+      isPermanent: true,
+      phoneValidation: {
+        valid: [],
+        invalid: [],
+        duplicates: [],
+        existing: [],
+        existingMap: {},
+        validCount: 0
+      },
+      selectedUserIds: [],
+      searchKeyword: '',
+      filteredUsers: [],
+      availableUsers: [],
+      existingUsers: [],
+      canSelectAll: false
+    });
+
+    // 初始化用户列表（用于“从已报名选择”）
+    this.filterUsers();
+  },
+
+  // 关闭对话框
+  closeAddDialog() {
+    this.setData({
+      showAddDialog: false,
+      addMode: 'phone',
+      batchPhoneText: '',
+      blockReason: '',
+      expiryDays: '',
+      isPermanent: true,
+      phoneValidation: {
+        valid: [],
+        invalid: [],
+        duplicates: [],
+        existing: [],
+        existingMap: {},
+        validCount: 0
+      },
+      selectedUserIds: [],
+      searchKeyword: '',
+      filteredUsers: [],
+      availableUsers: [],
+      existingUsers: [],
+      canSelectAll: false
+    });
+  },
+
+  // 阻止事件冒泡（空方法）
+  stopPropagation() {
+    // 仅用于阻止事件冒泡，不做任何处理
+  },
+
+  // 切换添加模式
+  switchAddMode(e) {
+    const mode = e.currentTarget.dataset.mode;
+    this.setData({ addMode: mode });
+    if (mode === 'user') {
+      this.filterUsers();
+    }
+  },
+
+  // 搜索输入
+  onSearchInput(e) {
+    const keyword = e.detail.value;
+    this.setData({ searchKeyword: keyword });
+    this.filterUsers();
+  },
+
+  // 清空搜索
+  clearSearch() {
+    this.setData({ searchKeyword: '' });
+    this.filterUsers();
+  },
+
+  // 过滤用户列表（从已报名选择）
+  filterUsers() {
+    const { registeredUsers, searchKeyword, selectedUserIds } = this.data;
+    const keyword = String(searchKeyword || '').toLowerCase().trim();
+
+    let filtered = registeredUsers || [];
+    if (keyword) {
+      filtered = filtered.filter(user =>
+        String(user.nickname || '').toLowerCase().includes(keyword) ||
+        String(user.phone || '').includes(keyword)
+      );
+    }
+
+    const available = filtered
+      .filter(u => !u.inBlacklist)
+      .map(u => ({
+        ...u,
+        isSelected: selectedUserIds.indexOf(u.userId) > -1
+      }));
+
+    const existing = filtered.filter(u => u.inBlacklist);
+    const canSelectAll = available.length > 0 &&
+                         available.some(u => !u.isSelected);
+
+    this.setData({
+      filteredUsers: filtered,
+      availableUsers: available,
+      existingUsers: existing,
+      canSelectAll
+    });
+  },
+
+  // 选择/取消选择用户
+  toggleUserSelection(e) {
+    const userId = e.currentTarget.dataset.userId;
+    let { selectedUserIds } = this.data;
+    selectedUserIds = [...selectedUserIds];
+
+    const index = selectedUserIds.indexOf(userId);
+    if (index > -1) {
+      selectedUserIds.splice(index, 1);
+    } else {
+      selectedUserIds.push(userId);
+    }
+
+    this.setData({ selectedUserIds }, () => this.filterUsers());
+  },
+
+  // 全选
+  selectAll() {
+    const { availableUsers } = this.data;
+    const allUserIds = (availableUsers || []).map(u => u.userId);
+    this.setData({ selectedUserIds: allUserIds }, () => this.filterUsers());
+  },
+
+  // 清空选择
+  clearSelection() {
+    this.setData({ selectedUserIds: [] }, () => this.filterUsers());
+  },
+
+  // 输入批量手机号
+  onPhoneTextInput(e) {
+    const text = e.detail.value;
+    this.setData({ batchPhoneText: text });
+    this.validatePhoneNumbers(text);
+  },
+
+  // 实时验证手机号
+  validatePhoneNumbers(text) {
+    if (!text.trim()) {
+      this.setData({
+        phoneValidation: {
+          valid: [],
+          invalid: [],
+          duplicates: [],
+          existing: [],
+          existingMap: {},
+          validCount: 0
+        }
+      });
+      return;
+    }
+
+    const { blacklist } = this.data;
+    const lines = text.split('\n');
+    const phoneRegex = /^1[3-9]\d{9}$/;
+
+    const valid = [];
+    const invalid = [];
+    const seen = new Set();
+    const duplicates = [];
+    const existing = [];
+
+    lines.forEach(line => {
+      const phone = line.trim();
+      if (!phone) return;
+
+      // 检查格式
+      if (!phoneRegex.test(phone)) {
+        if (!invalid.includes(phone)) {
+          invalid.push(phone);
+        }
+        return;
+      }
+
+      // 检查是否重复
+      if (seen.has(phone)) {
+        if (!duplicates.includes(phone)) {
+          duplicates.push(phone);
+        }
+        return;
+      }
+
+      seen.add(phone);
+
+      // 检查是否已在黑名单
+      const isExisting = blacklist.some(b => b.phone === phone);
+      if (isExisting) {
+        existing.push(phone);
+      }
+
+      valid.push(phone);
+    });
+
+    // 计算可添加数量（有效且不在黑名单中）
+    const validCount = valid.filter(p => !existing.includes(p)).length;
+    const existingMap = existing.reduce((acc, phone) => {
+      acc[phone] = true;
+      return acc;
+    }, {});
+
+    this.setData({
+      phoneValidation: {
+        valid,
+        invalid,
+        duplicates,
+        existing,
+        existingMap,
+        validCount
+      }
+    });
+  },
+
+  // 去除重复手机号
+  removeDuplicates() {
+    const { batchPhoneText } = this.data;
+    const phoneSet = new Set();
+    const lines = batchPhoneText.split('\n');
+    const uniqueLines = [];
+
+    lines.forEach(line => {
+      const phone = line.trim();
+      if (phone && !phoneSet.has(phone)) {
+        phoneSet.add(phone);
+        uniqueLines.push(phone);
+      }
+    });
+
+    const newText = uniqueLines.join('\n');
+    this.setData({ batchPhoneText: newText });
+    this.validatePhoneNumbers(newText);
+
+    wx.showToast({
+      title: '已去除重复',
+      icon: 'success',
+      duration: 1500
+    });
+  },
+
+  // 输入原因
+  onReasonInput(e) {
+    this.setData({ blockReason: e.detail.value });
+  },
+
+  // 输入过期天数
+  onExpiryDaysInput(e) {
+    const value = e.detail.value;
+    this.setData({ expiryDays: value });
+  },
+
+  // 切换永久/临时
+  togglePermanent(e) {
+    const isPermanent = e.detail.value;
+    this.setData({
+      isPermanent,
+      expiryDays: isPermanent ? '' : '30' // 默认30天
+    });
+  },
+
+  // 选择永久
+  selectPermanent() {
+    this.setData({
+      isPermanent: true,
+      expiryDays: ''
+    });
+  },
+
+  // 选择临时
+  selectTemporary() {
+    this.setData({
+      isPermanent: false,
+      expiryDays: '30' // 默认30天
+    });
+  },
+
+  // 确认添加
+  async confirmAdd() {
+    const { addMode, phoneValidation, selectedUserIds, blockReason, isPermanent, expiryDays, activityId } = this.data;
+
+    // 验证过期天数
+    if (!isPermanent) {
+      const days = parseInt(expiryDays);
+      if (isNaN(days) || days < 1) {
+        wx.showToast({ title: '过期天数至少为1天', icon: 'none' });
+        return;
+      }
+    }
+
+    // 验证原因（可选）
+    if (blockReason.trim() && blockReason.trim().length < 2) {
+      wx.showToast({ title: '原因至少2个字', icon: 'none' });
+      return;
+    }
+
+    // 从已报名选择（userId维度）
+    if (addMode === 'user') {
+      if (!selectedUserIds || selectedUserIds.length === 0) {
+        wx.showToast({ title: '请选择用户', icon: 'none' });
+        return;
+      }
+
+      try {
+        const result = await blacklistAPI.addBatch(activityId, {
+          userIds: selectedUserIds,
+          reason: blockReason.trim(),
+          expiryDays: isPermanent ? null : parseInt(expiryDays)
+        });
+
+        if (result.code === 0) {
+          wx.showToast({
+            title: result.message || `成功添加 ${selectedUserIds.length} 个黑名单`,
+            icon: 'success',
+            duration: 2000
+          });
+
+          this.closeAddDialog();
+          setTimeout(() => this.loadData(), 800);
+          return;
+        }
+
+        wx.showToast({ title: result.message || '添加失败', icon: 'none', duration: 2000 });
+      } catch (err) {
+        console.error('添加黑名单失败:', err);
+        wx.showToast({ title: '操作失败，请重试', icon: 'none', duration: 2000 });
+      }
+
+      return;
+    }
+
+    // 批量手机号模式（后端会解析手机号 -> userId）
+    if (phoneValidation.validCount === 0) {
+      wx.showToast({ title: '没有可添加的手机号', icon: 'none' });
+      return;
+    }
+
+    const phonesToAdd = phoneValidation.valid.filter(p => !phoneValidation.existing.includes(p));
+
+    try {
+      const result = await blacklistAPI.addBatch(activityId, {
+        phones: phonesToAdd,
+        reason: blockReason.trim(),
+        expiryDays: isPermanent ? null : parseInt(expiryDays)
+      });
+
+      if (result.code === 0) {
+        wx.showToast({
+          title: result.message || `成功添加 ${phonesToAdd.length} 个黑名单`,
+          icon: 'success',
+          duration: 2000
+        });
+
+        this.closeAddDialog();
+        setTimeout(() => this.loadData(), 800);
+      } else {
+        wx.showToast({ title: result.message || '添加失败', icon: 'none', duration: 2000 });
+      }
+    } catch (err) {
+      console.error('添加黑名单失败:', err);
+      wx.showToast({ title: '操作失败，请重试', icon: 'none', duration: 2000 });
+    }
+  },
+
+  // 切换激活状态
+  toggleActive(e) {
+    const { userId, name, isActive } = e.currentTarget.dataset;
+    const { activityId } = this.data;
+
+    const action = isActive ? '禁用' : '启用';
+
+    wx.showModal({
+      title: `${action}黑名单`,
+      content: `确定要${action}"${name || userId}"的黑名单状态吗？`,
+      confirmText: `确定${action}`,
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            // 调用后端API切换状态
+            const result = await blacklistAPI.toggleActive(activityId, userId);
+
+            if (result.code === 0) {
+              wx.showToast({ title: `已${action}`, icon: 'success' });
+
+              setTimeout(() => {
+                this.loadData();
+              }, 800);
+            } else {
+              wx.showToast({
+                title: result.message || `${action}失败`,
+                icon: 'none',
+                duration: 2000
+              });
+            }
+          } catch (err) {
+            console.error('切换黑名单状态失败:', err);
+            wx.showToast({
+              title: '操作失败，请重试',
+              icon: 'none',
+              duration: 2000
+            });
+          }
+        }
+      }
+    });
+  },
+
+  // 删除黑名单条目
+  removeItem(e) {
+    const { userId, name } = e.currentTarget.dataset;
+    const { activityId } = this.data;
+
+    wx.showModal({
+      title: '移除黑名单',
+      content: `确定要将"${name || userId}"移出黑名单吗？`,
+      confirmText: '确定移除',
+      confirmColor: '#ef4444',
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            // 调用后端API移除黑名单
+            const result = await blacklistAPI.remove(activityId, userId);
+
+            if (result.code === 0) {
+              wx.showToast({ title: '已移除', icon: 'success' });
+
+              setTimeout(() => {
+                this.loadData();
+              }, 800);
+            } else {
+              wx.showToast({
+                title: result.message || '移除失败',
+                icon: 'none',
+                duration: 2000
+              });
+            }
+          } catch (err) {
+            console.error('移除黑名单失败:', err);
+            wx.showToast({
+              title: '操作失败，请重试',
+              icon: 'none',
+              duration: 2000
+            });
+          }
+        }
+      }
+    });
+  },
+
+  // 返回
+  goBack() {
+    const pages = getCurrentPages();
+
+    if (pages.length > 1) {
+      wx.navigateBack({ delta: 1 });
+    } else {
+      // 没有上一页，跳转到活动列表
+      wx.switchTab({ url: '/pages/activities/list' });
+    }
+  }
+});

@@ -527,3 +527,24 @@
   font-size: 24rpx;
   color: #9ca3af;
 }
+
+.detail-sheet__actions {
+  padding: 20rpx 40rpx 34rpx;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), #ffffff);
+  border-top: 1rpx solid #eef2f7;
+}
+
+.detail-action {
+  height: 84rpx;
+  border-radius: 24rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  line-height: 84rpx;
+  border: none;
+}
+
+.detail-action--primary {
+  color: #ffffff;
+  background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);
+  box-shadow: 0 16rpx 30rpx rgba(37, 99, 235, 0.22);
+}

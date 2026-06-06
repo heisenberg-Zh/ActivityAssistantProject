@@ -1,0 +1,627 @@
+<!-- pages/activities/create.wxml -->
+<view class="top-bar top-bar--fixed">
+  <view class="row gap-16">
+    <text class="text-lg">{{pageTitle}}</text>
+  </view>
+  <view class="row gap-16">
+    <view wx:if="{{showDraftButtons}}" class="ghost-btn" bindtap="saveDraft">保存草稿</view>
+    <view wx:if="{{showDraftButtons}}" class="ghost-btn ghost-btn--accent" bindtap="copyActivity">复制活动</view>
+    <view class="btn btn--small {{canPublish ? 'btn--primary' : 'btn--disabled'}}" bindtap="publish">{{publishButtonText}}</view>
+  </view>
+</view>
+
+<view class="step-strip">
+  <block wx:for="{{steps}}" wx:key="index">
+    <view class="step {{item.active ? 'step--active' : ''}} {{item.completed ? 'step--completed' : ''}}" bindtap="goToStep" data-step="{{item.index}}">
+      <view class="step__index">{{item.completed ? '✓' : item.index}}</view>
+      <text class="step__label">{{item.label}}</text>
+    </view>
+  </block>
+</view>
+
+<!-- 步骤1: 基本信息 -->
+<view class="section" wx:if="{{currentStep === 1}}">
+  <view class="card shadow-card form-section">
+    <text class="section-title">基本信息</text>
+    <view class="form-field">
+      <text class="field-label">活动名称 *</text>
+      <input class="field-input" placeholder="请输入活动名称" bindinput="onInput" data-field="title" value="{{form.title}}" />
+    </view>
+    <view class="option-row">
+      <view class="option-label">
+        <text class="text-md text-gray-800">是否需要打卡签到</text>
+        <text class="text-xs text-gray-500">关闭后，用户端不显示签到入口</text>
+      </view>
+      <switch checked="{{form.needCheckin}}" bindchange="onSwitch" data-field="needCheckin" color="#3b82f6" />
+    </view>
+
+    <view class="form-field" wx:if="{{form.needCheckin}}">
+      <view class="field-label-row">
+        <text class="field-label">活动描述</text>
+        <view class="field-action-btn" bindtap="openFullScreenEditor" data-scope="form" data-field="desc">全屏编辑</view>
+      </view>
+      <textarea class="field-textarea" placeholder="请描述活动内容、目的和注意事项" bindinput="onInput" data-field="desc" value="{{form.desc}}" maxlength="2000" />
+    </view>
+    <view class="form-field">
+      <text class="field-label">活动类型 *</text>
+      <picker mode="selector" range="{{types}}" bindchange="onTypeChange">
+        <view class="picker-field">{{form.type || '请选择活动类型'}}</view>
+      </picker>
+    </view>
+
+    <!-- 是否公开 -->
+    <view class="option-row" style="margin-top: 24rpx;">
+      <view class="option-label">
+        <text class="text-md text-gray-800">公开活动</text>
+        <text class="text-xs text-gray-500">关闭后仅创建者和已报名者可见</text>
+      </view>
+      <switch checked="{{form.isPublic}}" bindchange="onSwitch" data-field="isPublic" color="#3b82f6" />
+    </view>
+
+    <!-- 分组配置 -->
+    <view class="option-row">
+      <view class="option-label">
+        <text class="text-md text-gray-800">是否启用多组报名</text>
+        <text class="text-xs text-gray-500">适用于需要分组统计的活动</text>
+      </view>
+      <switch checked="{{form.hasGroups}}" bindchange="onSwitch" data-field="hasGroups" color="#3b82f6" />
+    </view>
+
+    <!-- 分组配置区域 -->
+    <view wx:if="{{form.hasGroups}}" class="group-config-section">
+      <view class="form-field">
+        <text class="field-label">分组数量 *</text>
+        <view class="stepper-container">
+          <view class="stepper-btn {{form.groupCount <= 2 ? 'stepper-btn--disabled' : ''}}" bindtap="decreaseGroupCount">-</view>
+          <input class="stepper-input" type="digit" bindfocus="onGroupCountFocus" bindblur="onGroupCountBlur" value="{{form.groupCount}}" />
+          <view class="stepper-btn {{form.groupCount >= 5 ? 'stepper-btn--disabled' : ''}}" bindtap="increaseGroupCount">+</view>
+        </view>
+        <text class="field-hint">可设置2-5个分组，点击+/-按钮或直接输入数字</text>
+      </view>
+
+      <!-- 分组名称输入 -->
+      <view class="form-field">
+        <text class="field-label">分组名称 *</text>
+        <view class="group-names-list">
+          <block wx:for="{{groups}}" wx:key="id" wx:for-item="group" wx:for-index="idx">
+            <view class="group-name-item">
+              <text class="group-name-label">分组{{idx + 1}}</text>
+              <input
+                class="field-input group-name-input"
+                placeholder="例如：A组-基础教学"
+                bindinput="onGroupNameInput"
+                data-index="{{idx}}"
+                value="{{group.name}}"
+              />
+            </view>
+          </block>
+        </view>
+        <text class="field-hint">为每个分组设置清晰的名称，方便参与者识别</text>
+      </view>
+    </view>
+
+    <view class="option-row">
+      <view class="option-label">
+        <text class="text-md text-gray-800">是否消息通知用户</text>
+        <text class="text-xs text-gray-500">开启后将通过消息中心通知已通过审核的报名用户（临近/开始/结束/信息变更）</text>
+      </view>
+      <switch checked="{{form.notifyUsers}}" bindchange="onSwitch" data-field="notifyUsers" color="#3b82f6" />
+    </view>
+  </view>
+</view>
+
+<!-- 步骤2: 时间设置 -->
+<view class="section" wx:if="{{currentStep === 2}}">
+  <view class="card shadow-card form-section">
+    <text class="section-title">时间设置</text>
+
+    <!-- 开始时间选择器 -->
+    <datetime-picker
+      label="活动开始时间"
+      required="{{true}}"
+      dateValue="{{form.startDate}}"
+      timeValue="{{form.startTime}}"
+      startDate="{{todayDate}}"
+      bindchange="onStartTimeChange"
+    />
+
+    <!-- 结束时间选择器 -->
+    <datetime-picker
+      label="活动结束时间"
+      required="{{true}}"
+      dateValue="{{form.endDate}}"
+      timeValue="{{form.endTime}}"
+      startDate="{{form.startDate || todayDate}}"
+      bindchange="onEndTimeChange"
+    />
+
+    <!-- 报名截止时间选择器 -->
+    <datetime-picker
+      label="报名截止时间"
+      dateValue="{{form.registerDeadlineDate}}"
+      timeValue="{{form.registerDeadlineTime}}"
+      startDate="{{todayDate}}"
+      endDate="{{form.startDate}}"
+      bindchange="onRegisterDeadlineChange"
+    />
+  </view>
+</view>
+
+<!-- 步骤3: 地点设置 -->
+<view class="section" wx:if="{{currentStep === 3}}">
+  <view class="card shadow-card form-section">
+    <text class="section-title">地点设置</text>
+
+    <!-- 定位模式切换开关（生产环境隐藏） -->
+    <!-- <view class="option-row" style="margin-bottom: 24rpx; padding: 20rpx; background: #f0f9ff; border-radius: 16rpx; border-left: 4rpx solid #3b82f6;">
+      <view class="option-label">
+        <text class="text-md text-gray-800">{{useRealLocation ? '🌍 真实定位模式' : '🧪 测试模式'}}</text>
+        <text class="text-xs text-gray-500">
+          {{useRealLocation ? '使用手机GPS定位，适用于真实环境' : '使用预设地点列表，适用于开发测试'}}
+        </text>
+      </view>
+      <switch checked="{{useRealLocation}}" bindchange="toggleLocationMode" color="#3b82f6" />
+    </view> -->
+
+    <view class="form-field">
+      <text class="field-label">活动地点 *</text>
+      <view class="location-picker" bindtap="chooseLocation">
+        <text class="location-icon">📍</text>
+        <text class="{{form.place ? 'location-value' : 'location-placeholder'}}">
+          {{form.place || '点击选择活动地点'}}
+        </text>
+      </view>
+      <text wx:if="{{form.address}}" class="location-detail">{{form.address}}</text>
+    </view>
+    <view class="form-field">
+      <text class="field-label">签到范围（米）</text>
+      <input class="field-input" type="number" placeholder="请输入签到范围" bindinput="onInputNumber" data-field="checkinRadius" value="{{form.checkinRadius}}" />
+      <text class="field-hint">参与者需在此范围内才能签到</text>
+    </view>
+  </view>
+</view>
+
+<!-- 步骤4: 人数设置 -->
+<view class="section" wx:if="{{currentStep === 4}}">
+  <view class="card shadow-card form-section">
+    <text class="section-title">人数设置</text>
+
+    <!-- 无分组时的配置 -->
+    <block wx:if="{{!form.hasGroups}}">
+      <view class="form-field">
+        <text class="field-label">人数上限 *</text>
+        <input class="field-input" type="number" placeholder="请输入人数上限" bindinput="onInputNumber" data-field="total" value="{{form.total}}" />
+      </view>
+      <view class="form-field">
+        <text class="field-label">最少成行人数</text>
+        <input class="field-input" type="number" placeholder="请输入最少人数" bindinput="onInputNumber" data-field="minParticipants" value="{{form.minParticipants}}" />
+      </view>
+    </block>
+
+    <!-- 有分组时的配置 -->
+    <block wx:if="{{form.hasGroups}}">
+      <!-- 分组Tab -->
+      <view class="group-tabs">
+        <block wx:for="{{groups}}" wx:key="id" wx:for-item="group" wx:for-index="idx">
+          <view class="group-tab {{currentGroupIndex === idx ? 'group-tab--active' : ''}}" bindtap="switchGroup" data-index="{{idx}}">
+            <text class="group-tab__name">{{group.name}}</text>
+          </view>
+        </block>
+      </view>
+
+      <!-- 复制首组信息按钮 -->
+      <view wx:if="{{currentGroupIndex > 0}}" class="copy-first-btn" bindtap="copyFirstGroup">
+        <text>📋 复制首组信息</text>
+      </view>
+
+      <!-- 当前分组的配置 -->
+      <view wx:if="{{groups[currentGroupIndex]}}" class="group-config-form">
+        <view class="form-field">
+          <text class="field-label">人数上限 *</text>
+          <input
+            class="field-input"
+            type="number"
+            placeholder="请输入人数上限"
+            bindinput="onGroupFieldInputNumber"
+            data-field="total"
+            data-index="{{currentGroupIndex}}"
+            value="{{groups[currentGroupIndex].total}}"
+          />
+        </view>
+      </view>
+    </block>
+
+    <!-- 公共配置 -->
+    <view class="option-row">
+      <view class="option-label">
+        <text class="text-md text-gray-800">需要审核报名</text>
+        <text class="text-xs text-gray-500">开启后需手动审核</text>
+      </view>
+      <switch checked="{{form.needReview}}" bindchange="onSwitch" data-field="needReview" color="#3b82f6" />
+    </view>
+  </view>
+</view>
+
+<!-- 步骤5: 报名信息 -->
+<view class="section" wx:if="{{currentStep === 5}}">
+  <view class="card shadow-card form-section">
+    <view class="option-header">
+      <text class="section-title">报名信息</text>
+    </view>
+
+    <view class="field-hint" style="margin-bottom: 16rpx;">
+      这些字段将在用户报名时需要填写
+    </view>
+
+    <!-- 有分组时显示Tab -->
+    <view wx:if="{{form.hasGroups}}" class="group-tabs">
+      <block wx:for="{{groups}}" wx:key="id" wx:for-item="group" wx:for-index="idx">
+        <view class="group-tab {{currentGroupIndex === idx ? 'group-tab--active' : ''}}" bindtap="switchGroup" data-index="{{idx}}">
+          <text class="group-tab__name">{{group.name}}</text>
+        </view>
+      </block>
+    </view>
+
+    <!-- 复制首组信息按钮 -->
+    <view wx:if="{{form.hasGroups && currentGroupIndex > 0}}" class="copy-first-btn" bindtap="copyFirstGroup">
+      <text>📋 复制首组信息</text>
+    </view>
+
+    <!-- 字段列表 -->
+    <view class="custom-list">
+      <block wx:for="{{form.hasGroups ? groups[currentGroupIndex].customFields : defaultCustomFields}}" wx:key="id" wx:for-item="field">
+        <view class="custom-item">
+          <view class="custom-item-header">
+            <view class="custom-item-left">
+              <text class="text-md text-gray-800">{{field.label}}</text>
+              <text class="text-xs text-gray-500" wx:if="{{field.desc}}">{{field.desc}}</text>
+            </view>
+            <view class="custom-item-right">
+              <!-- 必填开关 -->
+              <view class="field-required-toggle" wx:if="{{field.id !== 'name'}}">
+                <text class="toggle-label">必填</text>
+                <switch
+                  checked="{{field.required}}"
+                  bindchange="onFieldRequiredChange"
+                  data-field-id="{{field.id}}"
+                  data-group-index="{{form.hasGroups ? currentGroupIndex : -1}}"
+                  color="#10b981"
+                />
+              </view>
+              <view class="field-required-badge" wx:else>
+                <text class="badge-text">必填</text>
+              </view>
+
+              <!-- 删除按钮 -->
+              <view
+                class="field-delete-btn"
+                wx:if="{{field.isCustom}}"
+                bindtap="deleteField"
+                data-field-id="{{field.id}}"
+                data-group-index="{{form.hasGroups ? currentGroupIndex : -1}}"
+              >
+                <text class="delete-icon">✕</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <!-- 添加字段按钮 -->
+    <view class="add-field-btn-container">
+      <view class="ghost-btn ghost-btn--accent" bindtap="addField">+ 添加字段</view>
+    </view>
+  </view>
+</view>
+
+<!-- 步骤6: 活动说明 -->
+<view class="section" wx:if="{{currentStep === 6}}">
+  <view class="card shadow-card form-section">
+    <text class="section-title">活动说明</text>
+
+    <view class="field-hint" style="margin-bottom: 16rpx;">
+      这些信息将展示给报名用户
+    </view>
+
+    <!-- 有分组时显示Tab -->
+    <view wx:if="{{form.hasGroups}}" class="group-tabs">
+      <block wx:for="{{groups}}" wx:key="id" wx:for-item="group" wx:for-index="idx">
+        <view class="group-tab {{currentGroupIndex === idx ? 'group-tab--active' : ''}}" bindtap="switchGroup" data-index="{{idx}}">
+          <text class="group-tab__name">{{group.name}}</text>
+        </view>
+      </block>
+    </view>
+
+    <!-- 复制首组信息按钮 -->
+    <view wx:if="{{form.hasGroups && currentGroupIndex > 0}}" class="copy-first-btn" bindtap="copyFirstGroup">
+      <text>📋 复制首组信息</text>
+    </view>
+
+    <!-- 无分组的配置 -->
+    <block wx:if="{{!form.hasGroups}}">
+      <view class="form-field">
+        <view class="field-label-row">
+          <text class="field-label">报名要求</text>
+          <view class="field-action-btn" bindtap="openFullScreenEditor" data-scope="form" data-field="requirements">全屏编辑</view>
+        </view>
+        <textarea class="field-textarea" placeholder="请输入报名要求" bindinput="onInput" data-field="requirements" value="{{form.requirements}}" maxlength="5000" />
+      </view>
+      <view class="form-field">
+        <view class="field-label-row">
+          <text class="field-label">活动说明及注意事项</text>
+          <view class="field-action-btn" bindtap="openFullScreenEditor" data-scope="form" data-field="description">全屏编辑</view>
+        </view>
+        <textarea class="field-textarea" placeholder="请输入活动说明及注意事项" bindinput="onInput" data-field="description" value="{{form.description}}" maxlength="5000" />
+      </view>
+
+      <!-- 自定义说明字段 -->
+      <block wx:for="{{descriptionFields}}" wx:key="id" wx:for-item="field">
+        <view class="form-field">
+          <view class="field-label-with-delete">
+            <text class="field-label">{{field.label}}</text>
+            <view class="field-delete-btn-small" bindtap="deleteDescriptionField" data-field-id="{{field.id}}" data-group-index="-1">
+              <text class="delete-icon">✕</text>
+            </view>
+          </view>
+          <textarea
+            class="field-textarea"
+            placeholder="请输入{{field.label}}"
+            bindinput="onDescriptionFieldInput"
+            data-field-id="{{field.id}}"
+            data-group-index="-1"
+            value="{{field.value}}"
+          />
+        </view>
+      </block>
+
+       <!-- 添加字段按钮 -->
+       <view class="add-field-btn-container">
+         <view class="ghost-btn ghost-btn--accent" bindtap="addDescriptionField">+ 添加字段</view>
+       </view>
+
+       <!-- 联系方式（选填） -->
+       <view class="form-field">
+         <text class="field-label">联系方式</text>
+         <input class="field-input" type="number" placeholder="建议填写联系电话" bindinput="onInput" data-field="organizerPhone" value="{{form.organizerPhone}}" maxlength="11" />
+         <text class="field-hint">选填，便于参与者联系您</text>
+       </view>
+       <view class="form-field">
+         <text class="field-label">联系人昵称</text>
+         <input class="field-input" placeholder="建议填写联系人昵称" bindinput="onInput" data-field="organizerWechat" value="{{form.organizerWechat}}" maxlength="50" />
+         <text class="field-hint">选填，便于参与者识别并联系您</text>
+       </view>
+
+       <view class="form-field">
+         <text class="field-label">费用类型</text>
+         <picker mode="selector" range="{{feeTypes}}" bindchange="onFeeTypeChange">
+           <view class="picker-field">{{form.feeType || '请选择费用类型'}}</view>
+         </picker>
+      </view>
+      <view class="form-field" wx:if="{{form.feeType !== '免费'}}">
+        <text class="field-label">费用金额（元）</text>
+        <input class="field-input" type="digit" placeholder="请输入费用金额" bindinput="onInputNumber" data-field="fee" value="{{form.fee}}" />
+      </view>
+    </block>
+
+    <!-- 有分组的配置 -->
+    <block wx:if="{{form.hasGroups && groups[currentGroupIndex]}}">
+      <view class="form-field">
+        <view class="field-label-row">
+          <text class="field-label">报名要求</text>
+          <view class="field-action-btn" bindtap="openFullScreenEditor" data-scope="group" data-index="{{currentGroupIndex}}" data-field="requirements">全屏编辑</view>
+        </view>
+        <textarea
+          class="field-textarea"
+          placeholder="请输入报名要求"
+          bindinput="onGroupFieldInput"
+          data-field="requirements"
+          data-index="{{currentGroupIndex}}"
+          value="{{groups[currentGroupIndex].requirements}}"
+          maxlength="5000"
+        />
+      </view>
+      <view class="form-field">
+        <view class="field-label-row">
+          <text class="field-label">活动说明及注意事项</text>
+          <view class="field-action-btn" bindtap="openFullScreenEditor" data-scope="group" data-index="{{currentGroupIndex}}" data-field="description">全屏编辑</view>
+        </view>
+        <textarea
+          class="field-textarea"
+          placeholder="请输入活动说明及注意事项"
+          bindinput="onGroupFieldInput"
+          data-field="description"
+          data-index="{{currentGroupIndex}}"
+          value="{{groups[currentGroupIndex].description}}"
+          maxlength="5000"
+        />
+      </view>
+
+      <!-- 自定义说明字段 -->
+      <block wx:for="{{groups[currentGroupIndex].descriptionFields}}" wx:key="id" wx:for-item="field">
+        <view class="form-field">
+          <view class="field-label-with-delete">
+            <text class="field-label">{{field.label}}</text>
+            <view class="field-delete-btn-small" bindtap="deleteDescriptionField" data-field-id="{{field.id}}" data-group-index="{{currentGroupIndex}}">
+              <text class="delete-icon">✕</text>
+            </view>
+          </view>
+          <textarea
+            class="field-textarea"
+            placeholder="请输入{{field.label}}"
+            bindinput="onDescriptionFieldInput"
+            data-field-id="{{field.id}}"
+            data-group-index="{{currentGroupIndex}}"
+            value="{{field.value}}"
+          />
+        </view>
+      </block>
+
+       <!-- 添加字段按钮 -->
+       <view class="add-field-btn-container">
+         <view class="ghost-btn ghost-btn--accent" bindtap="addDescriptionField">+ 添加字段</view>
+       </view>
+
+       <!-- 联系方式（选填） -->
+       <view class="form-field">
+         <text class="field-label">联系方式</text>
+         <input class="field-input" type="number" placeholder="建议填写联系电话" bindinput="onInput" data-field="organizerPhone" value="{{form.organizerPhone}}" maxlength="11" />
+         <text class="field-hint">选填，便于参与者联系您</text>
+       </view>
+       <view class="form-field">
+         <text class="field-label">联系人昵称</text>
+         <input class="field-input" placeholder="建议填写联系人昵称" bindinput="onInput" data-field="organizerWechat" value="{{form.organizerWechat}}" maxlength="50" />
+         <text class="field-hint">选填，便于参与者识别并联系您</text>
+       </view>
+
+       <view class="form-field">
+         <text class="field-label">费用类型</text>
+         <picker mode="selector" range="{{feeTypes}}" bindchange="onGroupFeeTypeChange" data-index="{{currentGroupIndex}}">
+           <view class="picker-field">{{groups[currentGroupIndex].feeType || '请选择费用类型'}}</view>
+         </picker>
+      </view>
+      <view class="form-field" wx:if="{{groups[currentGroupIndex].feeType !== '免费'}}">
+        <text class="field-label">费用金额（元）</text>
+        <input
+          class="field-input"
+          type="digit"
+          placeholder="请输入费用金额"
+          bindinput="onGroupFieldInputNumber"
+          data-field="fee"
+          data-index="{{currentGroupIndex}}"
+          value="{{groups[currentGroupIndex].fee}}"
+        />
+      </view>
+    </block>
+  </view>
+</view>
+
+<!-- 步骤7: 活动海报与预览 -->
+<view class="section" wx:if="{{currentStep === 7}}">
+  <!-- 定时发布设置 -->
+  <view class="card shadow-card form-section">
+    <text class="section-title">发布设置</text>
+
+    <!-- 定时发布开关 -->
+    <view class="option-row">
+      <view class="option-label">
+        <text class="text-md text-gray-800">定时发布</text>
+        <text class="text-xs text-gray-500">设置在未来某个时间自动发布活动</text>
+      </view>
+      <switch checked="{{enableScheduledPublish}}" bindchange="onSwitch" data-field="enableScheduledPublish" color="#3b82f6" />
+    </view>
+
+    <!-- 定时发布时间选择 -->
+    <view wx:if="{{enableScheduledPublish}}" class="scheduled-publish-config">
+      <view class="form-field">
+        <text class="field-label">发布日期 *</text>
+        <picker mode="date" value="{{scheduledPublishDate}}" bindchange="onScheduledPublishDateChange" start="{{todayDate}}">
+          <view class="picker-field">{{scheduledPublishDate || '请选择发布日期'}}</view>
+        </picker>
+      </view>
+      <view class="form-field">
+        <text class="field-label">发布时间 *</text>
+        <picker mode="time" value="{{scheduledPublishTime}}" bindchange="onScheduledPublishTimeChange">
+          <view class="picker-field">{{scheduledPublishTime}}</view>
+        </picker>
+        <text class="field-hint">活动将在 {{scheduledPublishDate}} {{scheduledPublishTime}} 自动发布</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 活动海报模块已隐藏，后续需要再开发 -->
+  <!-- <view class="card shadow-card form-section">
+    <text class="section-title">活动海报</text>
+    <view class="upload-box" bindtap="uploadPoster">
+      <text class="upload-icon">☁️</text>
+      <text class="text-sm text-gray-500">点击上传活动海报</text>
+      <text class="text-xs text-gray-400">支持 JPG、PNG 格式，建议尺寸 750×400</text>
+    </view>
+    <image wx:if="{{form.poster}}" src="{{form.poster}}" mode="aspectFill" class="poster-preview"></image>
+  </view> -->
+
+  <view class="card shadow-card preview-card">
+    <text class="section-title">实时预览</text>
+    <view class="preview-banner">
+      <image class="preview-banner-image" src="{{previewImageUrl}}" mode="aspectFill"></image>
+      <view class="preview-banner-overlay"></view>
+      <view class="badge badge--light preview-type-badge">{{form.type || '待选择类型'}}</view>
+    </view>
+    <view class="preview-body">
+      <text class="text-md text-gray-800 mb-8">{{form.title || '活动名称'}}</text>
+      <text class="text-sm text-gray-500 mb-12">{{form.desc || '活动描述内容将显示在这里。'}}</text>
+      <text class="text-sm text-gray-500">时间：{{form.startDate}} {{form.startTime}} - {{form.endDate}} {{form.endTime}}</text>
+      <text class="text-sm text-gray-500 mt-8">地点：{{form.place || '待设置地点'}}</text>
+
+      <!-- 分组信息预览 -->
+      <view wx:if="{{form.hasGroups && groups.length > 0}}" class="preview-groups">
+        <text class="text-sm text-gray-700 mt-16 mb-8" style="font-weight: 600;">活动分组：</text>
+        <block wx:for="{{groups}}" wx:key="id" wx:for-item="group">
+          <view class="preview-group-item">
+            <text class="text-sm text-gray-800">• {{group.name}} ({{group.total}}人)</text>
+            <text class="text-xs text-gray-500 mt-4" wx:if="{{group.feeType !== '免费'}}">费用：{{group.feeType}} ¥{{group.fee}}</text>
+          </view>
+        </block>
+      </view>
+
+      <!-- 无分组时的费用信息 -->
+      <text class="text-sm text-gray-500 mt-8" wx:if="{{!form.hasGroups && form.feeType !== '免费'}}">费用：{{form.feeType}} ¥{{form.fee}}</text>
+      <text class="text-sm text-gray-500 mt-8" wx:if="{{!form.hasGroups}}">人数：0/{{form.total}}</text>
+    </view>
+  </view>
+</view>
+
+<view class="bottom-space"></view>
+<view class="fixed-footer">
+  <view class="btn btn--primary footer-btn" bindtap="prev">
+    {{currentStep === 1 ? '返回' : '上一步'}}
+  </view>
+  <view class="btn btn--primary footer-btn" bindtap="next">
+    {{currentStep === 7 ? publishButtonText : '下一步'}}
+  </view>
+</view>
+
+<!-- 复制活动：是否附带复制白名单/黑名单/管理员 -->
+<view wx:if="{{showCopyExtrasDialog}}" class="copy-extras-mask" catchtouchmove="noop">
+  <view class="copy-extras-modal">
+    <view class="copy-extras-header">
+      <text class="copy-extras-title">复制附带信息</text>
+    </view>
+    <text class="copy-extras-subtitle">勾选需要一并复制的内容（仅显示数量）</text>
+
+    <view class="copy-extras-actions">
+      <text class="copy-extras-action" bindtap="copyExtrasSelectAll" data-value="1">全选</text>
+      <text class="copy-extras-action" bindtap="copyExtrasSelectAll" data-value="0">全不选</text>
+    </view>
+
+    <checkbox-group bindchange="onCopyExtrasChange">
+      <label class="copy-extras-item">
+        <checkbox value="whitelist" checked="{{copyExtrasOptions.whitelist}}" />
+        <view class="copy-extras-item-body">
+          <text class="copy-extras-item-title">白名单</text>
+          <text class="copy-extras-item-desc">{{copyExtrasCounts.whitelist}} 人</text>
+        </view>
+      </label>
+      <label class="copy-extras-item">
+        <checkbox value="blacklist" checked="{{copyExtrasOptions.blacklist}}" />
+        <view class="copy-extras-item-body">
+          <text class="copy-extras-item-title">黑名单</text>
+          <text class="copy-extras-item-desc">{{copyExtrasCounts.blacklist}} 人</text>
+        </view>
+      </label>
+      <label class="copy-extras-item">
+        <checkbox value="administrators" checked="{{copyExtrasOptions.administrators}}" />
+        <view class="copy-extras-item-body">
+          <text class="copy-extras-item-title">活动管理员</text>
+          <text class="copy-extras-item-desc">{{copyExtrasCounts.administrators}} 人</text>
+        </view>
+      </label>
+    </checkbox-group>
+
+    <view class="copy-extras-footer">
+      <view class="btn btn--small copy-extras-btn--ghost" bindtap="cancelCopyExtras">取消</view>
+      <view class="btn btn--small btn--primary copy-extras-btn--primary" bindtap="confirmCopyExtras">确认</view>
+    </view>
+  </view>
+</view>
+

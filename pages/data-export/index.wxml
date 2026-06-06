@@ -1,0 +1,66 @@
+<view class="export-page">
+  <view class="hero-card shadow-card">
+    <view class="hero-mark">📤</view>
+    <view class="hero-copy">
+      <text class="hero-title">活动报名数据导出</text>
+      <text class="hero-desc">导出我发起和我管理的活动报名明细，文件将以 Excel 形式打开。</text>
+    </view>
+  </view>
+
+  <view class="section-card shadow-card">
+    <view class="section-head">
+      <text class="section-title">导出范围</text>
+      <text class="section-subtitle">默认不限制日期</text>
+    </view>
+
+    <view class="rule-list">
+      <view class="rule-item">
+        <text class="rule-dot"></text>
+        <text class="rule-text">活动范围：我发起的活动、我管理的活动</text>
+      </view>
+      <view class="rule-item">
+        <text class="rule-dot"></text>
+        <text class="rule-text">筛选依据：活动创建时间</text>
+      </view>
+      <view class="rule-item">
+        <text class="rule-dot"></text>
+        <text class="rule-text">报名状态：全部保留</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="section-card shadow-card">
+    <view class="section-head">
+      <text class="section-title">选择日期</text>
+      <text class="section-subtitle">可只选择开始或结束日期</text>
+    </view>
+
+    <view class="date-grid">
+      <picker mode="date" value="{{exportStartDate}}" bindchange="onStartDateChange">
+        <view class="date-field">
+          <text class="date-label">开始日期</text>
+          <text class="date-value {{exportStartDate ? '' : 'is-muted'}}">{{exportStartDate || '不限'}}</text>
+        </view>
+      </picker>
+
+      <picker mode="date" value="{{exportEndDate}}" bindchange="onEndDateChange">
+        <view class="date-field">
+          <text class="date-label">结束日期</text>
+          <text class="date-value {{exportEndDate ? '' : 'is-muted'}}">{{exportEndDate || '不限'}}</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="action-row">
+      <button class="action-btn action-btn--primary" loading="{{exporting}}" disabled="{{exporting}}" bindtap="exportExcel">
+        {{exporting ? '导出中...' : '导出 Excel'}}
+      </button>
+      <button class="action-btn action-btn--plain" disabled="{{exporting}}" bindtap="clearDateRange">清空日期</button>
+    </view>
+  </view>
+
+  <view class="hint-card">
+    <text class="hint-title">使用提示</text>
+    <text class="hint-text">文件打开后，可通过右上角菜单转发或保存。导出文件不会长期保存在服务器。</text>
+  </view>
+</view>

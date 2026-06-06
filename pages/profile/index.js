@@ -10,6 +10,7 @@ const baseMenuLinks = [
   { key: 'my-activities', label: '我的活动', icon: '📋', bg: '#93c5fd', color: '#1e3a8a' },
   { key: 'messages', label: '消息中心', icon: '📬', bg: '#fca5a5', color: '#7f1d1d', badge: '' },
   { key: 'favorites', label: '我的收藏', icon: '⭐', bg: '#c4b5fd', color: '#4c1d95' },
+  { key: 'data-export', label: '数据导出', icon: '📤', bg: '#99f6e4', color: '#134e4a' },
   { key: 'feedback', label: '帮助与反馈', icon: '💬', bg: '#fcd34d', color: '#78350f' },
   { key: 'privacy', label: '隐私政策', icon: '🔒', bg: '#d8b4fe', color: '#581c87' },
 ];
@@ -493,7 +494,7 @@ Page({
     const isLoggedIn = app.checkLoginStatus();
 
     // 需要登录才能访问的功能
-    const requireLoginFeatures = ['my-activities', 'messages', 'favorites', 'system-admin'];
+    const requireLoginFeatures = ['my-activities', 'messages', 'favorites', 'data-export', 'system-admin'];
 
     if (!isLoggedIn && requireLoginFeatures.includes(key)) {
       // 显示登录引导
@@ -524,6 +525,9 @@ Page({
         break;
       case 'favorites':
         this.goFavorites();
+        break;
+      case 'data-export':
+        wx.navigateTo({ url: '/pages/data-export/index' });
         break;
       case 'system-admin':
         wx.navigateTo({ url: '/pages/admin/index' });

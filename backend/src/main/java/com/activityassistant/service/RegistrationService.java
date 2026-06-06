@@ -2,6 +2,7 @@ package com.activityassistant.service;
 
 import com.activityassistant.dto.request.ApproveRegistrationRequest;
 import com.activityassistant.dto.request.CreateRegistrationRequest;
+import com.activityassistant.dto.request.UpdateRegistrationRequest;
 import com.activityassistant.dto.response.RegistrationVO;
 import com.activityassistant.exception.BusinessException;
 import com.activityassistant.exception.NotFoundException;
@@ -205,6 +206,41 @@ public class RegistrationService {
 
         log.info("报名状态已更新，报名ID: {}, oldStatus={}, newStatus={}, operatorId={}", registrationId, oldStatus, targetStatus, userId);
         return targetStatus;
+    }
+
+    @Transactional
+    public RegistrationVO updateRegistration(String registrationId, UpdateRegistrationRequest request, String userId) {
+        Registration registration = registrationRepository.findById(registrationId)
+                .orElseThrow(() -> new NotFoundException("报名记录不存在"));
+
+        Activity activity = activityRepository.findById(registration.getActivityId())
+                .orElseThrow(() -> new NotFoundException("活动不存在"));
+
+        boolean isManager = isActivityManager(activity, userId);
+        boolean isOwner = userId != null && userId.equals(registration.getUserId());
+        if (!isManager && !isOwner) {
+            throw new BusinessException(PERMISSION_DENIED, "无权修改此报名信息");
+        }
+
+        boolean activityEnded = "finished".equals(activity.getStatus())
+                || (activity.getEndTime() != null && LocalDateTime.now().isAfter(activity.getEndTime()));
+        if (activityEnded && !isManager) {
+            throw new BusinessException(PERMISSION_DENIED, "活动已结束，仅组织者或管理员可修改报名信息");
+        }
+
+        String status = registration.getStatus();
+        boolean inactive = "cancelled".equals(status) || "removed".equals(status) || "rejected".equals(status);
+        if (inactive && !isManager) {
+            throw new BusinessException(INVALID_OPERATION, "当前报名状态不可修改");
+        }
+
+        registration.setName(request.getName() == null ? "" : request.getName().trim());
+        registration.setMobile(toNullableTrimmed(request.getMobile()));
+        registration.setCustomData(request.getCustomData());
+
+        Registration savedRegistration = registrationRepository.save(registration);
+        log.info("报名信息已更新，报名ID: {}, operatorId={}", registrationId, userId);
+        return registrationMapper.toVO(savedRegistration, true);
     }
 
     /**
@@ -424,6 +460,14 @@ public class RegistrationService {
      */
     public boolean isUserRegistered(String activityId, String userId) {
         return registrationRepository.existsByActivityIdAndUserId(activityId, userId);
+    }
+
+    private String toNullableTrimmed(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private boolean isActivityManager(Activity activity, String userId) {

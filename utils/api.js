@@ -182,6 +182,34 @@ const request = async (url, options = {}) => {
   }
 };
 
+const downloadFileWithAuth = (url, params = {}) => {
+  return new Promise((resolve, reject) => {
+    const app = getApp();
+    const apiBase = app?.globalData?.apiBase || '';
+    const query = Object.keys(params || {})
+      .filter(key => params[key] !== null && params[key] !== undefined && params[key] !== '')
+      .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+      .join('&');
+
+    wx.downloadFile({
+      url: `${apiBase}${url}${query ? '?' + query : ''}`,
+      header: {
+        'Authorization': wx.getStorageSync('token') ? `Bearer ${wx.getStorageSync('token')}` : ''
+      },
+      success: (res) => {
+        if (res.statusCode === 200 && res.tempFilePath) {
+          resolve(res.tempFilePath);
+          return;
+        }
+        reject(new Error(`下载失败 (${res.statusCode})`));
+      },
+      fail: (err) => {
+        reject(new Error(err.errMsg || '下载失败'));
+      }
+    });
+  });
+};
+
 // Mock数据请求处理
 const mockRequest = (url, method, data) => {
   console.log('[Mock API]', method, url, data);
@@ -1031,6 +1059,15 @@ const activityAPI = {
     showLoading: false
   }),
 
+  getExportSummary: (params = {}) => request('/api/activities/export/summary', {
+    method: 'GET',
+    data: params,
+    useCache: false,
+    showLoading: false
+  }),
+
+  exportActivities: (params = {}) => downloadFileWithAuth('/api/activities/export', params),
+
   // 创建活动（显示loading，增加超时时间）
   create: (data) => request('/api/activities', {
     method: 'POST',
@@ -1097,6 +1134,13 @@ const registrationAPI = {
   }),
 
   // 获取报名详情
+  update: (id, data) => request(`/api/registrations/${id}`, {
+    method: 'PUT',
+    data,
+    showLoading: true,
+    loadingText: '保存中...'
+  }),
+
   getDetail: (id) => request(`/api/registrations/${id}`, {
     method: 'GET',
     useCache: false

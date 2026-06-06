@@ -168,6 +168,28 @@ public interface ActivityRepository extends JpaRepository<Activity, String>, Jpa
     Page<Activity> findManagedActivities(@Param("userId") String userId, Pageable pageable);
 
     /**
+     * Export activities created or managed by current user within optional created time range.
+     */
+    @Query(
+            value = """
+                    SELECT DISTINCT a.*
+                    FROM activities a
+                    WHERE a.is_deleted = false
+                      AND (
+                        a.organizer_id = :userId
+                        OR (a.administrators IS NOT NULL AND JSON_CONTAINS(a.administrators, JSON_QUOTE(:userId)))
+                      )
+                      AND (:startTime IS NULL OR a.created_at >= :startTime)
+                      AND (:endTime IS NULL OR a.created_at < :endTime)
+                    ORDER BY a.created_at DESC, a.id ASC
+                    """,
+            nativeQuery = true
+    )
+    List<Activity> findExportableActivities(@Param("userId") String userId,
+                                            @Param("startTime") LocalDateTime startTime,
+                                            @Param("endTime") LocalDateTime endTime);
+
+    /**
      * 首页活动查询（含公开 + 与用户相关的私密活动）
      */
     @Query(

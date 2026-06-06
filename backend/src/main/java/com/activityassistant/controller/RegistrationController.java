@@ -2,6 +2,7 @@ package com.activityassistant.controller;
 
 import com.activityassistant.dto.request.ApproveRegistrationRequest;
 import com.activityassistant.dto.request.CreateRegistrationRequest;
+import com.activityassistant.dto.request.UpdateRegistrationRequest;
 import com.activityassistant.dto.response.ApiResponse;
 import com.activityassistant.dto.response.RegistrationVO;
 import com.activityassistant.security.SecurityUtils;
@@ -114,6 +115,21 @@ public class RegistrationController {
         log.info("收到查询报名详情请求，报名ID: {}", id);
         String userId = SecurityUtils.getCurrentUserId();
         RegistrationVO registration = registrationService.getRegistrationDetail(id, userId);
+        return ApiResponse.success(registration);
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "更新报名信息", description = "报名者本人或活动创建者/管理员可更新报名信息")
+    public ApiResponse<RegistrationVO> updateRegistration(
+            @PathVariable String id,
+            @Valid @RequestBody UpdateRegistrationRequest request
+    ) {
+        if (appFeatureConfigService.isReviewModeEnabled()) {
+            return ApiResponse.error(403, REVIEW_MODE_REGISTRATION_MESSAGE);
+        }
+        log.info("收到更新报名信息请求，报名ID: {}", id);
+        String userId = SecurityUtils.getCurrentUserId();
+        RegistrationVO registration = registrationService.updateRegistration(id, request, userId);
         return ApiResponse.success(registration);
     }
 

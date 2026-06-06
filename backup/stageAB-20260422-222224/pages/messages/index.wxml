@@ -1,0 +1,83 @@
+<!-- pages/messages/index.wxml -->
+
+<!-- 游客状态提示 -->
+<view wx:if="{{!isLoggedIn}}" class="guest-container">
+  <view class="guest-content">
+    <view class="guest-icon">??</view>
+    <text class="guest-title">消息中心</text>
+    <text class="guest-desc">登录后查看您的消息通知</text>
+    <view class="guest-features">
+      <view class="guest-feature-item">
+        <text class="guest-feature-icon">??</text>
+        <text class="guest-feature-text">接收活动与系统通知</text>
+      </view>
+      <view class="guest-feature-item">
+        <text class="guest-feature-icon">??</text>
+        <text class="guest-feature-text">查看活动提醒</text>
+      </view>
+      <view class="guest-feature-item">
+        <text class="guest-feature-icon">??</text>
+        <text class="guest-feature-text">管理消息状态</text>
+      </view>
+    </view>
+    <view class="guest-login-btn" bindtap="goLogin">
+      <text class="guest-login-icon">??</text>
+      <text class="guest-login-text">立即登录</text>
+    </view>
+  </view>
+</view>
+
+<!-- 已登录状态显示消息列表 -->
+<view wx:else class="page-container">
+  <view class="filter-section">
+    <view class="filter-header">
+      <view class="mark-all-btn" bindtap="markAllRead">全部已读</view>
+      <scroll-view scroll-x class="filter-scroll-view" show-scrollbar="false">
+        <view class="filter-tabs">
+          <block wx:for="{{filters}}" wx:key="key" wx:for-item="item">
+            <view class="filter-tab {{item.active ? 'filter-tab--active' : ''}}" bindtap="onFilterTap" data-key="{{item.key}}">
+              {{item.name}}
+            </view>
+          </block>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <view class="content-section">
+    <block wx:for="{{messages}}" wx:key="id">
+      <view
+        class="message-card card shadow-card {{item.expanded ? 'message-card--expanded' : 'message-card--collapsed'}} {{item.isRead ? 'message-card--read' : 'message-card--unread'}}"
+        bindtap="onMessageTap"
+        data-id="{{item.id}}"
+      >
+        <view class="row gap-16 items-start">
+          <view class="message-icon" style="background: {{item.iconBg}}; color: {{item.iconColor}};">{{item.iconText}}</view>
+          <view class="flex-col message-body">
+            <view class="row-between mb-8">
+              <view class="row gap-12 items-center message-title-wrap">
+                <view wx:if="{{!item.isRead}}" class="unread-dot"></view>
+                <text class="message-title">{{item.title}}</text>
+              </view>
+              <text class="message-time">{{item.time}}</text>
+            </view>
+
+            <text class="message-content {{item.expanded ? 'message-content--expanded' : 'message-content--collapsed'}}">{{item.content}}</text>
+
+            <view class="row gap-12 mt-16 message-tags">
+              <view class="badge badge--type">{{item.categoryName}}</view>
+              <view wx:if="{{item.subTag}}" class="badge badge--sub">{{item.subTag}}</view>
+              <view class="badge {{item.isRead ? 'badge--read' : 'badge--unread'}}">{{item.isRead ? '已读' : '未读'}}</view>
+            </view>
+
+            <view wx:if="{{item.expanded && item.activityId}}" class="message-actions">
+              <view class="btn btn--secondary btn--small" catchtap="onViewActivityTap" data-activity-id="{{item.activityId}}">查看活动详情</view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <view class="bottom-space"></view>
+</view>

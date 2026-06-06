@@ -1,0 +1,173 @@
+<!-- pages/management/registrations.wxml -->
+<view class="registrations-page">
+  <!-- 顶部标题栏 -->
+  <view class="top-bar top-bar--fixed" style="padding-top: {{statusBarHeight}}px;">
+    <view class="top-bar__group">
+      <view class="icon-btn icon-btn--back" bindtap="goBack">
+        <text class="back-icon">←</text>
+      </view>
+      <text class="text-lg" style="margin-left: 16rpx;">报名管理</text>
+      <text wx:if="{{groupName}}" class="text-sm text-gray-500" style="margin-left: 12rpx;">{{groupName}}</text>
+    </view>
+    <view class="top-bar__group">
+      <view class="badge badge--primary">{{allRegistrations.length}} 人</view>
+    </view>
+  </view>
+
+  <!-- 状态筛选标签 -->
+  <view class="filter-tabs">
+    <view class="filter-tab {{statusFilter === 'all' ? 'filter-tab--active' : ''}}" bindtap="switchFilter" data-filter="all">全部</view>
+    <view class="filter-tab {{statusFilter === 'pending' ? 'filter-tab--active' : ''}}" bindtap="switchFilter" data-filter="pending">待审核</view>
+    <view class="filter-tab {{statusFilter === 'approved' ? 'filter-tab--active' : ''}}" bindtap="switchFilter" data-filter="approved">已通过</view>
+    <view class="filter-tab {{statusFilter === 'rejected' ? 'filter-tab--active' : ''}}" bindtap="switchFilter" data-filter="rejected">已拒绝</view>
+  </view>
+
+  <!-- 报名列表 -->
+  <view class="section">
+    <view wx:if="{{displayRegistrations.length > 0}}" class="list">
+      <block wx:for="{{displayRegistrations}}" wx:key="id">
+        <view class="list-item card shadow-card" bindtap="openRegistrationDetail" data-id="{{item.id}}">
+          <view wx:if="{{item.userAvatar}}" class="list-avatar-container">
+            <image src="{{item.userAvatar}}" mode="cover" class="list-avatar"></image>
+          </view>
+          <view wx:else class="list-avatar-container">
+            <view class="list-avatar-placeholder">{{item.avatarInitial || 'U'}}</view>
+          </view>
+
+          <view class="list-info">
+            <text class="list-name">{{item.displayName}}</text>
+            <text wx:if="{{item.groupName}}" class="list-time">分组：{{item.groupName}}</text>
+            <text class="list-time">报名时间：{{item.registeredAt}}</text>
+          </view>
+
+          <view class="list-status">
+            <view class="status-badge status-badge--{{item.statusColor}}">{{item.statusText}}</view>
+            <view class="status-badge status-badge--{{item.checkinColor}}" style="margin-top: 8rpx;">{{item.checkinText}}</view>
+          </view>
+
+          <view class="list-actions">
+            <!-- 待审核显示审核按钮 -->
+            <block wx:if="{{item.status === 'pending'}}">
+              <view class="btn btn--success btn--small" catchtap="approveRegistration" data-id="{{item.id}}" data-name="{{item.displayName}}">通过</view>
+              <view class="btn btn--danger btn--small" catchtap="rejectRegistration" data-id="{{item.id}}" data-name="{{item.displayName}}" style="margin-left: 8rpx;">拒绝</view>
+            </block>
+            <view
+              class="btn btn--secondary btn--small"
+              catchtap="showRemoveDialog"
+              data-id="{{item.id}}"
+              data-user-id="{{item.userId}}"
+              data-name="{{item.displayName}}"
+              data-mobile="{{item.mobile}}"
+              style="margin-left: 8rpx;"
+            >
+              移除
+            </view>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <view wx:else class="empty-state">
+      <text class="empty-icon">📋</text>
+      <text class="empty-text">暂无报名记录</text>
+      <text class="empty-hint">当前筛选条件下没有数据</text>
+    </view>
+  </view>
+
+  <!-- 报名详情（Bottom Sheet） -->
+  <view wx:if="{{showDetailDialog}}" class="dialog-overlay detail-overlay" bindtap="closeDetailDialog">
+    <view class="dialog-content detail-sheet" catchtap="{{null}}">
+      <view class="detail-sheet__header">
+        <view class="detail-sheet__user">
+          <view class="detail-sheet__avatar">
+            <image wx:if="{{detailTarget.userAvatar}}" src="{{detailTarget.userAvatar}}" mode="cover" class="detail-sheet__avatar-img" />
+            <view wx:else class="detail-sheet__avatar-fallback">
+              <text class="detail-sheet__avatar-text">{{detailTarget.avatarInitial || 'U'}}</text>
+            </view>
+          </view>
+
+          <view class="detail-sheet__user-text">
+            <view class="detail-sheet__title-row">
+              <text class="detail-sheet__name">{{detailTarget.displayName}}</text>
+              <view wx:if="{{detailGroupName}}" class="detail-sheet__tag">{{detailGroupName}}</view>
+            </view>
+            <view class="detail-sheet__sub-row">
+              <view class="detail-sheet__status status-badge status-badge--{{detailTarget.statusColor}}">{{detailTarget.statusText}}</view>
+              <view class="detail-sheet__status status-badge status-badge--{{detailTarget.checkinColor}}" style="margin-left: 12rpx;">{{detailTarget.checkinText}}</view>
+              <text class="detail-sheet__sub">{{detailTarget.registeredAt}}</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="detail-sheet__close" bindtap="closeDetailDialog">✕</view>
+      </view>
+
+      <scroll-view class="detail-sheet__body" scroll-y>
+        <view class="detail-sheet__content">
+          <view wx:if="{{detailFields.length > 0}}" class="detail-sheet__kv">
+            <view wx:for="{{detailFields}}" wx:key="index" class="detail-kv-row">
+              <view class="detail-kv-label">
+                <text>{{item.label}}</text>
+              </view>
+              <view class="detail-kv-value {{item.danger ? 'detail-kv-value--danger' : ''}}">
+                <text>{{item.value}}</text>
+              </view>
+            </view>
+          </view>
+          <view wx:else class="detail-sheet__empty">
+            <text class="detail-sheet__empty-title">暂无报名信息</text>
+            <text class="detail-sheet__empty-sub">该用户未填写可展示的报名字段</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <!-- 移除报名对话框 -->
+  <view wx:if="{{showRemoveDialog}}" class="dialog-overlay" bindtap="closeRemoveDialog">
+    <view class="dialog-content" catchtap="{{null}}">
+      <view class="dialog-header">
+        <text class="dialog-title">移除报名</text>
+        <view class="dialog-close" bindtap="closeRemoveDialog">✕</view>
+      </view>
+
+      <view class="dialog-body">
+        <view class="remove-mode">
+          <view class="remove-hint">
+            <text class="text-base">确定要移除以下用户的报名吗？</text>
+            <view class="user-info-card">
+              <text class="text-sm text-gray-600">姓名：{{removeTarget.name}}</text>
+              <text class="text-sm text-gray-600">手机：{{removeTarget.mobile}}</text>
+            </view>
+          </view>
+
+          <view class="toggle-group">
+            <view class="toggle-label">
+              <text class="text-base">同时加入黑名单？</text>
+              <text class="text-sm text-gray-500">该用户将无法再次报名</text>
+            </view>
+            <switch checked="{{addToBlacklist}}" bindchange="toggleBlacklist" color="#3b82f6" />
+          </view>
+
+          <view wx:if="{{addToBlacklist}}" class="input-group">
+            <text class="input-label">原因（必填，至少2个字）</text>
+            <textarea
+              class="reason-textarea"
+              placeholder="请输入移除原因"
+              value="{{removeReason}}"
+              bindinput="onReasonInput"
+              maxlength="200"
+            ></textarea>
+          </view>
+        </view>
+      </view>
+
+      <view class="dialog-footer">
+        <view class="btn btn--secondary" bindtap="closeRemoveDialog">取消</view>
+        <view class="btn btn--danger" bindtap="confirmRemove">确定移除</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="bottom-space"></view>
+</view>

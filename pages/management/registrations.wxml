@@ -120,6 +120,9 @@
           </view>
         </view>
       </scroll-view>
+      <view class="detail-sheet__actions">
+        <button class="detail-action detail-action--primary" bindtap="editRegistrationInfo">修改信息</button>
+      </view>
     </view>
   </view>
 
