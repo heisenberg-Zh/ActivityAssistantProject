@@ -15,6 +15,26 @@
   </view>
 
   <!-- 状态筛选标签 -->
+  <view class="supplement-tools">
+    <view class="supplement-tools__head">
+      <view>
+        <text class="supplement-tools__title">现场补录工具</text>
+        <text class="supplement-tools__desc">用于现场漏报名人员补充登记</text>
+      </view>
+      <view class="supplement-tools__count">{{allRegistrations.length}}人</view>
+    </view>
+    <view class="supplement-tools__actions">
+      <view class="supplement-action supplement-action--manual" bindtap="openSupplementDialog">
+        <text class="supplement-action__icon">＋</text>
+        <text class="supplement-action__text">手动补录</text>
+      </view>
+      <view class="supplement-action supplement-action--code" bindtap="getSupplementCode">
+        <text class="supplement-action__icon">#</text>
+        <text class="supplement-action__text">获取补录码</text>
+      </view>
+    </view>
+  </view>
+
   <view class="filter-tabs">
     <view class="filter-tab {{statusFilter === 'all' ? 'filter-tab--active' : ''}}" bindtap="switchFilter" data-filter="all">全部</view>
     <view class="filter-tab {{statusFilter === 'pending' ? 'filter-tab--active' : ''}}" bindtap="switchFilter" data-filter="pending">待审核</view>
@@ -127,6 +147,57 @@
   </view>
 
   <!-- 移除报名对话框 -->
+  <view wx:if="{{showSupplementDialog}}" class="dialog-overlay">
+    <view class="dialog-content supplement-dialog" catchtap="{{null}}">
+      <view class="supplement-dialog__header">
+        <view>
+          <text class="supplement-dialog__title">手动补录</text>
+          <text class="supplement-dialog__subtitle">为现场漏报名人员补充登记信息</text>
+        </view>
+        <view class="supplement-dialog__close" bindtap="closeSupplementDialog">×</view>
+      </view>
+      <scroll-view class="supplement-dialog__body" scroll-y>
+        <view wx:if="{{activity.groups && activity.groups.length > 0}}" class="supplement-field">
+          <text class="supplement-label">报名分组</text>
+          <picker mode="selector" range="{{activity.groups}}" range-key="name" bindchange="onSupplementGroupChange">
+            <view class="supplement-input supplement-picker">
+              <text>{{supplementForm.groupName || '请选择分组'}}</text>
+              <text class="supplement-picker__arrow">›</text>
+            </view>
+          </picker>
+        </view>
+        <view class="supplement-field">
+          <text class="supplement-label">姓名</text>
+          <input class="supplement-input" placeholder="请输入姓名" value="{{supplementForm.name}}" data-field="name" bindinput="onSupplementInput" />
+        </view>
+        <view class="supplement-field">
+          <text class="supplement-label">手机号</text>
+          <input class="supplement-input" type="number" placeholder="可选，便于联系" value="{{supplementForm.mobile}}" data-field="mobile" bindinput="onSupplementInput" />
+        </view>
+        <view wx:for="{{supplementFields}}" wx:key="id" class="supplement-field">
+          <text class="supplement-label">{{item.label}}{{item.required ? ' *' : ''}}</text>
+          <input class="supplement-input" placeholder="{{item.desc || '请输入' + item.label}}" value="{{supplementCustomData[item.id]}}" data-field="{{item.id}}" bindinput="onSupplementCustomInput" />
+        </view>
+        <view class="supplement-note">手动补录将直接记为已通过，不受人数上限限制。</view>
+      </scroll-view>
+      <view class="supplement-dialog__footer">
+        <view class="supplement-dialog__btn supplement-dialog__btn--ghost" bindtap="closeSupplementDialog">取消</view>
+        <view class="supplement-dialog__btn supplement-dialog__btn--primary" bindtap="submitManualSupplement">确认补录</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{showSupplementCodeDialog}}" class="dialog-overlay" bindtap="closeSupplementCodeDialog">
+    <view class="dialog-content code-dialog" catchtap="{{null}}">
+      <view class="code-dialog__close" bindtap="closeSupplementCodeDialog">×</view>
+      <text class="code-dialog__eyebrow">现场补录码</text>
+      <view class="code-dialog__code">{{supplementCode || '----'}}</view>
+      <text class="code-dialog__message">{{supplementCodeMessage}}</text>
+      <view class="code-dialog__hint">仅活动进行中有效，请口头告知现场未报名人员</view>
+      <view class="code-dialog__button" bindtap="closeSupplementCodeDialog">知道了</view>
+    </view>
+  </view>
+
   <view wx:if="{{showRemoveDialog}}" class="dialog-overlay" bindtap="closeRemoveDialog">
     <view class="dialog-content" catchtap="{{null}}">
       <view class="dialog-header">

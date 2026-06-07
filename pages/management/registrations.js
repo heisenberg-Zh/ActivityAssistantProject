@@ -46,6 +46,14 @@ Page({
     removeTarget: null,
     addToBlacklist: false,
     removeReason: '',
+    showSupplementDialog: false,
+    supplementForm: { groupId: '', groupName: '', name: '', mobile: '' },
+    supplementFields: [],
+    supplementCustomData: {},
+    supplementCode: '',
+    supplementCodeValid: false,
+    supplementCodeMessage: '',
+    showSupplementCodeDialog: false,
 
     // 系统信息
     statusBarHeight: 0,
@@ -288,6 +296,194 @@ Page({
     });
   },
 
+  openSupplementDialog() {
+    const firstGroup = Array.isArray(this.data.activity?.groups) && this.data.activity.groups.length === 1
+      ? this.data.activity.groups[0]
+      : null;
+    const groupId = this.data.groupId || (firstGroup ? firstGroup.id : '');
+    this.setData({
+      showSupplementDialog: true,
+      supplementForm: {
+        groupId,
+        groupName: this.data.groupName || (firstGroup ? firstGroup.name : ''),
+        name: '',
+        mobile: ''
+      },
+      supplementFields: this.buildSupplementFields(groupId),
+      supplementCustomData: {}
+    });
+  },
+
+  closeSupplementDialog() {
+    if (this.hasSupplementDraft()) {
+      wx.showModal({
+        title: '确认关闭？',
+        content: '已填写的补录信息尚未保存，关闭后将清空。',
+        confirmText: '确认关闭',
+        cancelText: '继续填写',
+        confirmColor: '#ef4444',
+        success: (res) => {
+          if (res.confirm) {
+            this.resetSupplementDialog();
+          }
+        }
+      });
+      return;
+    }
+
+    this.resetSupplementDialog();
+  },
+
+  resetSupplementDialog() {
+    this.setData({
+      showSupplementDialog: false,
+      supplementForm: { groupId: '', groupName: '', name: '', mobile: '' },
+      supplementFields: [],
+      supplementCustomData: {}
+    });
+  },
+
+  hasSupplementDraft() {
+    const form = this.data.supplementForm || {};
+    const customData = this.data.supplementCustomData || {};
+    if (String(form.name || '').trim() || String(form.mobile || '').trim()) {
+      return true;
+    }
+    return Object.keys(customData).some(key => String(customData[key] || '').trim());
+  },
+
+  onSupplementInput(e) {
+    const field = e.currentTarget.dataset.field;
+    this.setData({
+      [`supplementForm.${field}`]: e.detail.value
+    });
+  },
+
+  onSupplementGroupChange(e) {
+    const groups = Array.isArray(this.data.activity?.groups) ? this.data.activity.groups : [];
+    const index = Number(e.detail.value);
+    const group = groups[index];
+    this.setData({
+      'supplementForm.groupId': group ? group.id : '',
+      'supplementForm.groupName': group ? group.name : '',
+      supplementFields: this.buildSupplementFields(group ? group.id : ''),
+      supplementCustomData: {}
+    });
+  },
+
+  buildSupplementFields(groupId) {
+    const activity = this.data.activity || {};
+    const groups = Array.isArray(activity.groups) ? activity.groups : [];
+    const group = groupId ? groups.find(g => g && g.id === groupId) : null;
+    return normalizeCustomFields(group?.customFields || activity.customFields)
+      .filter(field => field && field.id && field.id !== 'name' && field.id !== 'mobile');
+  },
+
+  onSupplementCustomInput(e) {
+    const field = e.currentTarget.dataset.field;
+    this.setData({
+      [`supplementCustomData.${field}`]: e.detail.value
+    });
+  },
+
+  async getSupplementCode() {
+    try {
+      const result = await registrationAPI.getSupplementCode(this.data.activityId);
+      if (result.code !== 0 || !result.data) {
+        wx.showToast({ title: result.message || '获取补录码失败', icon: 'none' });
+        return;
+      }
+      this.setData({
+        supplementCode: result.data.code || '',
+        supplementCodeValid: !!result.data.valid,
+        supplementCodeMessage: result.data.message || '请告知现场需要补报的未报名人员',
+        showSupplementCodeDialog: true
+      });
+    } catch (err) {
+      wx.showToast({ title: err.message || '获取补录码失败', icon: 'none' });
+    }
+  },
+
+  closeSupplementCodeDialog() {
+    this.setData({ showSupplementCodeDialog: false });
+  },
+
+  submitManualSupplement() {
+    const form = this.data.supplementForm || {};
+    const customData = this.data.supplementCustomData || {};
+    if (!form.name || !String(form.name).trim()) {
+      wx.showToast({ title: '请输入姓名', icon: 'none' });
+      return;
+    }
+    if (form.mobile && !/^1[3-9]\d{9}$/.test(form.mobile)) {
+      wx.showToast({ title: '手机号格式不正确', icon: 'none' });
+      return;
+    }
+    const missingField = (this.data.supplementFields || []).find(field => field.required && !String(customData[field.id] || '').trim());
+    if (missingField) {
+      wx.showToast({ title: `请填写${missingField.label || '必填字段'}`, icon: 'none' });
+      return;
+    }
+
+    const duplicate = this.findDuplicateSupplementRegistration(form);
+    if (duplicate) {
+      wx.showModal({
+        title: '可能重复补录',
+        content: `已存在${duplicate.reason}的报名记录：${duplicate.name}。是否仍要继续补录？`,
+        confirmText: '继续补录',
+        cancelText: '返回检查',
+        confirmColor: '#2563eb',
+        success: (res) => {
+          if (res.confirm) {
+            this.doSubmitManualSupplement(form, customData);
+          }
+        }
+      });
+      return;
+    }
+
+    this.doSubmitManualSupplement(form, customData);
+  },
+
+  findDuplicateSupplementRegistration(form) {
+    const name = String(form.name || '').trim();
+    const mobile = String(form.mobile || '').trim();
+    const registrations = Array.isArray(this.data.allRegistrations) ? this.data.allRegistrations : [];
+    if (mobile) {
+      const foundByMobile = registrations.find(item => String(item.mobile || '').trim() === mobile);
+      if (foundByMobile) {
+        return { reason: '相同手机号', name: foundByMobile.displayName || foundByMobile.name || mobile };
+      }
+    }
+    if (name) {
+      const foundByName = registrations.find(item => String(item.name || item.displayName || '').trim() === name);
+      if (foundByName) {
+        return { reason: '相同姓名', name: foundByName.displayName || foundByName.name || name };
+      }
+    }
+    return null;
+  },
+
+  async doSubmitManualSupplement(form, customData) {
+    try {
+      const result = await registrationAPI.createManualSupplement(this.data.activityId, {
+        groupId: form.groupId || null,
+        name: String(form.name).trim(),
+        mobile: form.mobile || '',
+        customData: Object.keys(customData).length > 0 ? JSON.stringify(customData) : null
+      });
+      if (result.code === 0) {
+        wx.showToast({ title: '补录成功', icon: 'success' });
+        this.resetSupplementDialog();
+        setTimeout(() => this.loadData(), 600);
+      } else {
+        wx.showToast({ title: result.message || '补录失败', icon: 'none' });
+      }
+    } catch (err) {
+      wx.showToast({ title: err.message || '补录失败', icon: 'none' });
+    }
+  },
+
   editRegistrationInfo() {
     const reg = this.data.detailTarget;
     if (!reg || !reg.id) {
@@ -310,6 +506,15 @@ Page({
       if (!v) return;
       fields.push({ label, value: v, ...extra });
     };
+
+    const sourceMap = {
+      manual: '手动补录',
+      code: '现场补录码'
+    };
+    pushField('报名来源', sourceMap[customData?._supplementSource] || '正常报名');
+    usedKeys.add('_supplementSource');
+    usedKeys.add('_supplementOperatorId');
+    usedKeys.add('_supplementedAt');
 
     // 签到信息（产品要求：展示“是否已打卡”）
     pushField('是否已打卡', reg.checkinText || ((reg.checkinStatus === 'checked' || reg.checkinStatus === 'late') ? '已打卡' : '未打卡'));
@@ -361,6 +566,7 @@ Page({
     // 兜底：customData 中未匹配到定义的字段
     if (customData && typeof customData === 'object') {
       Object.keys(customData).forEach((k) => {
+        if (k && k.startsWith('_')) return;
         if (usedKeys.has(k)) return;
         pushField(k, customData[k]);
       });
