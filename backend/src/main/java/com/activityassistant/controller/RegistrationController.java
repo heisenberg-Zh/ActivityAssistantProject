@@ -2,9 +2,11 @@ package com.activityassistant.controller;
 
 import com.activityassistant.dto.request.ApproveRegistrationRequest;
 import com.activityassistant.dto.request.CreateRegistrationRequest;
+import com.activityassistant.dto.request.SupplementRegistrationRequest;
 import com.activityassistant.dto.request.UpdateRegistrationRequest;
 import com.activityassistant.dto.response.ApiResponse;
 import com.activityassistant.dto.response.RegistrationVO;
+import com.activityassistant.dto.response.SupplementCodeVO;
 import com.activityassistant.security.SecurityUtils;
 import com.activityassistant.service.AppFeatureConfigService;
 import com.activityassistant.service.RegistrationService;
@@ -83,6 +85,45 @@ public class RegistrationController {
         String userId = SecurityUtils.getCurrentUserIdOrNull();
         Page<RegistrationVO> registrationPage = registrationService.getActivityRegistrations(activityId, status, page, size, userId);
         return ApiResponse.success(registrationPage);
+    }
+
+    @GetMapping("/activity/{activityId}/supplement-code")
+    @Operation(summary = "获取现场补录码", description = "活动创建者或管理员获取现场补录码")
+    public ApiResponse<SupplementCodeVO> getSupplementCode(@PathVariable String activityId) {
+        String userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.success(registrationService.getSupplementCode(activityId, userId));
+    }
+
+    @GetMapping("/activity/{activityId}/supplement-code/verify")
+    @Operation(summary = "校验现场补录码", description = "未报名用户校验现场补录码")
+    public ApiResponse<SupplementCodeVO> verifySupplementCode(
+            @PathVariable String activityId,
+            @RequestParam String code
+    ) {
+        String userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.success(registrationService.verifySupplementCode(activityId, code, userId));
+    }
+
+    @PostMapping("/activity/{activityId}/supplement/manual")
+    @Operation(summary = "手动补录报名", description = "活动创建者或管理员手动补录报名信息")
+    public ApiResponse<RegistrationVO> createManualSupplementRegistration(
+            @PathVariable String activityId,
+            @Valid @RequestBody SupplementRegistrationRequest request
+    ) {
+        String userId = SecurityUtils.getCurrentUserId();
+        RegistrationVO registration = registrationService.createManualSupplementRegistration(activityId, request, userId);
+        return ApiResponse.success(registration);
+    }
+
+    @PostMapping("/activity/{activityId}/supplement/code")
+    @Operation(summary = "补录码补报", description = "未报名用户通过现场补录码补报")
+    public ApiResponse<RegistrationVO> createCodeSupplementRegistration(
+            @PathVariable String activityId,
+            @Valid @RequestBody SupplementRegistrationRequest request
+    ) {
+        String userId = SecurityUtils.getCurrentUserId();
+        RegistrationVO registration = registrationService.createCodeSupplementRegistration(activityId, request, userId);
+        return ApiResponse.success(registration);
     }
 
     @GetMapping("/series/{seriesId}/latest")

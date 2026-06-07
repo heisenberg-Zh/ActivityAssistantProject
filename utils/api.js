@@ -1141,6 +1141,33 @@ const registrationAPI = {
     loadingText: '保存中...'
   }),
 
+  getSupplementCode: (activityId) => request(`/api/registrations/activity/${activityId}/supplement-code`, {
+    method: 'GET',
+    useCache: false
+  }),
+
+  verifySupplementCode: (activityId, code) => request(`/api/registrations/activity/${activityId}/supplement-code/verify`, {
+    method: 'GET',
+    data: { code },
+    useCache: false,
+    showLoading: true,
+    loadingText: '校验中...'
+  }),
+
+  createManualSupplement: (activityId, data) => request(`/api/registrations/activity/${activityId}/supplement/manual`, {
+    method: 'POST',
+    data,
+    showLoading: true,
+    loadingText: '补录中...'
+  }),
+
+  createCodeSupplement: (activityId, data) => request(`/api/registrations/activity/${activityId}/supplement/code`, {
+    method: 'POST',
+    data,
+    showLoading: true,
+    loadingText: '提交中...'
+  }),
+
   getDetail: (id) => request(`/api/registrations/${id}`, {
     method: 'GET',
     useCache: false

@@ -132,6 +132,8 @@ Page({
     isRegistered: false,
     isEditMode: false,
     editRegistrationId: '',
+    isSupplementMode: false,
+    supplementCode: '',
     isFull: false,
     selectedGroupId: null, // 选中的分组ID
     showGroupSelection: true, // 是否显示分组选择界面
@@ -185,8 +187,10 @@ Page({
     const fromShare = query.from === 'share';
     const shareToken = query.shareToken ? String(query.shareToken).trim() : '';
     const isEditMode = query.mode === 'edit';
+    const isSupplementMode = query.mode === 'supplement';
     const editRegistrationId = query.registrationId ? String(query.registrationId).trim() : '';
-    this.setData({ fromShare, shareToken, isEditMode, editRegistrationId });
+    const supplementCode = query.supplementCode ? String(query.supplementCode).trim() : '';
+    this.setData({ fromShare, shareToken, isEditMode, editRegistrationId, isSupplementMode, supplementCode });
     this.loadActivityDetail(id);
     // 注意：loadParticipants 将在 loadActivityDetail 完成后自动调用
   },
@@ -364,7 +368,9 @@ Page({
       // 如果是微信用户且无分组，自动填充昵称
       if (!hasGroups) {
         this.autoFillUserInfo();
-        this.loadLatestRegistrationInfo();
+        if (!this.data.isSupplementMode) {
+          this.loadLatestRegistrationInfo();
+        }
       }
     } catch (err) {
       console.error('加载活动详情失败:', err);
@@ -951,7 +957,7 @@ Page({
 
   // 提交报名
   async submit() {
-    const { id, detail, formData, isRegistered, isFull, selectedGroupId, isEditMode } = this.data;
+    const { id, detail, formData, isRegistered, isFull, selectedGroupId, isEditMode, isSupplementMode } = this.data;
 
     if (isEditMode) {
       if (!this.validateForm()) {
@@ -975,7 +981,7 @@ Page({
 
     // 校验报名截止时间
     const deadlineCheck = isBeforeRegisterDeadline(detail.registerDeadline);
-    if (!deadlineCheck.valid) {
+    if (!isSupplementMode && !deadlineCheck.valid) {
       wx.showToast({
         title: deadlineCheck.message,
         icon: 'none',
@@ -1005,7 +1011,7 @@ Page({
     }
 
     // 如果有多个分组，显示二次确认
-    if (detail.hasGroups && detail.groups && detail.groups.length > 1 && selectedGroupId) {
+    if (!isSupplementMode && detail.hasGroups && detail.groups && detail.groups.length > 1 && selectedGroupId) {
       const selectedGroup = detail.groups.find(g => g.id === selectedGroupId);
       const groupName = selectedGroup ? selectedGroup.name : '未知分组';
 
@@ -1099,7 +1105,15 @@ Page({
 
           console.log('提交报名数据:', submissionData);
 
-          const result = await registrationAPI.create(submissionData);
+          const result = this.data.isSupplementMode
+            ? await registrationAPI.createCodeSupplement(id, {
+              groupId: selectedGroupId || null,
+              name: name || '',
+              mobile: mobile || '',
+              customData: Object.keys(customFields).length > 0 ? JSON.stringify(customFields) : null,
+              code: this.data.supplementCode
+            })
+            : await registrationAPI.create(submissionData);
 
           wx.hideLoading();
 
@@ -1115,7 +1129,7 @@ Page({
               }
             }
 
-            const message = needReview ? '报名成功，等待审核' : '报名成功';
+            const message = this.data.isSupplementMode ? '补录成功' : (needReview ? '报名成功，等待审核' : '报名成功');
             wx.showToast({ title: message, icon: 'success' });
 
              // 【修复】清除活动详情和报名列表的缓存，确保返回后显示最新数据

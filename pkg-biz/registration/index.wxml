@@ -116,19 +116,19 @@
 <!-- 报名表单（非分组选择时显示） -->
 <view wx:if="{{!showGroupSelection}}" class="form-section">
   <view class="form-header">
-    <text class="form-title">{{isEditMode ? '修改报名信息' : (isRegistered ? '您的报名信息' : '填写报名信息')}}</text>
-    <text class="form-subtitle">{{isEditMode ? '请核对并保存最新报名信息' : (isRegistered ? '以下是您提交的报名信息' : '请如实填写以下信息')}}</text>
+    <text class="form-title">{{isEditMode ? '修改报名信息' : (isSupplementMode ? '现场补录报名' : (isRegistered ? '您的报名信息' : '填写报名信息'))}}</text>
+    <text class="form-subtitle">{{isEditMode ? '请核对并保存最新报名信息' : (isSupplementMode ? '补录成功后将直接记为已通过' : (isRegistered ? '以下是您提交的报名信息' : '请如实填写以下信息'))}}</text>
   </view>
 
   <view class="form-container">
-    <view wx:if="{{!isRegistered && !isEditMode && loadingLastRegistration}}" class="last-registration-card last-registration-card--loading">
+    <view wx:if="{{!isRegistered && !isEditMode && !isSupplementMode && loadingLastRegistration}}" class="last-registration-card last-registration-card--loading">
       <view class="last-registration-main">
         <text class="last-registration-title">正在加载上次报名信息...</text>
         <text class="last-registration-subtitle">稍候可一键同步已填写过的信息</text>
       </view>
     </view>
 
-    <view wx:if="{{!isRegistered && !isEditMode && showLastRegistrationSync}}" class="last-registration-card">
+    <view wx:if="{{!isRegistered && !isEditMode && !isSupplementMode && showLastRegistrationSync}}" class="last-registration-card">
       <view class="last-registration-main">
         <text class="last-registration-title">一键同步上次报名信息</text>
         <text class="last-registration-subtitle">减少重复填写，保持信息一致</text>
@@ -231,5 +231,5 @@
 <view class="bottom-space"></view>
 <view class="fixed-footer">
   <button class="btn btn--secondary footer-btn" bindtap="cancel">返回</button>
-  <button wx:if="{{!showGroupSelection}}" class="btn {{isRegistered && !isEditMode ? 'btn--danger' : 'btn--primary'}} footer-btn" bindtap="{{isRegistered && !isEditMode ? 'cancelRegistration' : 'submit'}}">{{isEditMode ? '保存修改' : (isRegistered ? '取消报名' : '确认报名')}}</button>
+  <button wx:if="{{!showGroupSelection}}" class="btn {{isRegistered && !isEditMode ? 'btn--danger' : 'btn--primary'}} footer-btn" bindtap="{{isRegistered && !isEditMode ? 'cancelRegistration' : 'submit'}}">{{isEditMode ? '保存修改' : (isSupplementMode ? '确认补录' : (isRegistered ? '取消报名' : '确认报名'))}}</button>
 </view>
