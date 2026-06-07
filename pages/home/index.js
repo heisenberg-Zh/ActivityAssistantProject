@@ -117,6 +117,7 @@ Page({
   // 每次显示页面时刷新数据
   async onShow() {
     await this.refreshCreateActivityAccess();
+    activityAPI.consumeActivityListDirty && activityAPI.consumeActivityListDirty();
     await this.loadActivities();
     this.maybePromptProfileCompletion();
   },
@@ -147,6 +148,7 @@ Page({
 
   // 下拉刷新
   async onPullDownRefresh() {
+    activityAPI.clearActivityCaches && activityAPI.clearActivityCaches();
     await this.loadActivities();
     wx.stopPullDownRefresh();
   },
