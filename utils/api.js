@@ -210,6 +210,44 @@ const downloadFileWithAuth = (url, params = {}) => {
   });
 };
 
+const ACTIVITY_LIST_DIRTY_KEY = 'activity_list_dirty';
+
+const clearActivityCaches = () => {
+  requestCache.clear();
+};
+
+const invalidateActivityCaches = () => {
+  clearActivityCaches();
+
+  try {
+    wx.setStorageSync(ACTIVITY_LIST_DIRTY_KEY, true);
+  } catch (err) {
+    console.warn('标记活动列表刷新失败:', err);
+  }
+};
+
+const consumeActivityListDirty = () => {
+  try {
+    const isDirty = !!wx.getStorageSync(ACTIVITY_LIST_DIRTY_KEY);
+    if (isDirty) {
+      wx.removeStorageSync(ACTIVITY_LIST_DIRTY_KEY);
+      requestCache.clear();
+    }
+    return isDirty;
+  } catch (err) {
+    console.warn('读取活动列表刷新标记失败:', err);
+    return false;
+  }
+};
+
+const requestActivityMutation = async (url, options = {}) => {
+  const result = await request(url, options);
+  if (result && result.code === 0) {
+    invalidateActivityCaches();
+  }
+  return result;
+};
+
 // Mock数据请求处理
 const mockRequest = (url, method, data) => {
   console.log('[Mock API]', method, url, data);
@@ -1008,6 +1046,9 @@ const mockRequest = (url, method, data) => {
 
 // 活动API
 const activityAPI = {
+  clearActivityCaches,
+  consumeActivityListDirty,
+
   // 获取活动列表（启用缓存，支持分页和筛选）
   getList: (params = {}) => request('/api/activities', {
     method: 'GET',
@@ -1069,7 +1110,7 @@ const activityAPI = {
   exportActivities: (params = {}) => downloadFileWithAuth('/api/activities/export', params),
 
   // 创建活动（显示loading，增加超时时间）
-  create: (data) => request('/api/activities', {
+  create: (data) => requestActivityMutation('/api/activities', {
     method: 'POST',
     data,
     timeout: 15000,
@@ -1079,7 +1120,7 @@ const activityAPI = {
   }),
 
   // 更新活动
-  update: (id, data) => request(`/api/activities/${id}`, {
+  update: (id, data) => requestActivityMutation(`/api/activities/${id}`, {
     method: 'PUT',
     data,
     showLoading: true,
@@ -1087,21 +1128,21 @@ const activityAPI = {
   }),
 
   // 删除活动
-  delete: (id) => request(`/api/activities/${id}`, {
+  delete: (id) => requestActivityMutation(`/api/activities/${id}`, {
     method: 'DELETE',
     showLoading: true,
     loadingText: '删除中...'
   }),
 
   // 发布活动
-  publish: (id) => request(`/api/activities/${id}/publish`, {
+  publish: (id) => requestActivityMutation(`/api/activities/${id}/publish`, {
     method: 'POST',
     showLoading: true,
     loadingText: '发布中...'
   }),
 
   // 取消活动
-  cancel: (id) => request(`/api/activities/${id}/cancel`, {
+  cancel: (id) => requestActivityMutation(`/api/activities/${id}/cancel`, {
     method: 'POST',
     showLoading: true,
     loadingText: '取消中...'
