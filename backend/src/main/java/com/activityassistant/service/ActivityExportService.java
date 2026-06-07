@@ -211,7 +211,12 @@ public class ActivityExportService {
         try {
             Map<String, Object> parsed = objectMapper.readValue(customDataJson, new TypeReference<LinkedHashMap<String, Object>>() {});
             Map<String, String> result = new HashMap<>();
-            parsed.forEach((key, value) -> result.put(key, value == null ? "" : String.valueOf(value).trim()));
+            parsed.forEach((key, value) -> {
+                if (key == null || key.startsWith("_")) {
+                    return;
+                }
+                result.put(key, value == null ? "" : String.valueOf(value).trim());
+            });
             return result;
         } catch (Exception e) {
             log.warn("解析报名自定义字段失败: {}", e.getMessage());
