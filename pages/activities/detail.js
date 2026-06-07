@@ -76,6 +76,10 @@ Page({
     canManage: false,
     managementRole: '', // 'creator' 或 'admin'
     canSupplementByCode: false,
+    showSupplementCodeModal: false,
+    supplementCodeInput: '',
+    supplementCodeError: '',
+    supplementCodeChecking: false,
     // 收藏相关
     isFavorited: false // 是否已收藏
   },
@@ -85,6 +89,8 @@ Page({
       this.setData({ 'organizer.avatar': '' });
     }
   },
+
+  noop() {},
 
   onLoad(query) {
     // 确保ID是字符串类型，并去除可能的空格
@@ -797,9 +803,8 @@ Page({
     wx.navigateTo({ url });
   },
 
-  // 取消报名
   openSupplementCodeInput() {
-    const { id, isRegistered, detail, shareToken, fromShare } = this.data;
+    const { isRegistered } = this.data;
     if (!app.checkLoginStatus()) {
       wx.showModal({
         title: '需要登录',
@@ -818,37 +823,71 @@ Page({
       return;
     }
 
-    wx.showModal({
-      title: '现场补录',
-      editable: true,
-      placeholderText: '请输入4位补录码',
-      content: '请联系现场活动发起人或管理员获取补录码',
-      confirmText: '校验',
-      confirmColor: '#3b82f6',
-      success: async (res) => {
-        if (!res.confirm) return;
-        const code = String(res.content || '').trim();
-        if (!/^\d{4}$/.test(code)) {
-          wx.showToast({ title: '请输入4位数字补录码', icon: 'none' });
-          return;
-        }
-        try {
-          const result = await registrationAPI.verifySupplementCode(id, code);
-          if (result.code !== 0 || !result.data || !result.data.valid) {
-            wx.showToast({ title: result.message || result.data?.message || '补录码无效', icon: 'none' });
-            return;
-          }
-          let url = `/pkg-biz/registration/index?id=${id}&mode=supplement&supplementCode=${encodeURIComponent(code)}`;
-          if (detail && detail.isPublic === false) {
-            if (shareToken) url += `&shareToken=${encodeURIComponent(shareToken)}`;
-            if (fromShare) url += `&from=share`;
-          }
-          wx.navigateTo({ url });
-        } catch (err) {
-          wx.showToast({ title: err.message || '补录码校验失败', icon: 'none' });
-        }
-      }
+    this.setData({
+      showSupplementCodeModal: true,
+      supplementCodeInput: '',
+      supplementCodeError: '',
+      supplementCodeChecking: false
     });
+  },
+
+  closeSupplementCodeModal() {
+    if (this.data.supplementCodeChecking) return;
+    this.setData({
+      showSupplementCodeModal: false,
+      supplementCodeInput: '',
+      supplementCodeError: ''
+    });
+  },
+
+  onSupplementCodeInput(e) {
+    const value = String(e.detail.value || '').replace(/\D/g, '').slice(0, 4);
+    this.setData({
+      supplementCodeInput: value,
+      supplementCodeError: ''
+    });
+  },
+
+  async verifySupplementCodeInput() {
+    const { id, detail, shareToken, fromShare, supplementCodeInput, supplementCodeChecking } = this.data;
+    if (supplementCodeChecking) return;
+
+    const code = String(supplementCodeInput || '').trim();
+    if (!/^\d{4}$/.test(code)) {
+      this.setData({ supplementCodeError: '请输入4位数字补录码' });
+      return;
+    }
+
+    this.setData({ supplementCodeChecking: true, supplementCodeError: '' });
+    try {
+      const result = await registrationAPI.verifySupplementCode(id, code);
+      const data = result && result.data ? result.data : {};
+      if (!result || result.code !== 0 || !data.valid) {
+        this.setData({
+          supplementCodeChecking: false,
+          supplementCodeError: data.message || result?.message || '补录码无效，请确认后重试'
+        });
+        return;
+      }
+
+      this.setData({ showSupplementCodeModal: false, supplementCodeChecking: false });
+      wx.showToast({ title: data.message || '校验通过', icon: 'success', duration: 800 });
+
+      let url = `/pkg-biz/registration/index?id=${id}&mode=supplement&supplementCode=${encodeURIComponent(code)}`;
+      if (detail && detail.isPublic === false) {
+        if (shareToken) url += `&shareToken=${encodeURIComponent(shareToken)}`;
+        if (fromShare) url += `&from=share`;
+      }
+
+      setTimeout(() => {
+        wx.navigateTo({ url });
+      }, 250);
+    } catch (err) {
+      this.setData({
+        supplementCodeChecking: false,
+        supplementCodeError: err.message || '补录码校验失败，请稍后重试'
+      });
+    }
   },
 
   cancelRegistration() {

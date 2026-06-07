@@ -332,3 +332,47 @@
 </view>
 </view>
 <!-- 结束 wx:else -->
+
+<view wx:if="{{showSupplementCodeModal}}" class="supplement-code-mask" catchtap="closeSupplementCodeModal">
+  <view class="supplement-code-dialog" catchtap="noop">
+    <view class="supplement-code-hero">
+      <view class="supplement-code-icon">🎾</view>
+      <view class="supplement-code-title-wrap">
+        <text class="supplement-code-title">现场补录</text>
+        <text class="supplement-code-subtitle">适用于已到现场但尚未线上报名的成员</text>
+      </view>
+    </view>
+
+    <view class="supplement-code-tip">
+      <text class="supplement-code-tip-text">请向现场活动发起人或管理员获取4位补录码。</text>
+    </view>
+
+    <view class="supplement-code-input-wrap {{supplementCodeError ? 'supplement-code-input-wrap--error' : ''}}">
+      <input
+        class="supplement-code-input"
+        value="{{supplementCodeInput}}"
+        type="number"
+        maxlength="4"
+        focus="{{showSupplementCodeModal}}"
+        placeholder="请输入4位补录码"
+        placeholder-class="supplement-code-placeholder"
+        bindinput="onSupplementCodeInput"
+        disabled="{{supplementCodeChecking}}" />
+    </view>
+
+    <view class="supplement-code-error" wx:if="{{supplementCodeError}}">
+      <text>{{supplementCodeError}}</text>
+    </view>
+
+    <view class="supplement-code-actions">
+      <button class="supplement-code-btn supplement-code-btn--ghost" bindtap="closeSupplementCodeModal" disabled="{{supplementCodeChecking}}">取消</button>
+      <button
+        class="supplement-code-btn supplement-code-btn--primary {{supplementCodeInput.length !== 4 || supplementCodeChecking ? 'supplement-code-btn--disabled' : ''}}"
+        bindtap="verifySupplementCodeInput"
+        loading="{{supplementCodeChecking}}"
+        disabled="{{supplementCodeInput.length !== 4 || supplementCodeChecking}}">
+        {{supplementCodeChecking ? '校验中' : '校验补录码'}}
+      </button>
+    </view>
+  </view>
+</view>
