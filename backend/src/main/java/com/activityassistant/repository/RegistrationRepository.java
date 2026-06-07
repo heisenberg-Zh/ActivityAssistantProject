@@ -85,6 +85,17 @@ public interface RegistrationRepository extends JpaRepository<Registration, Stri
     Page<Registration> findByActivityIdAndStatus(String activityId, String status, Pageable pageable);
 
     /**
+     * Query all registrations for export by activity IDs.
+     */
+    @Query("""
+            SELECT r
+            FROM Registration r
+            WHERE r.activityId IN :activityIds
+            ORDER BY r.activityId ASC, r.registeredAt ASC, r.id ASC
+            """)
+    List<Registration> findExportRegistrationsByActivityIds(@Param("activityIds") List<String> activityIds);
+
+    /**
      * 查询活动内指定用户的报名记录（单一状态）
      */
     List<Registration> findByActivityIdAndStatusAndUserIdIn(String activityId, String status, List<String> userIds);

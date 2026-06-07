@@ -100,7 +100,7 @@
 </view>
 
 <!-- 已报名状态提示（如果用户已报名） -->
-<view wx:if="{{!showGroupSelection && isRegistered}}" class="registered-status-section">
+<view wx:if="{{!showGroupSelection && isRegistered && !isEditMode}}" class="registered-status-section">
   <view class="registered-status-card">
     <view class="status-icon">
       <text class="icon-emoji">{{registrationStatus === 'pending' ? '⏳' : '✅'}}</text>
@@ -116,19 +116,19 @@
 <!-- 报名表单（非分组选择时显示） -->
 <view wx:if="{{!showGroupSelection}}" class="form-section">
   <view class="form-header">
-    <text class="form-title">{{isRegistered ? '您的报名信息' : '填写报名信息'}}</text>
-    <text class="form-subtitle">{{isRegistered ? '以下是您提交的报名信息' : '请如实填写以下信息'}}</text>
+    <text class="form-title">{{isEditMode ? '修改报名信息' : (isSupplementMode ? '现场补录报名' : (isRegistered ? '您的报名信息' : '填写报名信息'))}}</text>
+    <text class="form-subtitle">{{isEditMode ? '请核对并保存最新报名信息' : (isSupplementMode ? '补录成功后将直接记为已通过' : (isRegistered ? '以下是您提交的报名信息' : '请如实填写以下信息'))}}</text>
   </view>
 
   <view class="form-container">
-    <view wx:if="{{!isRegistered && loadingLastRegistration}}" class="last-registration-card last-registration-card--loading">
+    <view wx:if="{{!isRegistered && !isEditMode && !isSupplementMode && loadingLastRegistration}}" class="last-registration-card last-registration-card--loading">
       <view class="last-registration-main">
         <text class="last-registration-title">正在加载上次报名信息...</text>
         <text class="last-registration-subtitle">稍候可一键同步已填写过的信息</text>
       </view>
     </view>
 
-    <view wx:if="{{!isRegistered && showLastRegistrationSync}}" class="last-registration-card">
+    <view wx:if="{{!isRegistered && !isEditMode && !isSupplementMode && showLastRegistrationSync}}" class="last-registration-card">
       <view class="last-registration-main">
         <text class="last-registration-title">一键同步上次报名信息</text>
         <text class="last-registration-subtitle">减少重复填写，保持信息一致</text>
@@ -143,16 +143,16 @@
         <view class="input-wrapper">
           <view class="input-label-row">
             <text class="input-label">{{field.label}}</text>
-            <text wx:if="{{field.required && !isRegistered}}" class="input-required">*</text>
+            <text wx:if="{{field.required && (!isRegistered || isEditMode)}}" class="input-required">*</text>
           </view>
           <input
-            class="input-field {{isRegistered ? 'input-field--disabled' : ''}}"
+            class="input-field {{isRegistered && !isEditMode ? 'input-field--disabled' : ''}}"
             type="{{field.id === 'mobile' ? 'number' : 'text'}}"
             placeholder="{{field.desc || '请输入' + field.label}}"
             bindinput="onInput"
             data-field="{{field.id}}"
             value="{{formData[field.id]}}"
-            disabled="{{isRegistered}}"
+            disabled="{{isRegistered && !isEditMode}}"
           />
           <text wx:if="{{field.desc}}" class="field-hint" style="font-size: 22rpx; color: #9ca3af; margin-top: 8rpx; display: block;">{{field.desc}}</text>
         </view>
@@ -231,5 +231,5 @@
 <view class="bottom-space"></view>
 <view class="fixed-footer">
   <button class="btn btn--secondary footer-btn" bindtap="cancel">返回</button>
-  <button wx:if="{{!showGroupSelection}}" class="btn {{isRegistered ? 'btn--danger' : 'btn--primary'}} footer-btn" bindtap="{{isRegistered ? 'cancelRegistration' : 'submit'}}">{{isRegistered ? '取消报名' : '确认报名'}}</button>
+  <button wx:if="{{!showGroupSelection}}" class="btn {{isRegistered && !isEditMode ? 'btn--danger' : 'btn--primary'}} footer-btn" bindtap="{{isRegistered && !isEditMode ? 'cancelRegistration' : 'submit'}}">{{isEditMode ? '保存修改' : (isSupplementMode ? '确认补录' : (isRegistered ? '取消报名' : '确认报名'))}}</button>
 </view>

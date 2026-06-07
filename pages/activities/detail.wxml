@@ -323,6 +323,12 @@
     disabled="{{!canRegister}}">
     {{registerButtonText}}
   </button>
+  <button
+    wx:if="{{canSupplementByCode}}"
+    class="btn btn--secondary footer-btn"
+    bindtap="openSupplementCodeInput">
+    现场补录
+  </button>
 </view>
 </view>
 <!-- 结束 wx:else -->

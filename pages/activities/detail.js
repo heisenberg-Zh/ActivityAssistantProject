@@ -75,6 +75,7 @@ Page({
     // 管理权限
     canManage: false,
     managementRole: '', // 'creator' 或 'admin'
+    canSupplementByCode: false,
     // 收藏相关
     isFavorited: false // 是否已收藏
   },
@@ -516,6 +517,8 @@ Page({
         privacyClass
       };
 
+      const canSupplementByCode = !isRegistered && dynamicStatus === '进行中' && detail.status !== 'cancelled';
+
       this.setData({
         detail: enrichedDetail,
         organizer: organizerInfo,
@@ -539,6 +542,7 @@ Page({
         currentGroupId,
         canManage: managementPermission.hasPermission,
         managementRole: managementPermission.role || '',
+        canSupplementByCode,
         canViewContact, // 是否可以查看联系方式
         isFavorited, // 是否已收藏
         loading: false
@@ -794,6 +798,59 @@ Page({
   },
 
   // 取消报名
+  openSupplementCodeInput() {
+    const { id, isRegistered, detail, shareToken, fromShare } = this.data;
+    if (!app.checkLoginStatus()) {
+      wx.showModal({
+        title: '需要登录',
+        content: '现场补录需要登录后才能操作，是否前往登录？',
+        confirmText: '去登录',
+        cancelText: '暂不',
+        confirmColor: '#3b82f6',
+        success: (res) => {
+          if (res.confirm) wx.navigateTo({ url: '/pages/auth/login' });
+        }
+      });
+      return;
+    }
+    if (isRegistered) {
+      wx.showToast({ title: '您已报名，无需补录', icon: 'none' });
+      return;
+    }
+
+    wx.showModal({
+      title: '现场补录',
+      editable: true,
+      placeholderText: '请输入4位补录码',
+      content: '请联系现场活动发起人或管理员获取补录码',
+      confirmText: '校验',
+      confirmColor: '#3b82f6',
+      success: async (res) => {
+        if (!res.confirm) return;
+        const code = String(res.content || '').trim();
+        if (!/^\d{4}$/.test(code)) {
+          wx.showToast({ title: '请输入4位数字补录码', icon: 'none' });
+          return;
+        }
+        try {
+          const result = await registrationAPI.verifySupplementCode(id, code);
+          if (result.code !== 0 || !result.data || !result.data.valid) {
+            wx.showToast({ title: result.message || result.data?.message || '补录码无效', icon: 'none' });
+            return;
+          }
+          let url = `/pkg-biz/registration/index?id=${id}&mode=supplement&supplementCode=${encodeURIComponent(code)}`;
+          if (detail && detail.isPublic === false) {
+            if (shareToken) url += `&shareToken=${encodeURIComponent(shareToken)}`;
+            if (fromShare) url += `&from=share`;
+          }
+          wx.navigateTo({ url });
+        } catch (err) {
+          wx.showToast({ title: err.message || '补录码校验失败', icon: 'none' });
+        }
+      }
+    });
+  },
+
   cancelRegistration() {
     const { id, detail } = this.data;
 

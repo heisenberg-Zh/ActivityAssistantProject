@@ -2,7 +2,10 @@ package com.activityassistant.service;
 
 import com.activityassistant.dto.request.ApproveRegistrationRequest;
 import com.activityassistant.dto.request.CreateRegistrationRequest;
+import com.activityassistant.dto.request.SupplementRegistrationRequest;
+import com.activityassistant.dto.request.UpdateRegistrationRequest;
 import com.activityassistant.dto.response.RegistrationVO;
+import com.activityassistant.dto.response.SupplementCodeVO;
 import com.activityassistant.exception.BusinessException;
 import com.activityassistant.exception.NotFoundException;
 import com.activityassistant.mapper.RegistrationMapper;
@@ -25,10 +28,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static com.activityassistant.constant.ErrorCode.*;
@@ -60,6 +65,9 @@ public class RegistrationService {
 
     @Autowired
     private MessageService messageService;
+
+    @Autowired
+    private IdGeneratorService idGeneratorService;
 
     /**
      * 创建报名
@@ -205,6 +213,94 @@ public class RegistrationService {
 
         log.info("报名状态已更新，报名ID: {}, oldStatus={}, newStatus={}, operatorId={}", registrationId, oldStatus, targetStatus, userId);
         return targetStatus;
+    }
+
+    public SupplementCodeVO getSupplementCode(String activityId, String userId) {
+        Activity activity = loadActivity(activityId);
+        if (!isActivityManager(activity, userId)) {
+            throw new BusinessException(PERMISSION_DENIED, "无权获取补录码");
+        }
+        String code = buildSupplementCode(activityId);
+        return SupplementCodeVO.builder()
+                .activityId(activityId)
+                .code(code)
+                .valid(isActivityOngoing(activity))
+                .message(isActivityOngoing(activity) ? "补录码仅活动进行中有效" : "活动未在进行中，补录码暂不可用")
+                .build();
+    }
+
+    public SupplementCodeVO verifySupplementCode(String activityId, String code, String userId) {
+        Activity activity = loadActivity(activityId);
+        ensureNotRegistered(activityId, userId);
+        boolean valid = isActivityOngoing(activity) && buildSupplementCode(activityId).equals(normalizeCode(code));
+        return SupplementCodeVO.builder()
+                .activityId(activityId)
+                .code(null)
+                .valid(valid)
+                .message(valid ? "补录码校验通过" : "补录码无效或活动未在进行中")
+                .build();
+    }
+
+    @Transactional
+    public RegistrationVO createManualSupplementRegistration(String activityId, SupplementRegistrationRequest request, String userId) {
+        Activity activity = loadActivity(activityId);
+        if (!isActivityManager(activity, userId)) {
+            throw new BusinessException(PERMISSION_DENIED, "无权手动补录报名");
+        }
+        validateSupplementGroup(activity, request.getGroupId());
+        Registration savedRegistration = saveApprovedSupplementRegistration(activity, request, buildOfflineUserId(), "manual", userId, false);
+        return registrationMapper.toVO(savedRegistration, true);
+    }
+
+    @Transactional
+    public RegistrationVO createCodeSupplementRegistration(String activityId, SupplementRegistrationRequest request, String userId) {
+        Activity activity = loadActivity(activityId);
+        ensureNotRegistered(activityId, userId);
+        if (!isActivityOngoing(activity)) {
+            throw new BusinessException(INVALID_OPERATION, "仅活动进行中可使用补录码补报");
+        }
+        if (!buildSupplementCode(activityId).equals(normalizeCode(request.getCode()))) {
+            throw new BusinessException(PERMISSION_DENIED, "补录码不正确");
+        }
+        validateSupplementGroup(activity, request.getGroupId());
+        validateCapacity(activity, request.getGroupId());
+        Registration savedRegistration = saveApprovedSupplementRegistration(activity, request, userId, "code", userId, true);
+        return registrationMapper.toVO(savedRegistration, true);
+    }
+
+    @Transactional
+    public RegistrationVO updateRegistration(String registrationId, UpdateRegistrationRequest request, String userId) {
+        Registration registration = registrationRepository.findById(registrationId)
+                .orElseThrow(() -> new NotFoundException("报名记录不存在"));
+
+        Activity activity = activityRepository.findById(registration.getActivityId())
+                .orElseThrow(() -> new NotFoundException("活动不存在"));
+
+        boolean isManager = isActivityManager(activity, userId);
+        boolean isOwner = userId != null && userId.equals(registration.getUserId());
+        if (!isManager && !isOwner) {
+            throw new BusinessException(PERMISSION_DENIED, "无权修改此报名信息");
+        }
+
+        boolean activityEnded = "finished".equals(activity.getStatus())
+                || (activity.getEndTime() != null && LocalDateTime.now().isAfter(activity.getEndTime()));
+        if (activityEnded && !isManager) {
+            throw new BusinessException(PERMISSION_DENIED, "活动已结束，仅组织者或管理员可修改报名信息");
+        }
+
+        String status = registration.getStatus();
+        boolean inactive = "cancelled".equals(status) || "removed".equals(status) || "rejected".equals(status);
+        if (inactive && !isManager) {
+            throw new BusinessException(INVALID_OPERATION, "当前报名状态不可修改");
+        }
+
+        registration.setName(request.getName() == null ? "" : request.getName().trim());
+        registration.setMobile(toNullableTrimmed(request.getMobile()));
+        registration.setCustomData(request.getCustomData());
+
+        Registration savedRegistration = registrationRepository.save(registration);
+        log.info("报名信息已更新，报名ID: {}, operatorId={}", registrationId, userId);
+        return registrationMapper.toVO(savedRegistration, true);
     }
 
     /**
@@ -424,6 +520,153 @@ public class RegistrationService {
      */
     public boolean isUserRegistered(String activityId, String userId) {
         return registrationRepository.existsByActivityIdAndUserId(activityId, userId);
+    }
+
+    private String toNullableTrimmed(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private Activity loadActivity(String activityId) {
+        return activityRepository.findByIdAndIsDeletedFalse(activityId)
+                .orElseThrow(() -> new NotFoundException("活动不存在"));
+    }
+
+    private void ensureNotRegistered(String activityId, String userId) {
+        if (userId == null || userId.trim().isEmpty()) {
+            throw new BusinessException(PERMISSION_DENIED, "请先登录");
+        }
+        Registration existingRegistration = registrationRepository.findByActivityIdAndUserId(activityId, userId).orElse(null);
+        if (existingRegistration != null && !"cancelled".equals(existingRegistration.getStatus()) && !"rejected".equals(existingRegistration.getStatus())) {
+            throw new BusinessException(CONFLICT, "您已报名此活动，不能重复补报");
+        }
+    }
+
+    private boolean isActivityOngoing(Activity activity) {
+        LocalDateTime now = LocalDateTime.now();
+        return activity != null
+                && !"cancelled".equals(activity.getStatus())
+                && activity.getStartTime() != null
+                && activity.getEndTime() != null
+                && !now.isBefore(activity.getStartTime())
+                && now.isBefore(activity.getEndTime());
+    }
+
+    private String buildSupplementCode(String activityId) {
+        int value = Math.abs((activityId + LocalDateTime.now().toLocalDate()).hashCode()) % 10000;
+        return String.format("%04d", value);
+    }
+
+    private String normalizeCode(String code) {
+        return code == null ? "" : code.trim();
+    }
+
+    private String buildOfflineUserId() {
+        return "offline-" + UUID.randomUUID().toString().replace("-", "").substring(0, 24);
+    }
+
+    private void validateCapacity(Activity activity, String groupId) {
+        Integer total = activity.getTotal();
+        if (total == null || total <= 0) {
+            throw new BusinessException(INVALID_OPERATION, "活动人数配置异常，请联系组织者处理");
+        }
+        long currentJoined = registrationRepository.countByActivityIdAndStatus(activity.getId(), "approved");
+        if (currentJoined >= total) {
+            throw new BusinessException(INVALID_OPERATION, "活动人数已满，无法补报");
+        }
+        if (groupId != null && !groupId.trim().isEmpty()) {
+            Map<String, Object> group = findGroup(activity, groupId);
+            Integer groupTotal = toInteger(group.get("total"));
+            Integer groupJoined = toInteger(group.get("joined"));
+            if (groupTotal != null && groupTotal > 0 && groupJoined != null && groupJoined >= groupTotal) {
+                throw new BusinessException(INVALID_OPERATION, "该分组人数已满，无法补报");
+            }
+        }
+    }
+
+    private void validateSupplementGroup(Activity activity, String groupId) {
+        boolean hasGroups = activity.getGroups() != null && !activity.getGroups().trim().isEmpty() && !"[]".equals(activity.getGroups().trim());
+        if (!hasGroups) {
+            return;
+        }
+        if (groupId == null || groupId.trim().isEmpty()) {
+            throw new BusinessException(INVALID_OPERATION, "请先选择报名分组");
+        }
+        findGroup(activity, groupId);
+    }
+
+    private Registration saveApprovedSupplementRegistration(Activity activity, SupplementRegistrationRequest request, String participantUserId, String source, String operatorId, boolean countCapacity) {
+        Registration registration = Registration.builder()
+                .id(idGeneratorService.generateRegistrationId())
+                .activityId(activity.getId())
+                .groupId(toNullableTrimmed(request.getGroupId()))
+                .userId(participantUserId)
+                .name(request.getName() == null ? "" : request.getName().trim())
+                .mobile(toNullableTrimmed(request.getMobile()))
+                .customData(mergeSupplementMeta(request.getCustomData(), source, operatorId))
+                .status("approved")
+                .approvedAt(LocalDateTime.now())
+                .checkinStatus("pending")
+                .build();
+
+        Registration savedRegistration = registrationRepository.save(registration);
+        activity.setJoined((activity.getJoined() == null ? 0 : activity.getJoined()) + 1);
+        if (savedRegistration.getGroupId() != null && activity.getGroups() != null) {
+            updateGroupJoined(activity, savedRegistration.getGroupId(), 1);
+        }
+        activityRepository.save(activity);
+        log.info("补录报名成功，activityId={}, registrationId={}, source={}, operatorId={}, countCapacity={}", activity.getId(), savedRegistration.getId(), source, operatorId, countCapacity);
+        return savedRegistration;
+    }
+
+    private String mergeSupplementMeta(String customDataJson, String source, String operatorId) {
+        Map<String, Object> data = new HashMap<>();
+        if (customDataJson != null && !customDataJson.trim().isEmpty()) {
+            try {
+                data.putAll(objectMapper.readValue(customDataJson, new TypeReference<Map<String, Object>>() {}));
+            } catch (Exception e) {
+                log.warn("补录customData解析失败，将仅保存补录元数据: {}", e.getMessage());
+            }
+        }
+        data.put("_supplementSource", source);
+        data.put("_supplementOperatorId", operatorId);
+        data.put("_supplementedAt", LocalDateTime.now().toString());
+        try {
+            return objectMapper.writeValueAsString(data);
+        } catch (JsonProcessingException e) {
+            throw new BusinessException(INVALID_OPERATION, "补录信息保存失败");
+        }
+    }
+
+    private Map<String, Object> findGroup(Activity activity, String groupId) {
+        try {
+            List<Map<String, Object>> groups = objectMapper.readValue(activity.getGroups(), new TypeReference<List<Map<String, Object>>>() {});
+            return groups.stream()
+                    .filter(group -> groupId.equals(String.valueOf(group.get("id"))))
+                    .findFirst()
+                    .orElseThrow(() -> new BusinessException(INVALID_OPERATION, "报名分组不存在"));
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException(INVALID_OPERATION, "活动分组配置异常");
+        }
+    }
+
+    private Integer toInteger(Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(String.valueOf(value));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private boolean isActivityManager(Activity activity, String userId) {

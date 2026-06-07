@@ -1,0 +1,144 @@
+const { adminAPI } = require('../../../utils/api.js');
+
+const TYPE_OPTIONS = ['全部', '聚会', '培训', '户外', '运动', '会议', '其他'];
+
+Page({
+  data: {
+    ready: false,
+    loading: true,
+    loadingMore: false,
+    hasMore: true,
+    page: 0,
+    size: 20,
+    keyword: '',
+    keywordDraft: '',
+    selectedType: '全部',
+    typeOptions: TYPE_OPTIONS,
+    activities: []
+  },
+
+  async onLoad() {
+    const ok = await this.ensureSystemAdmin();
+    if (!ok) return;
+    await this.loadActivities(true);
+  },
+
+  async onPullDownRefresh() {
+    if (!this.data.ready) {
+      wx.stopPullDownRefresh();
+      return;
+    }
+    await this.loadActivities(true);
+    wx.stopPullDownRefresh();
+  },
+
+  async onReachBottom() {
+    if (!this.data.ready || this.data.loadingMore || !this.data.hasMore) return;
+    await this.loadActivities(false);
+  },
+
+  async ensureSystemAdmin() {
+    try {
+      const res = await adminAPI.me();
+      const isSystemAdmin = !!(res && res.code === 0 && res.data && res.data.systemAdmin === true);
+      if (!isSystemAdmin) {
+        wx.showToast({ title: '无权限访问', icon: 'none' });
+        setTimeout(() => wx.navigateBack({ delta: 1 }), 500);
+        return false;
+      }
+      this.setData({ ready: true });
+      return true;
+    } catch (err) {
+      wx.showToast({ title: '无权限访问', icon: 'none' });
+      setTimeout(() => wx.navigateBack({ delta: 1 }), 500);
+      return false;
+    }
+  },
+
+  buildParams(page) {
+    const params = {
+      page,
+      size: this.data.size,
+      sortBy: 'startTime',
+      sortDirection: 'desc'
+    };
+    const keyword = (this.data.keyword || '').trim();
+    if (keyword) params.keyword = keyword;
+    if (this.data.selectedType && this.data.selectedType !== '全部') {
+      params.type = this.data.selectedType;
+    }
+    return params;
+  },
+
+  normalizeActivities(content) {
+    return (content || []).map(item => ({
+      ...item,
+      statusText: item.statusText || item.status || '未知状态',
+      joinedText: `${item.joined || 0}/${item.total || 0}`,
+      timeText: item.timeRange || item.date || item.startTime || '',
+      placeText: item.place || item.address || ''
+    }));
+  },
+
+  async loadActivities(reset = false) {
+    const nextPage = reset ? 0 : this.data.page;
+    this.setData({
+      loading: reset,
+      loadingMore: !reset
+    });
+
+    try {
+      const res = await adminAPI.listActivities(this.buildParams(nextPage));
+      if (!res || res.code !== 0) {
+        throw new Error((res && res.message) || '加载失败');
+      }
+
+      const pageData = res.data || {};
+      const content = Array.isArray(pageData.content) ? pageData.content : (Array.isArray(pageData) ? pageData : []);
+      const normalized = this.normalizeActivities(content);
+      const current = reset ? [] : this.data.activities;
+      const merged = reset ? normalized : current.concat(normalized);
+      const hasMore = typeof pageData.last === 'boolean' ? !pageData.last : normalized.length >= this.data.size;
+
+      this.setData({
+        activities: merged,
+        page: nextPage + 1,
+        hasMore,
+        loading: false,
+        loadingMore: false
+      });
+    } catch (err) {
+      console.error('加载系统活动失败:', err);
+      this.setData({ loading: false, loadingMore: false });
+      wx.showToast({ title: err.message || '加载失败', icon: 'none' });
+    }
+  },
+
+  onKeywordInput(e) {
+    this.setData({ keywordDraft: e.detail.value || '' });
+  },
+
+  async onSearch() {
+    this.setData({ keyword: this.data.keywordDraft || '' });
+    await this.loadActivities(true);
+  },
+
+  async onTypeTap(e) {
+    const type = e.currentTarget.dataset.type;
+    if (!type || type === this.data.selectedType) return;
+    this.setData({ selectedType: type });
+    await this.loadActivities(true);
+  },
+
+  goDetail(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id) return;
+    wx.navigateTo({ url: '/pages/activities/detail?id=' + id });
+  },
+
+  goManage(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id) return;
+    wx.navigateTo({ url: '/pages/management/index?id=' + id });
+  }
+});

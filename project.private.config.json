@@ -1,5 +1,5 @@
 {
-  "libVersion": "3.10.1",
+  "libVersion": "3.15.1",
   "projectname": "ActivityAssistant",
   "setting": {
     "urlCheck": false,
@@ -17,6 +17,7 @@
     "showES6CompileOption": false,
     "checkInvalidKey": true,
     "ignoreDevUnusedFiles": true,
-    "bigPackageSizeSupport": false
+    "bigPackageSizeSupport": false,
+    "useIsolateContext": true
   }
 }

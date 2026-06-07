@@ -1,0 +1,219 @@
+<!-- pages/registration/index.wxml -->
+<view class="registration-header">
+  <text class="registration-title">{{detail.title}}</text>
+</view>
+
+<!-- 分组选择界面 -->
+<view wx:if="{{showGroupSelection && detail.hasGroups && detail.groups}}" class="group-selection-section">
+  <view class="section-header">
+    <text class="section-title-large">请选择报名分组</text>
+    <text class="section-subtitle">活动分为多个组别，请根据自身情况选择合适的分组</text>
+  </view>
+
+  <view class="groups-list">
+    <block wx:for="{{detail.groups}}" wx:key="id" wx:for-item="group">
+      <view class="group-card {{group.joined >= group.total ? 'group-card--full' : ''}}">
+        <view class="group-card-header">
+          <text class="group-card-name">{{group.name}}</text>
+          <view class="group-card-status">
+            <text class="group-card-count {{group.joined >= group.total ? 'group-card-count--full' : ''}}">
+              {{group.joined}}/{{group.total}}人
+            </text>
+            <text wx:if="{{group.joined >= group.total}}" class="group-card-full-badge">已满</text>
+          </view>
+        </view>
+
+        <view wx:if="{{group.description}}" class="group-card-desc">
+          <text class="desc-text">{{group.description}}</text>
+        </view>
+
+        <view class="group-card-info">
+          <view class="group-info-item">
+            <text class="info-icon">💰</text>
+            <text class="info-text">{{group.feeType}} {{group.feeType !== '免费' ? '¥' + group.fee : ''}}</text>
+          </view>
+        </view>
+
+        <view wx:if="{{group.requirements}}" class="group-card-requirements">
+          <text class="requirements-label">⚠️ 报名要求：</text>
+          <text class="requirements-text">{{group.requirements}}</text>
+        </view>
+
+        <view class="group-card-action" bindtap="selectGroup" data-group-id="{{group.id}}">
+          <text class="action-text">{{group.joined >= group.total ? '已满员' : '选择此组'}}</text>
+        </view>
+      </view>
+    </block>
+  </view>
+</view>
+
+<!-- 活动信息卡片（非分组选择时显示） -->
+<view wx:if="{{!showGroupSelection}}" class="activity-info-section">
+  <view class="activity-info-card">
+    <!-- 活动封面和状态 -->
+    <view class="activity-cover">
+      <image class="activity-cover-image" src="{{detail.imageUrl}}" mode="aspectFill"></image>
+      <view class="cover-badges">
+        <view class="cover-badge cover-badge--status">{{detail.status}}</view>
+        <view class="cover-badge cover-badge--type">{{detail.type}}</view>
+      </view>
+    </view>
+
+    <!-- 关键信息网格 -->
+    <view class="info-grid">
+      <view class="info-grid-item">
+        <view class="info-grid-icon info-grid-icon--time">
+          <text class="icon-emoji">🕐</text>
+        </view>
+        <view class="info-grid-content">
+          <text class="info-grid-label">活动时间</text>
+          <text class="info-grid-value">{{detail.timeRange}}</text>
+          <text class="info-grid-sub">截止：{{deadline}}</text>
+        </view>
+      </view>
+
+      <view class="info-grid-item">
+        <view class="info-grid-icon info-grid-icon--location">
+          <text class="icon-emoji">📍</text>
+        </view>
+        <view class="info-grid-content">
+          <text class="info-grid-label">活动地点</text>
+          <text class="info-grid-value">{{detail.place}}</text>
+          <text class="info-grid-sub">提前30分钟到达</text>
+        </view>
+      </view>
+
+      <view class="info-grid-item">
+        <view class="info-grid-icon info-grid-icon--people">
+          <text class="icon-emoji">👥</text>
+        </view>
+        <view class="info-grid-content">
+          <text class="info-grid-label">参与人数</text>
+          <text class="info-grid-value">{{detail.joined}} / {{detail.total}} 人</text>
+          <view class="mini-progress">
+            <view class="mini-progress-bar" style="width: {{progress}}%"></view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
+
+<!-- 已报名状态提示（如果用户已报名） -->
+<view wx:if="{{!showGroupSelection && isRegistered}}" class="registered-status-section">
+  <view class="registered-status-card">
+    <view class="status-icon">
+      <text class="icon-emoji">{{registrationStatus === 'pending' ? '⏳' : '✅'}}</text>
+    </view>
+    <view class="status-content">
+      <text class="status-title">{{registrationStatus === 'pending' ? '报名审核中' : '已成功报名'}}</text>
+      <text class="status-desc">{{registrationStatus === 'pending' ? '您的报名正在等待组织者审核' : '您已成功报名此活动'}}</text>
+      <text wx:if="{{registeredGroupName}}" class="status-group">报名分组：{{registeredGroupName}}</text>
+    </view>
+  </view>
+</view>
+
+<!-- 报名表单（非分组选择时显示） -->
+<view wx:if="{{!showGroupSelection}}" class="form-section">
+  <view class="form-header">
+    <text class="form-title">{{isRegistered ? '您的报名信息' : '填写报名信息'}}</text>
+    <text class="form-subtitle">{{isRegistered ? '以下是您提交的报名信息' : '请如实填写以下信息'}}</text>
+  </view>
+
+  <view class="form-container">
+    <!-- 动态字段 -->
+    <view class="form-group">
+      <block wx:for="{{customFields}}" wx:key="id" wx:for-item="field">
+        <view class="input-wrapper">
+          <view class="input-label-row">
+            <text class="input-label">{{field.label}}</text>
+            <text wx:if="{{field.required && !isRegistered}}" class="input-required">*</text>
+          </view>
+          <input
+            class="input-field {{isRegistered ? 'input-field--disabled' : ''}}"
+            type="{{field.id === 'mobile' ? 'number' : 'text'}}"
+            placeholder="{{field.desc || '请输入' + field.label}}"
+            bindinput="onInput"
+            data-field="{{field.id}}"
+            value="{{formData[field.id]}}"
+            disabled="{{isRegistered}}"
+          />
+          <text wx:if="{{field.desc}}" class="field-hint" style="font-size: 22rpx; color: #9ca3af; margin-top: 8rpx; display: block;">{{field.desc}}</text>
+        </view>
+      </block>
+    </view>
+
+    <!-- 费用和提示 -->
+    <view class="info-cards">
+      <!-- 报名要求 -->
+      <view wx:if="{{displayRequirements}}" class="info-tip-card info-tip-card--orange">
+        <text class="info-tip-title">⚠️ 报名要求</text>
+        <text class="info-tip-text">{{displayRequirements}}</text>
+      </view>
+
+      <!-- 活动说明及注意事项 -->
+      <view wx:if="{{displayDescription}}" class="info-tip-card info-tip-card--blue">
+        <text class="info-tip-title">📝 活动说明及注意事项</text>
+        <text class="info-tip-text">{{displayDescription}}</text>
+      </view>
+
+      <!-- 费用说明 -->
+      <view class="info-tip-card info-tip-card--green">
+        <text class="info-tip-title">💰 费用说明</text>
+        <text class="info-tip-text">{{feeInfo}}</text>
+      </view>
+
+      <!-- 温馨提示 -->
+      <view class="info-tip-card info-tip-card--gray">
+        <text class="info-tip-title">📌 温馨提示</text>
+        <view class="info-tip-list">
+          <block wx:for="{{guidelines}}" wx:key="index" wx:for-item="tip">
+            <text class="info-tip-item">• {{tip}}</text>
+          </block>
+        </view>
+      </view>
+    </view>
+
+    <!-- 协议 -->
+    <view class="agreement-box">
+      <checkbox-group bindchange="toggleAgree">
+        <checkbox value="agree" checked="{{agree}}" class="agreement-checkbox" />
+      </checkbox-group>
+      <text class="agreement-text">已阅读并同意</text>
+      <text class="agreement-link" bindtap="viewAgreement">《活动报名协议》</text>
+      <text class="agreement-text">和</text>
+      <text class="agreement-link" bindtap="viewPrivacyPolicy">《隐私政策》</text>
+    </view>
+  </view>
+</view>
+
+<view wx:if="{{!showGroupSelection}}" class="section">
+  <view class="card shadow-card participants-card-reg">
+    <view class="row-between mb-16">
+      <text class="text-lg text-gray-800">已报名人员 ({{participants.length}})</text>
+      <view class="text-sm text-blue-500" bindtap="viewAllParticipants" hover-class="none" wx:if="{{participants.length > 0}}">查看全部</view>
+    </view>
+    <!-- 只展示一行头像（最多8个） -->
+    <view class="participants-row-reg" wx:if="{{participants.length > 0}}">
+      <block wx:for="{{participants}}" wx:key="id" wx:for-item="item" wx:for-index="idx">
+        <view wx:if="{{idx < 8}}" class="participants-avatar-item-reg">
+          <image src="{{item.avatar}}" mode="cover" class="participants-avatar-img-reg" />
+        </view>
+      </block>
+      <!-- 如果超过8个，显示更多提示 -->
+      <view wx:if="{{participants.length > 8}}" class="participants-more-reg" bindtap="viewAllParticipants">
+        <text class="participants-more-text-reg">+{{participants.length - 8}}</text>
+      </view>
+    </view>
+    <!-- 空状态 -->
+    <view wx:if="{{participants.length === 0}}" class="participants-empty-reg">
+      <text class="text-sm text-gray-400">暂无报名人员</text>
+    </view>
+  </view>
+</view>
+
+<view class="bottom-space"></view>
+<view class="fixed-footer">
+  <button class="btn btn--secondary footer-btn" bindtap="cancel">返回</button>
+  <button wx:if="{{!showGroupSelection}}" class="btn {{isRegistered ? 'btn--danger' : 'btn--primary'}} footer-btn" bindtap="{{isRegistered ? 'cancelRegistration' : 'submit'}}">{{isRegistered ? '取消报名' : '确认报名'}}</button>
+</view>

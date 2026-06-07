@@ -1,0 +1,174 @@
+<!-- pages/my-activities/index.wxml -->
+
+<!-- 游客状态提示 -->
+<view wx:if="{{!isLoggedIn}}" class="guest-container">
+  <view class="guest-content">
+    <view class="guest-icon">📝</view>
+    <text class="guest-title">我的活动</text>
+    <text class="guest-desc">登录后查看和管理您的活动</text>
+    <view class="guest-features">
+      <view class="guest-feature-item">
+        <text class="guest-feature-icon">📅</text>
+        <text class="guest-feature-text">查看我创建的活动</text>
+      </view>
+      <view class="guest-feature-item">
+        <text class="guest-feature-icon">👥</text>
+        <text class="guest-feature-text">查看我参加的活动</text>
+      </view>
+      <view class="guest-feature-item">
+        <text class="guest-feature-icon">📋</text>
+        <text class="guest-feature-text">管理活动草稿</text>
+      </view>
+    </view>
+    <view class="guest-login-btn" bindtap="goLogin">
+      <text class="guest-login-icon">🔐</text>
+      <text class="guest-login-text">立即登录</text>
+    </view>
+  </view>
+</view>
+
+<!-- 已登录状态显示活动列表 -->
+<view wx:else class="page-container">
+  <view class="filter-section">
+    <view class="filter-row">
+      <scroll-view scroll-x class="filter-scroll-view" show-scrollbar="false">
+        <view class="filter-tabs">
+          <block wx:for="{{roleFilters}}" wx:key="key" wx:for-item="item">
+            <view class="filter-tab {{item.active ? 'filter-tab--active' : ''}}" bindtap="onRoleTap" data-key="{{item.key}}">
+              {{item.name}}
+            </view>
+          </block>
+        </view>
+      </scroll-view>
+    </view>
+
+    <view class="filter-row filter-row--status">
+      <view class="filter-row__left">
+        <scroll-view scroll-x class="filter-scroll-view" show-scrollbar="false">
+          <view class="filter-tabs">
+            <block wx:for="{{statusFilters}}" wx:key="key" wx:for-item="item">
+              <view class="filter-tab {{item.active ? 'filter-tab--active' : ''}}" bindtap="onStatusTap" data-key="{{item.key}}">
+                {{item.name}}
+              </view>
+            </block>
+          </view>
+        </scroll-view>
+      </view>
+      <view class="filter-row__right">
+        <view wx:if="{{activeRole === 'joined'}}" class="filter-action {{showHistory ? 'filter-action--active' : ''}}" bindtap="toggleHistory">
+          历史
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="content-section">
+    <block wx:for="{{display}}" wx:key="displayId" wx:for-item="item">
+      <view class="card shadow-card my-card">
+        <view class="row-between my-card__header">
+          <view class="row gap-12">
+            <view class="badge badge--dark">{{item.role}}</view>
+            <view class="badge {{item.statusBadgeClass}}">{{item.status}}</view>
+            <view wx:if="{{item.registrationStatusText}}" class="badge {{item.registrationBadgeClass}}">{{item.registrationStatusText}}</view>
+          </view>
+          <view class="badge badge--light">{{item.type}}</view>
+        </view>
+        <view class="my-card__body">
+          <text class="text-lg text-gray-800 mb-12">{{item.title}}</text>
+
+          <!-- 活动编号 -->
+          <view class="activity-id-row mb-12">
+            <text class="activity-id-label">活动编号</text>
+            <text class="activity-id-value">{{item.displayId || item.id}}</text>
+          </view>
+
+          <!-- 活动信息网格 -->
+          <view class="info-grid-row mb-12">
+            <view class="info-col">
+              <text class="info-label">时间</text>
+              <text class="info-value">{{item.timeRange}}</text>
+            </view>
+            <view class="info-col">
+              <text class="info-label">地点</text>
+              <text class="info-value">{{item.place}}</text>
+            </view>
+          </view>
+
+          <!-- 底部操作栏 -->
+          <view class="row-between">
+            <text class="text-sm text-gray-600">报名：{{item.joined}} / {{item.total}}</text>
+            <view class="row gap-12">
+              <block wx:for="{{item.actions}}" wx:key="label" wx:for-item="action">
+                <view class="btn {{action.type === 'primary' ? 'btn--primary' : (action.type === 'danger' ? 'btn--danger' : 'btn--secondary')}} btn--small" catchtap="handleAction" data-action="{{action.action}}" data-id="{{item.id}}">{{action.label}}</view>
+              </block>
+            </view>
+          </view>
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <view class="bottom-space"></view>
+</view>
+
+<!-- 评价弹窗 -->
+<view class="review-modal {{showReviewModal ? 'review-modal--show' : ''}}" catchtap="closeReviewModal">
+  <view class="review-modal__content" catchtap="preventClose">
+    <!-- 弹窗头部 -->
+    <view class="review-modal__header">
+      <text class="review-modal__title">活动评价</text>
+      <view class="review-modal__close" catchtap="closeReviewModal">
+        <text class="review-modal__close-icon">✕</text>
+      </view>
+    </view>
+
+    <!-- 活动名称 -->
+    <view class="review-modal__activity">
+      <text class="review-modal__activity-label">活动名称</text>
+      <text class="review-modal__activity-name">{{currentActivityTitle}}</text>
+    </view>
+
+    <!-- 星级评分 -->
+    <view class="review-modal__rating-section">
+      <text class="review-modal__section-title">满意度评分</text>
+      <view class="review-stars">
+        <block wx:for="{{[1,2,3,4,5]}}" wx:key="*this">
+          <view
+            class="star-item"
+            data-star="{{item}}"
+            bindtap="onStarTap"
+            bindtouchstart="onStarTouchStart"
+            bindtouchend="onStarTouchEnd"
+          >
+            <text class="star-icon {{(hoverRating > 0 ? hoverRating : rating) >= item ? 'star-filled' : 'star-empty'}}">★</text>
+          </view>
+        </block>
+      </view>
+      <text class="review-rating-text">
+        {{rating === 0 ? '请点击星星打分' : (rating === 5 ? '非常满意' : (rating === 4 ? '比较满意' : (rating === 3 ? '一般' : (rating === 2 ? '不太满意' : '很不满意'))))}}
+      </text>
+    </view>
+
+    <!-- 文字评价 -->
+    <view class="review-modal__text-section">
+      <text class="review-modal__section-title">意见和建议（选填）</text>
+      <textarea
+        class="review-textarea"
+        placeholder="请分享您对本次活动的感受和建议..."
+        maxlength="500"
+        value="{{reviewText}}"
+        bindinput="onReviewInput"
+        placeholder-class="review-textarea-placeholder"
+      />
+      <view class="review-textarea-counter">
+        <text class="counter-text">{{reviewText.length}}/500</text>
+      </view>
+    </view>
+
+    <!-- 提交按钮 -->
+    <view class="review-modal__actions">
+      <button class="review-cancel-btn" catchtap="closeReviewModal">取消</button>
+      <button class="review-submit-btn" catchtap="submitReview">提交评价</button>
+    </view>
+  </view>
+</view>
